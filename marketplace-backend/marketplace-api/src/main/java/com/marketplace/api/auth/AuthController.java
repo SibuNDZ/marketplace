@@ -2,6 +2,8 @@ package com.marketplace.api.auth;
 
 import com.marketplace.api.auth.AuthDtos.AuthResponse;
 import com.marketplace.api.auth.AuthDtos.LoginRequest;
+import com.marketplace.api.auth.AuthDtos.LogoutRequest;
+import com.marketplace.api.auth.AuthDtos.RefreshRequest;
 import com.marketplace.api.auth.AuthDtos.RegisterRequest;
 import com.marketplace.api.security.UserPrincipal;
 import jakarta.validation.Valid;
@@ -30,6 +32,24 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    /**
+     * Rotate-on-use refresh. The old refresh token is immediately revoked;
+     * presenting a stale token triggers reuse detection and force-logs-out
+     * all devices. Both the new access token and new refresh token are
+     * returned — clients must store and use the new refresh token.
+     */
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+        return ResponseEntity.ok(authService.refresh(request.refreshToken()));
+    }
+
+    /** Single-device logout: revoke the presented refresh token. */
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@Valid @RequestBody LogoutRequest request) {
+        authService.logout(request.refreshToken());
+        return ResponseEntity.noContent().build();
     }
 
     /**

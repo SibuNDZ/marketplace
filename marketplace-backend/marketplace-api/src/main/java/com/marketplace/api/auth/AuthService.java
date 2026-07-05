@@ -33,13 +33,16 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
-                       JwtService jwtService) {
+                       JwtService jwtService,
+                       RefreshTokenService refreshTokenService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Transactional
@@ -61,12 +64,15 @@ public class AuthService {
 
         User saved = userRepository.save(user);
 
-        String token = jwtService.generateToken(saved.getId(), saved.getRole().name());
-        return AuthResponse.bearer(token, jwtService.getExpirySeconds(),
-                saved.getId(), saved.getEmail(), saved.getRole().name());
+        String accessToken   = jwtService.generateToken(saved.getId(), saved.getRole().name());
+        String refreshToken  = refreshTokenService.issue(saved);
+        return AuthResponse.bearer(accessToken, jwtService.getExpirySeconds(),
+                saved.getId(), saved.getEmail(), saved.getRole().name(),
+                refreshToken, refreshTokenService.getRefreshExpirySeconds());
     }
 
-    @Transactional(readOnly = true)
+    // login must be read-write: it persists a refresh token
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         String email = request.email().trim().toLowerCase();
 
@@ -79,9 +85,35 @@ public class AuthService {
             throw new BadCredentialsException("Invalid email or password");
         }
 
-        String token = jwtService.generateToken(user.getId(), user.getRole().name());
-        return AuthResponse.bearer(token, jwtService.getExpirySeconds(),
-                user.getId(), user.getEmail(), user.getRole().name());
+        String accessToken  = jwtService.generateToken(user.getId(), user.getRole().name());
+        String refreshToken = refreshTokenService.issue(user);
+        return AuthResponse.bearer(accessToken, jwtService.getExpirySeconds(),
+                user.getId(), user.getEmail(), user.getRole().name(),
+                refreshToken, refreshTokenService.getRefreshExpirySeconds());
+    }
+
+    /**
+     * Rotate-on-use: validate the refresh token, revoke it, issue a new
+     * access token + new refresh token. Presenting a revoked token triggers
+     * reuse detection and revokes all sessions for that user.
+     *
+     * rotate() runs in its own REQUIRES_NEW transaction (see RefreshTokenService)
+     * so revocations are committed before the exception propagates.
+     */
+    @Transactional
+    public AuthResponse refresh(String rawRefreshToken) {
+        User user = refreshTokenService.rotate(rawRefreshToken);
+        String accessToken      = jwtService.generateToken(user.getId(), user.getRole().name());
+        String newRefreshToken  = refreshTokenService.issue(user);
+        return AuthResponse.bearer(accessToken, jwtService.getExpirySeconds(),
+                user.getId(), user.getEmail(), user.getRole().name(),
+                newRefreshToken, refreshTokenService.getRefreshExpirySeconds());
+    }
+
+    /** Revoke a single refresh token (single-device logout). */
+    @Transactional
+    public void logout(String rawRefreshToken) {
+        refreshTokenService.revoke(rawRefreshToken);
     }
 
     public static class EmailAlreadyRegisteredException extends RuntimeException {

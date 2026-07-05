@@ -31,17 +31,29 @@ public class AuthDtos {
             @NotBlank String password
     ) {}
 
+    public record RefreshRequest(
+            @NotBlank String refreshToken
+    ) {}
+
+    public record LogoutRequest(
+            @NotBlank String refreshToken
+    ) {}
+
     public record AuthResponse(
             String accessToken,
             String tokenType,
             long expiresInSeconds,
             Long userId,
             String email,
-            String role
+            String role,
+            String refreshToken,
+            long refreshExpiresInSeconds
     ) {
         public static AuthResponse bearer(String token, long expiresIn,
-                                          Long userId, String email, String role) {
-            return new AuthResponse(token, "Bearer", expiresIn, userId, email, role);
+                                          Long userId, String email, String role,
+                                          String refreshToken, long refreshExpiresIn) {
+            return new AuthResponse(token, "Bearer", expiresIn, userId, email, role,
+                    refreshToken, refreshExpiresIn);
         }
     }
 }

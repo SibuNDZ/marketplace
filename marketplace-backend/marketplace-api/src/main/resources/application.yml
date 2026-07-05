@@ -46,4 +46,9 @@ app:
     # No default — app fails fast at startup if JWT_SECRET is not set.
     # Dev fallback lives in application-dev.yml only.
     secret: ${JWT_SECRET}
-    expiry-seconds: ${JWT_EXPIRY_SECONDS:86400}
+    # 15 minutes: short enough to limit a leaked token's window; refresh
+    # tokens extend the session without forcing re-login.
+    expiry-seconds: ${JWT_EXPIRY_SECONDS:900}
+    # 7 days: refresh token lifetime. Rotate-on-use means an active user
+    # never actually sees this expiry; it bounds abandoned sessions.
+    refresh-expiry-seconds: ${REFRESH_TOKEN_EXPIRY_SECONDS:604800}

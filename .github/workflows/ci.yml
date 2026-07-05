@@ -1,0 +1,85 @@
+# .github/workflows/ci.yml — place at the REPO root (projects/marketplace),
+# not inside marketplace-api; paths below are relative to the repo root.
+#
+# Two jobs:
+#   test  — mvnw verify with TestContainers (Docker is preinstalled on
+#           ubuntu-latest runners; the 28-test suite including the
+#           PostgreSQL concurrency tests runs unmodified)
+#   image — proves the Dockerfile builds; runs only after tests pass.
+#           Build-only for now — pushing to a registry comes with the
+#           deploy story, not the CI story.
+
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - "marketplace-backend/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "marketplace-backend/**"
+      - ".github/workflows/ci.yml"
+
+defaults:
+  run:
+    working-directory: marketplace-backend/marketplace-api
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25   # TestContainers pulls postgres:16-alpine on cache miss;
+                          # a hung container test should fail the run, not eat 6h
+    steps:
+      - uses: actions/checkout@v4
+
+      # Java 21 matches the pom's java.version target. Building on the exact
+      # target version catches javadoc and tooling issues that --release alone
+      # can miss, and keeps the CI/local gap minimal.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven   # caches ~/.m2 keyed on pom.xml hash
+
+      - name: Run tests
+        run: ./mvnw --no-transfer-progress verify
+
+      # Surefire reports as artifacts when something fails — the difference
+      # between "CI red" and knowing WHICH assertion failed without a rerun.
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: marketplace-backend/marketplace-api/target/surefire-reports/
+          retention-days: 7
+
+  image:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t marketplace-api:ci .
+
+      # Boot smoke: the container must start and fail for the RIGHT reason —
+      # missing JWT_SECRET fail-fast — not a broken entrypoint or missing jar.
+      # SPRING_AUTOCONFIGURE_EXCLUDE skips datasource/JPA/Flyway so those
+      # can't fail first; JWT_SECRET is then the first unresolvable placeholder.
+      - name: Container starts and fails fast on missing config
+        run: |
+          set +e
+          output=$(docker run --rm \
+            -e "SPRING_AUTOCONFIGURE_EXCLUDE=\
+org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,\
+org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration,\
+org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration" \
+            marketplace-api:ci 2>&1)
+          set -e
+          echo "$output" | grep -q "JWT_SECRET" \
+            && echo "OK: container boots and fails fast on missing JWT_SECRET" \
+            || { echo "Container failed for an unexpected reason:"; echo "$output" | tail -40; exit 1; }

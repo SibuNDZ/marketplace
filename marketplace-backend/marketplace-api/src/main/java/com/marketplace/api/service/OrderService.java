@@ -64,7 +64,11 @@ public class OrderService {
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrderResponse placeOrder(Long userId) {
-        Cart cart = cartRepository.findWithItemsByUserId(userId)
+        // Lock the cart row FIRST (before product locks) so that concurrent
+        // same-user checkout attempts block here. The second call to arrive
+        // will see the cleared cart after the first commits and throw
+        // EmptyCartException — making duplicate orders impossible.
+        Cart cart = cartRepository.findByUserIdForUpdate(userId)
                 .orElseThrow(() -> new CartNotFoundException(userId));
 
         if (cart.getItems().isEmpty()) {

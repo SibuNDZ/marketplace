@@ -1,0 +1,14 @@
+# Test-environment overrides for properties that have no application.yml default
+# (fail-fast properties that require real env vars in production).
+# These placeholder values are safe for test runs — no real Stripe account is hit.
+app:
+  stripe:
+    secret-key: sk_test_placeholder_for_tests
+    webhook-secret: whsec_placeholder_for_tests
+    success-url: http://localhost:4200/checkout/success
+    cancel-url: http://localhost:4200/checkout/cancelled
+  orders:
+    expiry-sweep-ms: 60000
+  bootstrap:
+    admin-email: ""
+    admin-password: ""

@@ -19,6 +19,8 @@
 
 	<properties>
 		<java.version>21</java.version>
+		<!-- CVE-2026-42198: pgjdbc SCRAM PBKDF2 DoS — upgrade to 42.7.12 (latest patch) -->
+		<postgresql.version>42.7.12</postgresql.version>
 		<!-- Override Boot 3.2's default (1.19.3) — Docker Desktop 4.36+ broke docker-java 3.3.x/3.4.0
 		     named-pipe transport (missing Host header; API version 1.32 too old for Docker 29.x).
 		     TC 1.21.2 bundles docker-java 3.4.2 which fixes both issues. -->

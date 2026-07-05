@@ -3,8 +3,10 @@ package com.marketplace.api.service;
 import com.marketplace.api.dto.OrderResponse;
 import com.marketplace.api.entity.Product;
 import com.marketplace.api.entity.User;
+import com.marketplace.api.exception.OrderExceptions.EmptyCartException;
 import com.marketplace.api.exception.OrderExceptions.InsufficientStockException;
 import com.marketplace.api.repository.CartRepository;
+import com.marketplace.api.repository.OrderRepository;
 import com.marketplace.api.repository.ProductRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +52,7 @@ class OrderServiceConcurrencyTest {
 
     @Autowired OrderService orderService;
     @Autowired ProductRepository productRepository;
+    @Autowired OrderRepository orderRepository;
     @Autowired CartRepository cartRepository;
     @Autowired TestFixtures fixtures;
 
@@ -115,5 +118,47 @@ class OrderServiceConcurrencyTest {
         OrderResponse reloaded = orderService.getOrder(placed.id(), user.getId());
         assertThat(reloaded.items().get(0).unitPrice()).isEqualByComparingTo("100.00");
         assertThat(reloaded.total()).isEqualByComparingTo("100.00");
+    }
+
+    /**
+     * Cart-level pessimistic lock prevents double-submit: two concurrent placeOrder
+     * calls for the same user must produce exactly one order. The second call
+     * blocks on the cart lock, then sees the cleared cart and throws EmptyCartException.
+     * Stock is decremented exactly once — no oversell, no phantom duplicate order.
+     */
+    @Test
+    void sameUser_doubleSubmit_createsExactlyOneOrder() throws Exception {
+        Product item = fixtures.product("Double-Submit Widget", "SKU-DS-1", new BigDecimal("50.00"), 5);
+        User user = fixtures.customerWithCart("ds-user", item, 2);
+
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        CyclicBarrier barrier = new CyclicBarrier(2);
+        AtomicInteger successes = new AtomicInteger();
+        AtomicInteger emptyCartFailures = new AtomicInteger();
+
+        Callable<Void> checkout = () -> {
+            barrier.await(5, TimeUnit.SECONDS);
+            try {
+                orderService.placeOrder(user.getId());
+                successes.incrementAndGet();
+            } catch (EmptyCartException e) {
+                emptyCartFailures.incrementAndGet();
+            }
+            return null;
+        };
+
+        List<Future<Void>> futures = pool.invokeAll(List.of(checkout, checkout), 30, TimeUnit.SECONDS);
+        for (Future<Void> f : futures) f.get();
+        pool.shutdown();
+
+        assertThat(successes.get()).isEqualTo(1);
+        assertThat(emptyCartFailures.get()).isEqualTo(1);
+
+        // Exactly one order was created
+        assertThat(orderRepository.findByUserId(user.getId(), org.springframework.data.domain.Pageable.unpaged())
+                .getTotalElements()).isEqualTo(1);
+
+        // Stock decremented exactly once (2 items bought once from stock-5 product)
+        assertThat(productRepository.findById(item.getId()).orElseThrow().getStock()).isEqualTo(3);
     }
 }

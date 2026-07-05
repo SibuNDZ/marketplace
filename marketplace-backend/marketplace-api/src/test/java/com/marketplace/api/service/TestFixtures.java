@@ -80,6 +80,12 @@ public class TestFixtures {
         return user;
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public User admin(String username) {
+        return userRepository.findByEmail(username + "@test.local")
+                .orElseGet(() -> persistUser(username, UserRole.ADMIN));
+    }
+
     private User persistUser(String username, UserRole role) {
         User u = new User();
         u.setEmail(username + "@test.local");

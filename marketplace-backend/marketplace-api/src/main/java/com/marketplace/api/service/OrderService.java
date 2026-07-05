@@ -50,13 +50,16 @@ public class OrderService {
     private final CartRepository cartRepository;
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
+    private final OrderStatusRecorder recorder;
 
     public OrderService(CartRepository cartRepository,
                         OrderRepository orderRepository,
-                        ProductRepository productRepository) {
+                        ProductRepository productRepository,
+                        OrderStatusRecorder recorder) {
         this.cartRepository = cartRepository;
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
+        this.recorder = recorder;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -122,6 +125,7 @@ public class OrderService {
         order.setTotalAmount(total);
 
         Order saved = orderRepository.save(order);
+        recorder.record(saved, null, OrderStatus.PENDING, userId, "Order placed");
         cart.getItems().clear();
 
         return toResponse(saved);
@@ -152,6 +156,7 @@ public class OrderService {
         }
 
         order.setStatus(OrderStatus.CANCELLED);
+        recorder.record(order, OrderStatus.PENDING, OrderStatus.CANCELLED, userId, "Cancelled by customer");
         return toResponse(order);
     }
 

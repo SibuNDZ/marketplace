@@ -58,6 +58,8 @@ app:
     cancel-url: ${APP_FRONTEND_URL:http://localhost:4200}/checkout/cancelled
   orders:
     expiry-sweep-ms: 60000
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
   bootstrap:
     admin-email: ${APP_BOOTSTRAP_ADMIN_EMAIL:}
     admin-password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:}

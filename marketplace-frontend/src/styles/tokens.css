@@ -1,0 +1,72 @@
+/* src/styles/tokens.css
+   The only place colors, fonts, and shape live.
+   Import once in main.tsx. Components consume var(--x), never raw values. */
+
+:root {
+  /* palette */
+  --paper: #F5F7F3;
+  --card: #FFFFFF;
+  --ink: #182420;
+  --ink-soft: #4A5A52;
+  --line: #DDE4DE;
+
+  --aloe: #1F6B4A;
+  --aloe-deep: #145036;
+  --aloe-tint: #E4F0E9;
+
+  --marigold: #E8A020;      /* low-stock heat + star ratings ONLY */
+  --marigold-tint: #FBF1DC;
+
+  --clay: #B4432F;          /* errors ONLY */
+  --clay-tint: #F7E6E1;
+
+  /* typography */
+  --display: "Bricolage Grotesque", system-ui, sans-serif;
+  --body: "Instrument Sans", system-ui, sans-serif;
+  --mono: "Spline Sans Mono", ui-monospace, "SF Mono", monospace;
+
+  /* shape */
+  --r: 10px;
+  --r-sm: 6px;
+  --r-pill: 999px;
+  --shadow: 0 1px 2px rgba(24,36,32,.06), 0 4px 14px rgba(24,36,32,.05);
+  --shadow-lift: 0 2px 4px rgba(24,36,32,.08), 0 10px 28px rgba(24,36,32,.10);
+
+  /* layout */
+  --content-max: 1160px;
+  --gutter: 24px;
+  --topbar-h: 60px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.5;
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; font: inherit; }
+
+:focus-visible {
+  outline: 2px solid var(--aloe);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* numbers are facts */
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+.page-shell {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: calc(var(--topbar-h) + 32px) var(--gutter) 48px;
+}

@@ -14,7 +14,7 @@ export function Topbar() {
     enabled: !!user,
   })
 
-  const itemCount = cart?.lines?.reduce((n, l) => n + l.quantity, 0) ?? 0
+  const itemCount = cart?.items?.reduce((n, l) => n + l.quantity, 0) ?? 0
 
   const handleLogout = async () => {
     await logout()

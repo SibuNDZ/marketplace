@@ -25,6 +25,11 @@ server:
 app:
   jwt:
     secret: ${JWT_SECRET}
+  cors:
+    # Set APP_CORS_ALLOWED_ORIGINS to the production frontend URL before deploy.
+    # Deploying without this means the production frontend cannot reach the API.
+    # Example: https://my-marketplace.up.railway.app
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
 springdoc:
   api-docs:

@@ -36,7 +36,7 @@ export function CartPage() {
     onError: (e) => { if (e instanceof ApiError) setCheckoutError(e) },
   })
 
-  const lines = cart?.lines ?? []
+  const lines = cart?.items ?? []
   const isEmpty = lines.length === 0
 
   return (
@@ -82,7 +82,7 @@ export function CartPage() {
                       style={{ width: 28, height: 28, border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', background: 'none', fontSize: 16 }}>+</button>
                   </div>
                   <p className="num" style={{ fontWeight: 700, minWidth: 80, textAlign: 'right' }}>
-                    R{(Number(line.unitPrice) * line.quantity).toFixed(2)}
+                    R{Number(line.lineTotal).toFixed(2)}
                   </p>
                   <button onClick={() => removeItem.mutate(line.productId)}
                     style={{ color: 'var(--ink-soft)', background: 'none', border: 'none', fontSize: 18, lineHeight: 1 }}>×</button>
@@ -94,7 +94,7 @@ export function CartPage() {
             <div style={{ background: 'var(--card)', borderRadius: 'var(--r)', padding: 24, boxShadow: 'var(--shadow)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
                 <span style={{ fontWeight: 600 }}>Total</span>
-                <span className="num" style={{ fontWeight: 700, fontSize: 20 }}>R{Number(cart?.total ?? 0).toFixed(2)}</span>
+                <span className="num" style={{ fontWeight: 700, fontSize: 20 }}>R{Number(cart?.subtotal ?? 0).toFixed(2)}</span>
               </div>
               {checkoutError && <ErrorSurface error={checkoutError} onDismiss={() => setCheckoutError(undefined)} />}
               <button disabled={placeOrder.isPending} onClick={() => placeOrder.mutate()} style={{

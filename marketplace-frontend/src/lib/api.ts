@@ -163,11 +163,12 @@ export interface CartLine {
   productName: string
   unitPrice: string
   quantity: number
+  lineTotal: string
   availableStock: number
 }
 export interface CartResponse {
-  lines: CartLine[]
-  total: string
+  items: CartLine[]
+  subtotal: string
 }
 
 export interface OrderItemResponse {

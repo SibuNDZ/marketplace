@@ -79,7 +79,7 @@ class ProductLifecycleTest {
         productService.delete(product.getId(), principalFor(vendor));
 
         // Catalog hides it — public GET returns 404
-        assertThatThrownBy(() -> productService.get(product.getId()))
+        assertThatThrownBy(() -> productService.get(product.getId(), null))
                 .hasMessageContaining(product.getId().toString());
 
         // Listing excludes it

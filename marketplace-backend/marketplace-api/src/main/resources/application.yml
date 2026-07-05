@@ -61,6 +61,9 @@ app:
   bootstrap:
     admin-email: ${APP_BOOTSTRAP_ADMIN_EMAIL:}
     admin-password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:}
+  discovery:
+    popularity-refresh-ms: 3600000        # hourly
+    view-retention-cron: "0 15 3 * * *"   # nightly sweep, 90-day window
 
 sentry:
   dsn: ${SENTRY_DSN:}             # blank = SDK disabled; dev needs nothing

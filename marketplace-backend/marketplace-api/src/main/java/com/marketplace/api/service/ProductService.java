@@ -2,12 +2,14 @@ package com.marketplace.api.service;
 
 import com.marketplace.api.dto.ProductDtos.ProductRequest;
 import com.marketplace.api.dto.ProductDtos.ProductResponse;
+import com.marketplace.api.discovery.ProductViewRecorder;
 import com.marketplace.api.entity.Product;
 import com.marketplace.api.entity.User;
 import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
 import com.marketplace.api.repository.ProductRepository;
 import com.marketplace.api.repository.UserRepository;
 import com.marketplace.api.security.UserPrincipal;
+import org.springframework.lang.Nullable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -30,10 +32,14 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final ProductViewRecorder viewRecorder;
 
-    public ProductService(ProductRepository productRepository, UserRepository userRepository) {
+    public ProductService(ProductRepository productRepository,
+                          UserRepository userRepository,
+                          ProductViewRecorder viewRecorder) {
         this.productRepository = productRepository;
         this.userRepository = userRepository;
+        this.viewRecorder = viewRecorder;
     }
 
     @Transactional(readOnly = true)
@@ -42,10 +48,13 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public ProductResponse get(Long id) {
-        return productRepository.findByIdAndDeletedAtIsNull(id)
-                .map(this::toResponse)
+    public ProductResponse get(Long id, @Nullable Long viewerUserId) {
+        Product product = productRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ProductNotFoundException(id));
+        // Record happens AFTER orElseThrow: a 404 records nothing, structurally.
+        // The call is async (ProductViewRecorder) — it never blocks or fails this request.
+        viewRecorder.record(id, viewerUserId);
+        return toResponse(product);
     }
 
     @Transactional
@@ -91,7 +100,7 @@ public class ProductService {
         product.setStock(request.stock());
     }
 
-    private ProductResponse toResponse(Product p) {
+    public ProductResponse toResponse(Product p) {
         User vendor = p.getVendor();
         return new ProductResponse(
                 p.getId(), p.getName(), p.getDescription(), p.getSku(),

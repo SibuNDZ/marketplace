@@ -3,6 +3,7 @@ package com.marketplace.api.web;
 import com.marketplace.api.auth.AuthService.EmailAlreadyRegisteredException;
 import com.marketplace.api.exception.OrderExceptions.*;
 import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
+import com.marketplace.api.exception.ReviewExceptions.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -34,9 +35,19 @@ public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler({OrderNotFoundException.class, CartNotFoundException.class,
-            ProductNotFoundException.class})
+            ProductNotFoundException.class, ReviewNotFoundException.class})
     public ProblemDetail notFound(RuntimeException ex) {
         return problem(HttpStatus.NOT_FOUND, "Resource not found", ex.getMessage());
+    }
+
+    @ExceptionHandler(NotVerifiedPurchaserException.class)
+    public ProblemDetail notVerifiedPurchaser(NotVerifiedPurchaserException ex) {
+        return problem(HttpStatus.FORBIDDEN, "Purchase required", ex.getMessage());
+    }
+
+    @ExceptionHandler(DuplicateReviewException.class)
+    public ProblemDetail duplicateReview(DuplicateReviewException ex) {
+        return problem(HttpStatus.CONFLICT, "Duplicate review", ex.getMessage());
     }
 
     @ExceptionHandler(InsufficientStockException.class)

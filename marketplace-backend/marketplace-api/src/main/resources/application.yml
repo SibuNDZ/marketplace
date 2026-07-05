@@ -1,0 +1,61 @@
+# Server Configuration
+server:
+  port: 8080
+
+# Spring Configuration
+spring:
+  application:
+    name: marketplace-api
+
+  # H2 Database (for testing/development)
+  datasource:
+    url: jdbc:h2:mem:marketplace
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  # JPA/Hibernate Configuration
+  jpa:
+    hibernate:
+      ddl-auto: create-drop  # Will recreate tables on each restart
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # Disable security for now (we'll add it back later)
+  security:
+    user:
+      name: admin
+      password: admin123
+
+# Logging Configuration
+logging:
+  level:
+    com.marketplace.api: DEBUG
+    org.springframework.security: INFO
+    org.hibernate.SQL: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# Management/Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+# Application Configuration
+app:
+  jwt:
+    # No default — app fails fast at startup if JWT_SECRET is not set.
+    # Dev fallback lives in application-dev.yml only.
+    secret: ${JWT_SECRET}
+    expiry-seconds: ${JWT_EXPIRY_SECONDS:86400}

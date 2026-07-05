@@ -1,0 +1,102 @@
+package com.marketplace.api.service;
+
+import com.marketplace.api.dto.ProductDtos.ProductRequest;
+import com.marketplace.api.dto.ProductDtos.ProductResponse;
+import com.marketplace.api.entity.Product;
+import com.marketplace.api.entity.User;
+import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
+import com.marketplace.api.repository.ProductRepository;
+import com.marketplace.api.repository.UserRepository;
+import com.marketplace.api.security.UserPrincipal;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Product CRUD with the marketplace's core authorization rule: vendors manage
+ * ONLY their own products.
+ *
+ * Two-layer defense:
+ *   - Controller: @PreAuthorize("hasAnyRole('VENDOR','ADMIN')") — coarse gate
+ *   - Service (here): assertOwnerOrAdmin — fine ownership check
+ *
+ * Throwing AccessDeniedException means the GlobalExceptionHandler's 403 mapping
+ * covers both @PreAuthorize failures and these checks with one handler.
+ */
+@Service
+public class ProductService {
+
+    private final ProductRepository productRepository;
+    private final UserRepository userRepository;
+
+    public ProductService(ProductRepository productRepository, UserRepository userRepository) {
+        this.productRepository = productRepository;
+        this.userRepository = userRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductResponse> list(Pageable pageable) {
+        return productRepository.findAll(pageable).map(this::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public ProductResponse get(Long id) {
+        return productRepository.findById(id)
+                .map(this::toResponse)
+                .orElseThrow(() -> new ProductNotFoundException(id));
+    }
+
+    @Transactional
+    public ProductResponse create(ProductRequest request, UserPrincipal me) {
+        Product product = new Product();
+        applyRequest(product, request);
+        product.setVendor(userRepository.getReferenceById(me.getId()));
+        return toResponse(productRepository.save(product));
+    }
+
+    @Transactional
+    public ProductResponse update(Long id, ProductRequest request, UserPrincipal me) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ProductNotFoundException(id));
+        assertOwnerOrAdmin(product, me);
+        applyRequest(product, request);
+        return toResponse(product);
+    }
+
+    @Transactional
+    public void delete(Long id, UserPrincipal me) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ProductNotFoundException(id));
+        assertOwnerOrAdmin(product, me);
+        productRepository.delete(product);
+    }
+
+    private void assertOwnerOrAdmin(Product product, UserPrincipal me) {
+        boolean isAdmin = "ADMIN".equals(me.getRole());
+        boolean isOwner = product.getVendor() != null
+                && product.getVendor().getId().equals(me.getId());
+        if (!isAdmin && !isOwner) {
+            throw new AccessDeniedException(
+                    "Vendor " + me.getId() + " does not own product " + product.getId());
+        }
+    }
+
+    private void applyRequest(Product product, ProductRequest request) {
+        product.setName(request.name());
+        product.setDescription(request.description());
+        product.setSku(request.sku());
+        product.setPrice(request.price());
+        product.setStock(request.stock());
+    }
+
+    private ProductResponse toResponse(Product p) {
+        User vendor = p.getVendor();
+        return new ProductResponse(
+                p.getId(), p.getName(), p.getDescription(), p.getSku(),
+                p.getPrice(), p.getStock(),
+                vendor != null ? vendor.getId() : null,
+                vendor != null ? vendor.getFullName() : null);
+    }
+}

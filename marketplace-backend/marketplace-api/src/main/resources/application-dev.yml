@@ -1,0 +1,15 @@
+spring:
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+
+# Dev-only JWT secret fallback — do not replicate to application.yml or prod
+app:
+  jwt:
+    secret: dGhpcy1pcy1hLXRlc3Qtb25seS1zZWNyZXQta2V5LTMyYnl0ZXM=
+
+logging:
+  level:
+    com.marketplace.api: DEBUG
+    org.springframework.web: DEBUG

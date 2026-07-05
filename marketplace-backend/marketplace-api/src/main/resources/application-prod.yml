@@ -1,0 +1,16 @@
+spring:
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+
+# JWT_SECRET must be supplied via environment variable in production.
+# No default — missing variable = startup failure (intentional fail-fast).
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+
+logging:
+  level:
+    com.marketplace.api: INFO
+    org.springframework.web: WARN

@@ -1,8 +1,14 @@
 spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5434/marketplace
+    username: marketplace
+    password: devpassword
+    # no driver-class-name, no dialect — auto-detected from the JDBC URL
+
   jpa:
     show-sql: true
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
 
 # Dev-only JWT secret fallback — do not replicate to application.yml or prod
 app:

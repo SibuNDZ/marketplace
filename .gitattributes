@@ -1,0 +1,5 @@
+# Enforce LF line endings for SQL migrations.
+# Flyway checksums file bytes — a CRLF/LF flip between Windows and Linux
+# machines produces "checksum mismatch" on any database that already ran
+# the migration. Keep SQL files consistent regardless of editor or OS.
+*.sql text eol=lf

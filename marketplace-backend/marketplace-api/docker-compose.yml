@@ -1,0 +1,30 @@
+# Dev database — replaces H2. Same image as TestContainers (postgres:16-alpine)
+# and whatever prod runs, so one engine everywhere.
+#
+#   docker compose up -d        start (data persists in the named volume)
+#   docker compose down         stop  (data persists)
+#   docker compose down -v      stop AND wipe data (fresh schema next boot)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: marketplace-dev-db
+    environment:
+      POSTGRES_DB: marketplace
+      POSTGRES_USER: marketplace
+      POSTGRES_PASSWORD: devpassword         # dev-only; prod credentials come from env
+      POSTGRES_HOST_AUTH_METHOD: trust       # dev convenience; avoids SCRAM negotiation quirks
+                                             # on Docker Desktop for Windows. Trust is safe here:
+                                             # port 5432 is only exposed to localhost.
+    ports:
+      - "5434:5432"   # 5432 and 5433 are taken by native Windows PostgreSQL instances; use 5434
+    volumes:
+      - marketplace-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marketplace -d marketplace"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  marketplace-pgdata:

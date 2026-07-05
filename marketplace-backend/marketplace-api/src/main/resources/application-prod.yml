@@ -4,6 +4,13 @@ spring:
     hibernate:
       ddl-auto: validate
 
+  flyway:
+    validate-on-migrate: true
+    # If prod already has a schema WITH DATA when Flyway first runs (Railway etc.),
+    # set these for the first deployment only, then remove them:
+    #   baseline-on-migrate: true
+    #   baseline-version: 1
+
 # JWT_SECRET must be supplied via environment variable in production.
 # No default — missing variable = startup failure (intentional fail-fast).
 app:

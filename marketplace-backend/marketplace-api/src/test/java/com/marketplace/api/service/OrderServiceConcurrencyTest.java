@@ -42,7 +42,8 @@ class OrderServiceConcurrencyTest {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
+        // No ddl-auto override — Flyway runs the real migrations against this
+        // TestContainers database, making the test suite also a migration test.
         registry.add("app.jwt.secret",
                 () -> "dGhpcy1pcy1hLXRlc3Qtb25seS1zZWNyZXQta2V5LTMyYnl0ZXM=");
     }

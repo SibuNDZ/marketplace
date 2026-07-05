@@ -29,6 +29,11 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
      * so that two concurrent same-user checkout attempts block on the cart row
      * rather than racing. The second call sees the cleared cart and throws
      * EmptyCartException, making duplicate orders impossible.
+     *
+     * Note: does not JOIN FETCH items. After acquiring the lock, placeOrder
+     * calls entityManager.refresh(cart) to force a post-lock reload, then
+     * accesses cart.getItems() via normal lazy loading — mirroring the
+     * lockAndRefresh pattern used for product stock.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT c FROM Cart c WHERE c.user.id = :userId")

@@ -68,7 +68,23 @@ public class OrderService {
         // same-user checkout attempts block here. The second call to arrive
         // will see the cleared cart after the first commits and throw
         // EmptyCartException — making duplicate orders impossible.
-        Cart cart = cartRepository.findByUserIdForUpdate(userId)
+        //
+        // Native SELECT ... FOR UPDATE ensures the lock is issued immediately
+        // without Hibernate caching interference. cartRepository.findByUserId
+        // then fetches the same row (now locked) with its items via EntityGraph.
+        List<?> lockedIds = entityManager
+                .createNativeQuery("SELECT id FROM carts WHERE user_id = :userId FOR UPDATE")
+                .setParameter("userId", userId)
+                .getResultList();
+        if (lockedIds.isEmpty()) {
+            throw new CartNotFoundException(userId);
+        }
+
+        // Load the cart with items (EntityGraph) now that the lock is held.
+        // In READ_COMMITTED, this SELECT sees items AFTER any concurrent
+        // Thread A has committed its cart.clear(). If the cart is empty, the
+        // second concurrent call to arrive here throws EmptyCartException.
+        Cart cart = cartRepository.findWithItemsByUserId(userId)
                 .orElseThrow(() -> new CartNotFoundException(userId));
 
         if (cart.getItems().isEmpty()) {

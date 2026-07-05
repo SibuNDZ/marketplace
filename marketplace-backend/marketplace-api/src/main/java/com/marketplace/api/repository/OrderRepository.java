@@ -44,4 +44,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
      * createdAt is LocalDateTime (matches Order entity's @CreationTimestamp field).
      */
     List<Order> findByStatusAndCreatedAtBefore(OrderStatus status, LocalDateTime cutoff);
+
+    long countByUserId(Long userId);
 }

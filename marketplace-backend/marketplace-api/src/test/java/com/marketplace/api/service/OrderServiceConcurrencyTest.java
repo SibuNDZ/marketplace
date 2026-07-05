@@ -154,9 +154,8 @@ class OrderServiceConcurrencyTest {
         assertThat(successes.get()).isEqualTo(1);
         assertThat(emptyCartFailures.get()).isEqualTo(1);
 
-        // Exactly one order was created
-        assertThat(orderRepository.findByUserId(user.getId(), org.springframework.data.domain.Pageable.unpaged())
-                .getTotalElements()).isEqualTo(1);
+        // Exactly one order was created for this user
+        assertThat(orderRepository.countByUserId(user.getId())).isEqualTo(1);
 
         // Stock decremented exactly once (2 items bought once from stock-5 product)
         assertThat(productRepository.findById(item.getId()).orElseThrow().getStock()).isEqualTo(3);

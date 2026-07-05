@@ -96,6 +96,9 @@ public class OrderService {
             if (product == null) {
                 shortages.add(new InsufficientStockException.StockShortage(
                         productId, "(product no longer exists)", requested, 0));
+            } else if (product.getDeletedAt() != null) {
+                shortages.add(new InsufficientStockException.StockShortage(
+                        productId, product.getName() + " (no longer available)", requested, 0));
             } else if (product.getStock() < requested) {
                 shortages.add(new InsufficientStockException.StockShortage(
                         productId, product.getName(), requested, product.getStock()));

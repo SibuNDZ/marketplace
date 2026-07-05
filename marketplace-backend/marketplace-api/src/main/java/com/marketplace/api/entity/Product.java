@@ -70,6 +70,9 @@ public class Product {
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<OrderItem> orderItems = new ArrayList<>();
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     // Constructors
     public Product() {}
 
@@ -191,6 +194,9 @@ public class Product {
     /** Convenience alias for stockQuantity, used by service layer. */
     public Integer getStock() { return stockQuantity; }
     public void setStock(Integer stock) { this.stockQuantity = stock; }
+
+    public LocalDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
 
     @Override
     public String toString() {

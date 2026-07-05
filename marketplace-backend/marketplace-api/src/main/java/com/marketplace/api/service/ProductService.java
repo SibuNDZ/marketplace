@@ -38,12 +38,12 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public Page<ProductResponse> list(Pageable pageable) {
-        return productRepository.findAll(pageable).map(this::toResponse);
+        return productRepository.findAllByDeletedAtIsNull(pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
     public ProductResponse get(Long id) {
-        return productRepository.findById(id)
+        return productRepository.findByIdAndDeletedAtIsNull(id)
                 .map(this::toResponse)
                 .orElseThrow(() -> new ProductNotFoundException(id));
     }
@@ -58,7 +58,7 @@ public class ProductService {
 
     @Transactional
     public ProductResponse update(Long id, ProductRequest request, UserPrincipal me) {
-        Product product = productRepository.findById(id)
+        Product product = productRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ProductNotFoundException(id));
         assertOwnerOrAdmin(product, me);
         applyRequest(product, request);
@@ -67,10 +67,10 @@ public class ProductService {
 
     @Transactional
     public void delete(Long id, UserPrincipal me) {
-        Product product = productRepository.findById(id)
+        Product product = productRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ProductNotFoundException(id));
         assertOwnerOrAdmin(product, me);
-        productRepository.delete(product);
+        product.setDeletedAt(java.time.LocalDateTime.now());
     }
 
     private void assertOwnerOrAdmin(Product product, UserPrincipal me) {

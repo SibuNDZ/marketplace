@@ -5,6 +5,7 @@ import com.marketplace.api.exception.OrderExceptions.*;
 import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
 import com.marketplace.api.exception.ReviewExceptions.*;
 import com.marketplace.api.payment.PaymentExceptions.PaymentProviderException;
+import com.marketplace.api.service.ProductStockService.InsufficientAdjustmentException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -73,6 +74,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(EmailAlreadyRegisteredException.class)
     public ProblemDetail emailTaken(EmailAlreadyRegisteredException ex) {
         return problem(HttpStatus.CONFLICT, "Email already registered", ex.getMessage());
+    }
+
+    @ExceptionHandler(InsufficientAdjustmentException.class)
+    public ProblemDetail insufficientAdjustment(InsufficientAdjustmentException ex) {
+        return problem(HttpStatus.CONFLICT, "Insufficient stock for adjustment", ex.getMessage());
     }
 
     @ExceptionHandler(EmptyCartException.class)

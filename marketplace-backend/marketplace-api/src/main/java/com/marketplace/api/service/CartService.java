@@ -51,7 +51,7 @@ public class CartService {
      */
     @Transactional
     public CartResponse addItem(Long userId, AddItemRequest request) {
-        Product product = productRepository.findById(request.productId())
+        Product product = productRepository.findByIdAndDeletedAtIsNull(request.productId())
                 .orElseThrow(() -> new ProductNotFoundException(request.productId()));
 
         Cart cart = cartRepository.findWithItemsByUserId(userId)

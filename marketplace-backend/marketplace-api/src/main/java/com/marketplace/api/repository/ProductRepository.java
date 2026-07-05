@@ -14,6 +14,17 @@ import java.util.Optional;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
+    // --- soft-delete aware catalog queries ---
+
+    /** Live products only (deleted_at IS NULL). Used for public catalog. */
+    Page<Product> findAllByDeletedAtIsNull(Pageable pageable);
+
+    /** Live product by id. Returns empty for soft-deleted products (public 404). */
+    Optional<Product> findByIdAndDeletedAtIsNull(Long id);
+
+    /** Existence check for live products. Used by ReviewService browsing paths. */
+    boolean existsByIdAndDeletedAtIsNull(Long id);
+
     /**
      * Pessimistic write lock (SELECT ... FOR UPDATE) for checkout stock
      * decrements. H2 supports FOR UPDATE but its semantics differ from

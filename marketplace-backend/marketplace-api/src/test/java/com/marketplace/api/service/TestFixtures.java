@@ -87,6 +87,12 @@ public class TestFixtures {
         return user;
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public User vendor(String username) {
+        return userRepository.findByEmail(username + "@test.local")
+                .orElseGet(() -> persistUser(username, UserRole.VENDOR));
+    }
+
     /** Customer with no cart — for tests that don't need to place an order. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public User customer(String username) {

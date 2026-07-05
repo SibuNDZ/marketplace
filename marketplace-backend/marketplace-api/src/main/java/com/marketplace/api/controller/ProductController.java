@@ -4,7 +4,11 @@ import com.marketplace.api.dto.ProductDtos.ProductRequest;
 import com.marketplace.api.dto.ProductDtos.ProductResponse;
 import com.marketplace.api.security.UserPrincipal;
 import com.marketplace.api.service.ProductService;
+import com.marketplace.api.service.ProductStockService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -26,10 +30,20 @@ import java.net.URI;
 @RequestMapping("/api/v1/products")
 public class ProductController {
 
-    private final ProductService productService;
+    // POST /api/v1/products/{id}/stock request and response.
+    // POST (not PATCH): a delta is a commutative operation submission — retrying
+    // a PATCH is safe, retrying a delta is NOT (double-submit doubles the delta).
+    public record StockAdjustmentRequest(
+            @NotNull @Min(-10000) @Max(10000) Integer delta) {}
+    public record StockAdjustmentResponse(Long productId, int stock) {}
 
-    public ProductController(ProductService productService) {
+    private final ProductService productService;
+    private final ProductStockService productStockService;
+
+    public ProductController(ProductService productService,
+                             ProductStockService productStockService) {
         this.productService = productService;
+        this.productStockService = productStockService;
     }
 
     @GetMapping
@@ -71,5 +85,15 @@ public class ProductController {
             @AuthenticationPrincipal UserPrincipal me) {
         productService.delete(id, me);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
+
+    @PostMapping("/{id}/stock")
+    @PreAuthorize("hasAnyRole('VENDOR', 'ADMIN')")
+    public StockAdjustmentResponse adjustStock(
+            @PathVariable Long id,
+            @Valid @RequestBody StockAdjustmentRequest request,
+            @AuthenticationPrincipal UserPrincipal me) {
+        return new StockAdjustmentResponse(id,
+                productStockService.adjustStock(id, request.delta(), me));
     }
 }

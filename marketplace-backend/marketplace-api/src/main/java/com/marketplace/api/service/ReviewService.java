@@ -46,6 +46,9 @@ public class ReviewService {
 
     @Transactional
     public ReviewResponse create(Long productId, CreateReviewRequest request, Long userId) {
+        // existsById (not IsNull variant): a delivered order for a since-deleted
+        // product is still a legitimate purchase. The buyer earned the right to
+        // review; delisting by the vendor doesn't revoke it.
         if (!productRepository.existsById(productId)) {
             throw new ProductNotFoundException(productId);
         }
@@ -97,7 +100,7 @@ public class ReviewService {
 
     @Transactional(readOnly = true)
     public Page<ReviewResponse> listForProduct(Long productId, Pageable pageable) {
-        if (!productRepository.existsById(productId)) {
+        if (!productRepository.existsByIdAndDeletedAtIsNull(productId)) {
             throw new ProductNotFoundException(productId);
         }
         return reviewRepository.findByProductId(productId, pageable).map(this::toResponse);
@@ -105,7 +108,7 @@ public class ReviewService {
 
     @Transactional(readOnly = true)
     public ReviewSummary summary(Long productId) {
-        if (!productRepository.existsById(productId)) {
+        if (!productRepository.existsByIdAndDeletedAtIsNull(productId)) {
             throw new ProductNotFoundException(productId);
         }
         Object[] agg = reviewRepository.ratingAggregate(productId);

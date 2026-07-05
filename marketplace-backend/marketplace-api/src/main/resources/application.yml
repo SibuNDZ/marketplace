@@ -1,6 +1,7 @@
 # Server Configuration
 server:
-  port: 8080
+  port: ${PORT:8080}  # Railway injects PORT; without this mapping Spring listens
+                       # on 8080 while Railway probes the injected port — deploy loops.
 
 # Spring Configuration
 spring:
@@ -35,10 +36,12 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health  # health only — hide info/metrics from unauthenticated callers
   endpoint:
     health:
       show-details: when-authorized
+      probes:
+        enabled: true    # exposes /actuator/health/liveness + /readiness
 
 # Application Configuration
 app:

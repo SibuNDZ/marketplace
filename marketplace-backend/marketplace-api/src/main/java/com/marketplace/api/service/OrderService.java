@@ -64,26 +64,14 @@ public class OrderService {
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrderResponse placeOrder(Long userId) {
-        // Lock the cart row FIRST (before product locks) so that concurrent
-        // same-user checkout attempts block here. The second call to arrive
-        // will see the cleared cart after the first commits and throw
-        // EmptyCartException — making duplicate orders impossible.
-        //
-        // Native SELECT ... FOR UPDATE ensures the lock is issued immediately
-        // without Hibernate caching interference. cartRepository.findByUserId
-        // then fetches the same row (now locked) with its items via EntityGraph.
-        List<?> lockedIds = entityManager
-                .createNativeQuery("SELECT id FROM carts WHERE user_id = :userId FOR UPDATE")
-                .setParameter("userId", userId)
-                .getResultList();
-        if (lockedIds.isEmpty()) {
-            throw new CartNotFoundException(userId);
-        }
-
-        // Load the cart with items (EntityGraph) now that the lock is held.
-        // In READ_COMMITTED, this SELECT sees items AFTER any concurrent
-        // Thread A has committed its cart.clear(). If the cart is empty, the
-        // second concurrent call to arrive here throws EmptyCartException.
+        // Lock the cart row (native FOR UPDATE in CartRepository) before any
+        // item reads, so concurrent same-user checkout calls block here.
+        // After Thread A commits (cart cleared), Thread B unblocks, then the
+        // EntityGraph load below sees 0 items and throws EmptyCartException.
+        cartRepository.findByUserIdForUpdate(userId)
+                .orElseThrow(() -> new CartNotFoundException(userId));
+        // Load cart with items+products (EntityGraph) in the same locked
+        // transaction. READ_COMMITTED sees committed DB state.
         Cart cart = cartRepository.findWithItemsByUserId(userId)
                 .orElseThrow(() -> new CartNotFoundException(userId));
 

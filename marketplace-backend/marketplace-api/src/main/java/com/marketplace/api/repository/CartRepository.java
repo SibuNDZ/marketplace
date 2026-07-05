@@ -1,10 +1,8 @@
 package com.marketplace.api.repository;
 
 import com.marketplace.api.entity.Cart;
-import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -24,19 +22,26 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
     Optional<Cart> findByUserId(Long userId);
 
     /**
-     * Acquires a pessimistic write lock on the cart row before returning it.
-     * Used as the FIRST lock in placeOrder — cart is locked before products —
-     * so that two concurrent same-user checkout attempts block on the cart row
-     * rather than racing. The second call sees the cleared cart and throws
-     * EmptyCartException, making duplicate orders impossible.
-     *
-     * Note: does not JOIN FETCH items. After acquiring the lock, placeOrder
-     * calls entityManager.refresh(cart) to force a post-lock reload, then
-     * accesses cart.getItems() via normal lazy loading — mirroring the
-     * lockAndRefresh pattern used for product stock.
+     * Acquires a pessimistic write lock on the cart row and returns the cart's
+     * primary key. Returns {@code Optional.empty()} if no cart exists for the
+     * user (caller should throw {@code CartNotFoundException}).
+     * <p>
+     * <b>Why native SQL:</b> {@code @Lock(PESSIMISTIC_WRITE)} on a JPQL query
+     * whose WHERE clause traverses an association path ({@code c.user.id}) does
+     * not reliably emit {@code FOR UPDATE} in Hibernate 6 — empirically observed
+     * as two concurrent same-user checkouts both succeeding.
+     * <p>
+     * <b>Why return Long, not Cart:</b> returning a Cart entity would place it
+     * in the Hibernate first-level cache. A subsequent {@link #findWithItemsByUserId}
+     * call then risks serving the cached (pre-commit) entity to Thread B instead
+     * of reading the current DB state — defeating the double-submit guard.
+     * A scalar result leaves the cache clean so the EntityGraph reload is fresh.
+     * <p>
+     * <b>Lock order:</b> cart first, then products ({@code lockAndRefresh} in
+     * {@code OrderService}). Both concurrent checkout calls take locks in the
+     * same sequence, preventing deadlocks.
      */
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT c FROM Cart c WHERE c.user.id = :userId")
-    Optional<Cart> findByUserIdForUpdate(@Param("userId") Long userId);
+    @Query(value = "SELECT id FROM carts WHERE user_id = :userId FOR UPDATE", nativeQuery = true)
+    Optional<Long> findByUserIdForUpdate(@Param("userId") Long userId);
 }
 

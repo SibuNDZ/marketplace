@@ -1,0 +1,17 @@
+# Build context sent to Docker daemon — without this, target/ alone can be
+# hundreds of MB and .env files can leak credentials into image layers.
+
+target/
+.git/
+.gitignore
+.idea/
+.vscode/
+*.iml
+.env
+*.env
+docker-compose.yml
+generate-baseline.ps1
+smoke-test.ps1
+.mvn/wrapper/*.jar
+HELP.md
+README.md

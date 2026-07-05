@@ -10,9 +10,9 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Shared audit writer for order status transitions. Package-private: only
- * OrderService and OrderAdminService may call it, preventing accidental writes
- * from other packages.
+ * Shared audit writer for order status transitions. Only OrderService,
+ * OrderAdminService, and PaymentEventService may call it; accidental writes
+ * from controllers or other layers are an architectural violation.
  *
  * {@code Propagation.MANDATORY} means this method throws if invoked outside an
  * active transaction, guaranteeing every history row commits or rolls back with
@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
  * data it audits is worse than none.
  */
 @Component
-class OrderStatusRecorder {
+public class OrderStatusRecorder {
 
     private final OrderStatusHistoryRepository historyRepository;
     private final UserRepository userRepository;

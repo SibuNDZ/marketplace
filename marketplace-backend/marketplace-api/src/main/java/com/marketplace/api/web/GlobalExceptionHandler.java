@@ -4,6 +4,7 @@ import com.marketplace.api.auth.AuthService.EmailAlreadyRegisteredException;
 import com.marketplace.api.exception.OrderExceptions.*;
 import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
 import com.marketplace.api.exception.ReviewExceptions.*;
+import com.marketplace.api.payment.PaymentExceptions.PaymentProviderException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -94,6 +95,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadCredentialsException.class)
     public ProblemDetail badCredentials(BadCredentialsException ex) {
         return problem(HttpStatus.UNAUTHORIZED, "Unauthorized", "Invalid email or password");
+    }
+
+    @ExceptionHandler(PaymentProviderException.class)
+    public ProblemDetail paymentProviderError(PaymentProviderException ex) {
+        log.error("Payment provider error", ex);
+        return problem(HttpStatus.BAD_GATEWAY, "Payment provider unavailable",
+                "Payment provider unavailable");
     }
 
     @ExceptionHandler(AccessDeniedException.class)

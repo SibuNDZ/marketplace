@@ -10,6 +10,7 @@ import com.marketplace.api.entity.User;
 import com.marketplace.api.exception.ReviewExceptions.DuplicateReviewException;
 import com.marketplace.api.exception.ReviewExceptions.NotVerifiedPurchaserException;
 import com.marketplace.api.exception.ReviewExceptions.ReviewNotFoundException;
+import com.marketplace.api.payment.PaymentEventService;
 import com.marketplace.api.repository.ReviewRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,12 +58,14 @@ class ReviewServiceTest {
     @Autowired ReviewRepository    reviewRepository;
     @Autowired OrderService        orderService;
     @Autowired OrderAdminService   orderAdminService;
+    @Autowired PaymentEventService paymentEventService;
     @Autowired TestFixtures        fixtures;
 
     // -- helpers ----------------------------------------------------------
 
-    /** Drive a freshly placed order all the way to DELIVERED. */
+    /** Drive a freshly placed order all the way to DELIVERED via the full payment path. */
     private Long driveToDelivered(Long orderId, Long adminId) {
+        paymentEventService.handleCheckoutCompleted(orderId); // PENDING -> PAID
         orderAdminService.transition(orderId, OrderStatus.SHIPPED,   adminId, "shipped");
         orderAdminService.transition(orderId, OrderStatus.DELIVERED, adminId, "delivered");
         return orderId;

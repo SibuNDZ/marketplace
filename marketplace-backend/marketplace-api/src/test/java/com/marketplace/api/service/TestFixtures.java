@@ -1,6 +1,7 @@
 package com.marketplace.api.service;
 
 import com.marketplace.api.entity.*;
+import com.marketplace.api.payment.PaymentEventService;
 import com.marketplace.api.repository.CartRepository;
 import com.marketplace.api.repository.ProductRepository;
 import com.marketplace.api.repository.UserRepository;
@@ -26,13 +27,19 @@ public class TestFixtures {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final CartRepository cartRepository;
+    private final PaymentEventService paymentEventService;
+    private final OrderAdminService orderAdminService;
 
     public TestFixtures(ProductRepository productRepository,
                         UserRepository userRepository,
-                        CartRepository cartRepository) {
+                        CartRepository cartRepository,
+                        PaymentEventService paymentEventService,
+                        OrderAdminService orderAdminService) {
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.cartRepository = cartRepository;
+        this.paymentEventService = paymentEventService;
+        this.orderAdminService = orderAdminService;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -91,6 +98,17 @@ public class TestFixtures {
     public User admin(String username) {
         return userRepository.findByEmail(username + "@test.local")
                 .orElseGet(() -> persistUser(username, UserRole.ADMIN));
+    }
+
+    /**
+     * Drives a PENDING order all the way to DELIVERED via the full payment path:
+     * PENDING -> PAID (webhook) -> SHIPPED (admin) -> DELIVERED (admin).
+     * Each step runs in its own transaction, matching real runtime behavior.
+     */
+    public void deliverOrder(Long orderId, Long adminId) {
+        paymentEventService.handleCheckoutCompleted(orderId); // PENDING -> PAID
+        orderAdminService.transition(orderId, OrderStatus.SHIPPED,    adminId, "Shipped");
+        orderAdminService.transition(orderId, OrderStatus.DELIVERED,  adminId, "Delivered");
     }
 
     private User persistUser(String username, UserRole role) {

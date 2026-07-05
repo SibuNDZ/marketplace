@@ -6,31 +6,30 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The order state machine, as data. One place defines what is legal; every
- * caller (admin transitions, customer cancellation, future refund flow) asks
- * this class instead of encoding its own if-chains.
+ * The order state machine, v2 — PAID inserted between PENDING and SHIPPED.
  *
- *   PENDING ──▶ SHIPPED ──▶ DELIVERED ──▶ REFUNDED
+ *   PENDING ──▶ PAID ──▶ SHIPPED ──▶ DELIVERED ──▶ REFUNDED
  *      │
- *      └──▶ CANCELLED
+ *      └──▶ CANCELLED        (customer cancel, or payment-window expiry)
  *
- * Deliberate exclusions (absence reads as decision, not oversight):
- * - SHIPPED -> CANCELLED: once goods move, the path is deliver-then-refund,
- *   not cancel. Add it later if ops genuinely intercepts shipments.
- * - REFUNDED from PENDING/SHIPPED: refund implies money moved on a completed
- *   order; pre-delivery aborts are cancellations.
- * - Anything out of CANCELLED/REFUNDED: terminal means terminal.
- * - CONFIRMED/PROCESSING are in the DB constraint but not wired yet;
- *   getOrDefault returns Set.of(), so any transition from them is rejected.
- *
- * WHO may perform a transition is intentionally not encoded here — that is
- * authorization (@PreAuthorize + service ownership checks), not state legality.
- * The same map serves the admin endpoint and the customer cancel path.
+ * Changes from v1 and why:
+ * - PENDING -> SHIPPED is REMOVED. With payments live, shipping an unpaid
+ *   order is a money-losing bug, and the map is where that rule belongs —
+ *   not in admin training. (This also means the state-machine test's legal
+ *   path changes: PENDING -> PAID -> SHIPPED -> DELIVERED.)
+ * - PENDING -> PAID is driven by the Stripe webhook, never by the admin
+ *   endpoint (enforced in OrderAdminService, same pattern as CANCELLED).
+ * - PAID -> CANCELLED is deliberately ABSENT for now: cancelling a paid
+ *   order means moving money back, and there is no refund implementation
+ *   yet. When Stripe refunds land, this becomes PAID -> CANCELLED via a
+ *   dedicated refundAndCancel method — until then, a paid order's only
+ *   path is forward, and support handles exceptions manually.
  */
 public final class OrderTransitions {
 
     private static final Map<OrderStatus, Set<OrderStatus>> ALLOWED = Map.of(
-            OrderStatus.PENDING,   Set.of(OrderStatus.SHIPPED, OrderStatus.CANCELLED),
+            OrderStatus.PENDING,   Set.of(OrderStatus.PAID, OrderStatus.CANCELLED),
+            OrderStatus.PAID,      Set.of(OrderStatus.SHIPPED),
             OrderStatus.SHIPPED,   Set.of(OrderStatus.DELIVERED),
             OrderStatus.DELIVERED, Set.of(OrderStatus.REFUNDED),
             OrderStatus.CANCELLED, Set.of(),

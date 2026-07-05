@@ -6,6 +6,7 @@ import com.marketplace.api.entity.OrderStatusHistory;
 import com.marketplace.api.entity.Product;
 import com.marketplace.api.entity.User;
 import com.marketplace.api.exception.OrderExceptions.InvalidOrderStateException;
+import com.marketplace.api.payment.PaymentEventService;
 import com.marketplace.api.repository.OrderStatusHistoryRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +47,7 @@ class OrderStateMachineTest {
 
     @Autowired OrderService orderService;
     @Autowired OrderAdminService orderAdminService;
+    @Autowired PaymentEventService paymentEventService;
     @Autowired OrderStatusHistoryRepository historyRepository;
     @Autowired TestFixtures fixtures;
 
@@ -58,28 +60,32 @@ class OrderStateMachineTest {
         OrderResponse order = orderService.placeOrder(customer.getId());
         Long orderId = order.id();
 
-        orderAdminService.transition(orderId, OrderStatus.SHIPPED,    admin.getId(), "Shipped");
-        orderAdminService.transition(orderId, OrderStatus.DELIVERED,  admin.getId(), "Delivered");
+        // New legal path: PENDING -> PAID (webhook) -> SHIPPED -> DELIVERED
+        fixtures.deliverOrder(orderId, admin.getId());
 
         List<OrderStatusHistory> history =
                 historyRepository.findByOrderIdOrderByCreatedAtAscIdAsc(orderId);
 
-        assertThat(history).hasSize(3);
+        assertThat(history).hasSize(4);
 
         // Row 0: creation event — from is null, changedBy is the customer
         assertThat(history.get(0).getFromStatus()).isNull();
         assertThat(history.get(0).getToStatus()).isEqualTo(OrderStatus.PENDING);
         assertThat(history.get(0).getChangedBy().getId()).isEqualTo(customer.getId());
 
-        // Row 1: PENDING -> SHIPPED by admin
+        // Row 1: PENDING -> PAID by payment webhook
         assertThat(history.get(1).getFromStatus()).isEqualTo(OrderStatus.PENDING);
-        assertThat(history.get(1).getToStatus()).isEqualTo(OrderStatus.SHIPPED);
-        assertThat(history.get(1).getChangedBy().getId()).isEqualTo(admin.getId());
+        assertThat(history.get(1).getToStatus()).isEqualTo(OrderStatus.PAID);
 
-        // Row 2: SHIPPED -> DELIVERED by admin
-        assertThat(history.get(2).getFromStatus()).isEqualTo(OrderStatus.SHIPPED);
-        assertThat(history.get(2).getToStatus()).isEqualTo(OrderStatus.DELIVERED);
+        // Row 2: PAID -> SHIPPED by admin
+        assertThat(history.get(2).getFromStatus()).isEqualTo(OrderStatus.PAID);
+        assertThat(history.get(2).getToStatus()).isEqualTo(OrderStatus.SHIPPED);
         assertThat(history.get(2).getChangedBy().getId()).isEqualTo(admin.getId());
+
+        // Row 3: SHIPPED -> DELIVERED by admin
+        assertThat(history.get(3).getFromStatus()).isEqualTo(OrderStatus.SHIPPED);
+        assertThat(history.get(3).getToStatus()).isEqualTo(OrderStatus.DELIVERED);
+        assertThat(history.get(3).getChangedBy().getId()).isEqualTo(admin.getId());
     }
 
     @Test

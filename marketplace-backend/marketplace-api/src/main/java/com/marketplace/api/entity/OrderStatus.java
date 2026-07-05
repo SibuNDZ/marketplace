@@ -2,8 +2,7 @@ package com.marketplace.api.entity;
 
 public enum OrderStatus {
     PENDING("Pending"),
-    CONFIRMED("Confirmed"),
-    PROCESSING("Processing"),
+    PAID("Paid"),
     SHIPPED("Shipped"),
     DELIVERED("Delivered"),
     CANCELLED("Cancelled"),

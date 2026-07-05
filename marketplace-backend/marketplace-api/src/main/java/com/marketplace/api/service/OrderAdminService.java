@@ -50,6 +50,10 @@ public class OrderAdminService {
         if (target == OrderStatus.PENDING) {
             throw new InvalidOrderStateException("Orders cannot transition back to PENDING");
         }
+        if (target == OrderStatus.PAID) {
+            throw new InvalidOrderStateException(
+                    "PAID is set by the payment webhook, not manually");
+        }
 
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));

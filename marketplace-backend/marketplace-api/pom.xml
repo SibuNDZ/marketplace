@@ -97,6 +97,13 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Stripe Payments -->
+		<dependency>
+			<groupId>com.stripe</groupId>
+			<artifactId>stripe-java</artifactId>
+			<version>29.0.0</version>
+		</dependency>
+
 		<!-- Development Tools -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

@@ -139,10 +139,34 @@ public class OrderService {
     public OrderResponse cancelOrder(Long orderId, Long userId) {
         Order order = orderRepository.findByIdAndUserId(orderId, userId)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
+        return cancelInternal(order, userId, "Cancelled by customer");
+    }
 
+    /**
+     * Entry point for the expiry job. Uses findByIdForUpdate so that this
+     * call and PaymentEventService.handleCheckoutCompleted serialize on the
+     * same row lock — whoever wins writes their status, the loser backs off.
+     * If the order is no longer PENDING (paid in the window), this is a
+     * clean no-op; no exception is thrown so the job can continue sweeping.
+     */
+    @Transactional
+    public void cancelExpired(Long orderId) {
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+        if (order.getStatus() != OrderStatus.PENDING) return; // paid meanwhile — job loses cleanly
+        cancelInternal(order, order.getUser().getId(),
+                "Expired — payment not completed within window");
+    }
+
+    /**
+     * Stock-restoring cancellation body shared by cancelOrder (customer) and
+     * cancelExpired (job). Callers are responsible for ownership / timing
+     * checks before invoking. Guards PENDING status itself as a safety net.
+     */
+    private OrderResponse cancelInternal(Order order, Long changedBy, String note) {
         if (order.getStatus() != OrderStatus.PENDING) {
             throw new InvalidOrderStateException(
-                    "Only PENDING orders can be cancelled; order " + orderId
+                    "Only PENDING orders can be cancelled; order " + order.getId()
                     + " is " + order.getStatus());
         }
 
@@ -160,7 +184,7 @@ public class OrderService {
         }
 
         order.setStatus(OrderStatus.CANCELLED);
-        recorder.record(order, OrderStatus.PENDING, OrderStatus.CANCELLED, userId, "Cancelled by customer");
+        recorder.record(order, OrderStatus.PENDING, OrderStatus.CANCELLED, changedBy, note);
         return toResponse(order);
     }
 

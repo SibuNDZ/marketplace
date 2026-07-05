@@ -7,6 +7,7 @@ import com.marketplace.api.exception.ReviewExceptions.*;
 import com.marketplace.api.payment.PaymentExceptions.PaymentProviderException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.access.AccessDeniedException;
@@ -120,6 +121,7 @@ public class GlobalExceptionHandler {
     private ProblemDetail problem(HttpStatus status, String title, String detail) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(status, detail);
         pd.setTitle(title);
+        pd.setProperty("requestId", MDC.get(CorrelationIdFilter.MDC_KEY));
         return pd;
     }
 }

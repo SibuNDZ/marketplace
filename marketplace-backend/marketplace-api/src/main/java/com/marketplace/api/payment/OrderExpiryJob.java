@@ -4,13 +4,16 @@ import com.marketplace.api.entity.Order;
 import com.marketplace.api.entity.OrderStatus;
 import com.marketplace.api.repository.OrderRepository;
 import com.marketplace.api.service.OrderService;
+import com.marketplace.api.web.CorrelationIdFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * The answer to "abandoned checkouts hold inventory forever": PENDING
@@ -49,21 +52,26 @@ public class OrderExpiryJob {
 
     @Scheduled(fixedDelayString = "${app.orders.expiry-sweep-ms:60000}")
     public void expireUnpaidOrders() {
-        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(
-                StripeCheckoutService.PAYMENT_WINDOW_MINUTES + GRACE_MINUTES);
+        MDC.put(CorrelationIdFilter.MDC_KEY, "job-expiry-" + UUID.randomUUID());
+        try {
+            LocalDateTime cutoff = LocalDateTime.now().minusMinutes(
+                    StripeCheckoutService.PAYMENT_WINDOW_MINUTES + GRACE_MINUTES);
 
-        List<Order> stale = orderRepository.findByStatusAndCreatedAtBefore(
-                OrderStatus.PENDING, cutoff);
+            List<Order> stale = orderRepository.findByStatusAndCreatedAtBefore(
+                    OrderStatus.PENDING, cutoff);
 
-        for (Order order : stale) {
-            try {
-                orderService.cancelExpired(order.getId());
-                log.info("Expired unpaid order {} — stock restored", order.getId());
-            } catch (Exception e) {
-                // One bad order must not stop the sweep; it'll be retried
-                // next cycle and the error is visible for investigation.
-                log.error("Failed to expire order {}", order.getId(), e);
+            for (Order order : stale) {
+                try {
+                    orderService.cancelExpired(order.getId());
+                    log.info("Expired unpaid order {} — stock restored", order.getId());
+                } catch (Exception e) {
+                    // One bad order must not stop the sweep; it'll be retried
+                    // next cycle and the error is visible for investigation.
+                    log.error("Failed to expire order {}", order.getId(), e);
+                }
             }
+        } finally {
+            MDC.remove(CorrelationIdFilter.MDC_KEY);
         }
     }
 }

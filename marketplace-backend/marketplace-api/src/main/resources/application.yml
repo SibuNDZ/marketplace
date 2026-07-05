@@ -61,6 +61,13 @@ app:
   bootstrap:
     admin-email: ${APP_BOOTSTRAP_ADMIN_EMAIL:}
     admin-password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:}
+
+sentry:
+  dsn: ${SENTRY_DSN:}             # blank = SDK disabled; dev needs nothing
+  environment: ${SPRING_PROFILES_ACTIVE:dev}
+  traces-sample-rate: 0.0       # errors only; perf tracing later if ever
+  logging:
+    minimum-event-level: error  # every log.error() becomes a Sentry event
     expiry-seconds: ${JWT_EXPIRY_SECONDS:900}
     # 7 days: refresh token lifetime. Rotate-on-use means an active user
     # never actually sees this expiry; it bounds abandoned sessions.

@@ -11,13 +11,32 @@ spring:
     #   baseline-on-migrate: true
     #   baseline-version: 1
 
+server:
+  # Railway injects PORT and probes it; server.port in application.yml already
+  # maps it via ${PORT:8080}. forward-headers-strategy is the second required
+  # setting: without it, getRemoteAddr() returns Railway's proxy address and
+  # the rate limiter puts the ENTIRE PLATFORM in one bucket.
+  # Safe on Railway (edge controls X-Forwarded-For); do NOT set this on
+  # deployments where clients reach the app directly (header spoofing).
+  forward-headers-strategy: framework
+
 # JWT_SECRET must be supplied via environment variable in production.
 # No default — missing variable = startup failure (intentional fail-fast).
 app:
   jwt:
     secret: ${JWT_SECRET}
 
+springdoc:
+  api-docs:
+    enabled: false  # no API spec leakage in prod
+  swagger-ui:
+    enabled: false  # SecurityConfig permitAll lines become harmless 404s
+
 logging:
   level:
     com.marketplace.api: INFO
     org.springframework.web: WARN
+    # Override application.yml's DEBUG setting so Hibernate SQL stays off in
+    # prod. logback-spring.xml also sets this, but Spring Boot's logging.level
+    # binding runs after logback config and would win — so both are needed.
+    org.hibernate.SQL: WARN

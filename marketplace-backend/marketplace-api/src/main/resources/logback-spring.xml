@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  logback-spring.xml — src/main/resources/
+  Profile-split logging:
+    dev / default → human-readable console, requestId shown inline
+    prod          → one JSON object per line (logstash encoder), indexed by
+                    Railway log drains or any aggregator. MDC fields (requestId)
+                    become top-level JSON fields, so "every line for request
+                    abc-123" is a single filter expression.
+-->
+<configuration>
+
+    <springProfile name="!prod">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <!-- %X{requestId:-} : blank for non-request threads (startup, jobs
+                     before MDC.put). Kept at end so message column stays aligned. -->
+                <pattern>%d{HH:mm:ss.SSS} %-5level [%X{requestId:-}] %logger{36} - %msg%n</pattern>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="prod">
+        <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <!-- MDC entries (requestId) are auto-included as JSON fields -->
+                <customFields>{"app":"marketplace-api"}</customFields>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="JSON"/>
+        </root>
+        <!-- Hibernate SQL stays OFF in prod even if application.yml sets DEBUG
+             for dev convenience. SQL in prod logs is noise + potential data leakage.
+             Note: application-prod.yml also sets logging.level.org.hibernate.SQL=WARN
+             to win over Spring Boot's logging.level binding which runs after this. -->
+        <logger name="org.hibernate.SQL" level="WARN"/>
+    </springProfile>
+
+</configuration>

@@ -156,6 +156,19 @@ export interface ProductResponse {
   vendorId?: number
   vendorName?: string
   deletedAt?: string | null  // null = live, string = soft-deleted timestamp
+  // Real signals from the product_popularity read model (hourly rebuild).
+  // Zeros mean "no activity yet" — the truthful state, not missing data.
+  avgRating: string          // BigDecimal serializes as string; 0 when unreviewed
+  reviewCount: number
+  soldCount: number          // kept sales only (refunds excluded)
+  createdAt: string          // real recency — feeds the "New in" chip
+}
+
+/** Live aggregate from GET /products/{id}/reviews/summary — exact, not hourly. */
+export interface ReviewSummary {
+  productId: number
+  averageRating: number
+  reviewCount: number
 }
 
 export interface CartLine {

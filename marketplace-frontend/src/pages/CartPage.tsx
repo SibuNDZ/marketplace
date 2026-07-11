@@ -42,7 +42,7 @@ export function CartPage() {
   return (
     <>
       <Topbar />
-      <main className="page-shell">
+      <main className="page-shell no-catrail">
         <h1 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 28, marginBottom: 28 }}>Your cart</h1>
 
         {isLoading && <p style={{ color: 'var(--ink-soft)' }}>Loading…</p>}

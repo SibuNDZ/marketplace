@@ -31,7 +31,7 @@ export function VendorDashboardPage() {
   return (
     <>
       <Topbar />
-      <main className="page-shell">
+      <main className="page-shell no-catrail">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <h1 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 28 }}>Your stall</h1>
           <button style={{ padding: '9px 18px', background: 'var(--aloe)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600 }}>

@@ -30,7 +30,7 @@ export function AdminPage() {
   return (
     <>
       <Topbar />
-      <main className="page-shell">
+      <main className="page-shell no-catrail">
         <h1 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 28, marginBottom: 28 }}>Orders</h1>
         {isLoading ? <p>Loading…</p> : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>

@@ -20,6 +20,29 @@
   --clay: #B4432F;          /* errors ONLY */
   --clay-tint: #F7E6E1;
 
+  /* Temu/Alibaba-style promotional accent — CTAs and brand highlights.
+     Deliberately loud; the marketplace's calmer --aloe green stays in play
+     for positive/neutral state (in-stock, success). */
+  --flame: #FF4626;
+  --flame-deep: #D6331A;
+  --flame-tint: #FFE7E1;
+  --flame-gradient: linear-gradient(135deg, #FF9A3D 0%, #FF4626 60%, #E31C3D 100%);
+
+  --sun: #FFB020;           /* secondary accent — notices, highlights */
+  --sun-deep: #C97D00;
+  --sun-tint: #FFF3D6;
+
+  --trust-blue: #1E6FE0;    /* informational accent (links, info chips) */
+  --trust-blue-tint: #E7EFFD;
+
+  /* footer — deliberately darker than --ink so it reads as a distinct
+     "bookend" band under the busy product grid, not just more page */
+  --footer-bg: #0E1512;
+  --footer-line: rgba(255,255,255,0.10);
+  --footer-heading: #ffffff;
+  --footer-text: rgba(255,255,255,0.62);   /* comfortably above 4.5:1 on --footer-bg */
+  --footer-text-dim: rgba(255,255,255,0.38);
+
   /* typography */
   --display: "Bricolage Grotesque", system-ui, sans-serif;
   --body: "Instrument Sans", system-ui, sans-serif;
@@ -35,7 +58,9 @@
   /* layout */
   --content-max: 1160px;
   --gutter: 24px;
+  --trustbar-h: 30px;
   --topbar-h: 60px;
+  --catrail-h: 46px;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -68,5 +93,27 @@ button { cursor: pointer; font: inherit; }
 .page-shell {
   max-width: var(--content-max);
   margin: 0 auto;
-  padding: calc(var(--topbar-h) + 32px) var(--gutter) 48px;
+  padding: calc(var(--trustbar-h) + var(--topbar-h) + var(--catrail-h) + 24px) var(--gutter) 48px;
+}
+
+/* pages without the category rail (cart, orders, admin, vendor, auth) */
+.page-shell.no-catrail {
+  padding-top: calc(var(--trustbar-h) + var(--topbar-h) + 32px);
+}
+
+/* horizontal pill/promo rails — mouse wheel + touch scroll, no visible bar */
+.scroll-rail {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scroll-rail::-webkit-scrollbar { display: none; }
+
+@keyframes pulse-badge {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+@keyframes carousel-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

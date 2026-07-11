@@ -2,25 +2,45 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, ProductResponse } from '../../lib/api'
-import { vendorHue } from '../../lib/vendorHue'
 import { StockBadge } from '../ui/StockBadge'
+import { getMarketplaceSignals } from '../../lib/marketplaceSignals'
 
 interface Props {
   product: ProductResponse
 }
 
-function Stars({ rating }: { rating: number }) {
+// Real aggregates only: no reviews → no stars. The empty state IS the
+// honest state — resist any urge to fill the gap.
+function Stars({ rating, reviewCount }: { rating: number; reviewCount: number }) {
+  const full = Math.round(rating)
   return (
-    <span style={{ color: 'var(--marigold)', fontSize: 13 }}>
-      {'★'.repeat(Math.round(rating))}{'☆'.repeat(5 - Math.round(rating))}
-    </span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <span style={{ color: 'var(--marigold)', fontSize: 12 }}>
+        {'★'.repeat(full)}{'☆'.repeat(5 - full)}
+      </span>
+      <span style={{ fontSize: 11, color: 'var(--ink-soft)' }}>
+        <span className="num">{rating.toFixed(1)}</span> (<span className="num">{reviewCount.toLocaleString()}</span>)
+      </span>
+    </div>
   )
+}
+
+function formatSold(n: number): string {
+  return n >= 1000 ? `${(n / 1000).toFixed(1)}K+ sold` : `${n} sold`
+}
+
+const NEW_IN_DAYS = 14
+
+/** Honest recency: young product, no sales yet — real createdAt, real soldCount. */
+function isNewIn(p: ProductResponse): boolean {
+  const ageMs = Date.now() - new Date(p.createdAt).getTime()
+  return ageMs < NEW_IN_DAYS * 86400_000 && p.soldCount === 0
 }
 
 export function ProductCard({ product }: Props) {
   const qc = useQueryClient()
   const [added, setAdded] = useState(false)
-  const stripeColor = vendorHue(product.vendorId ?? 1)
+  const signals = getMarketplaceSignals(product.id)
 
   const addToCart = useMutation({
     mutationFn: () => api('/api/v1/cart/items', {
@@ -35,6 +55,7 @@ export function ProductCard({ product }: Props) {
   })
 
   const canAdd = product.stock > 0 && !product.deletedAt
+  const rating = Number(product.avgRating)
 
   return (
     <div style={{
@@ -49,59 +70,65 @@ export function ProductCard({ product }: Props) {
       onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow-lift)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)' }}
       onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow)'; (e.currentTarget as HTMLDivElement).style.transform = '' }}
     >
-      {/* Vendor stripe */}
-      <div style={{ height: 5, background: stripeColor, flexShrink: 0 }} />
-
       {/* Product image */}
-      <Link to={`/products/${product.id}`} style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: '#EAEEED', height: 180, flexShrink: 0,
-      }}>
-        <svg width={48} height={48} viewBox="0 0 24 24" fill="none" stroke="#B0BBB5" strokeWidth={1.5}>
-          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>
-          <path d="M16 10a4 4 0 01-8 0"/>
-        </svg>
+      <Link to={`/products/${product.id}`} style={{ position: 'relative', display: 'block', height: 180, flexShrink: 0, background: '#EAEEED' }}>
+        <img
+          src={`https://picsum.photos/seed/${signals.imageSeed}/400/300`}
+          alt={product.name}
+          loading="lazy"
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        />
+        {isNewIn(product) && (
+          <span style={{
+            position: 'absolute', top: 8, left: 8,
+            background: 'var(--aloe)', color: '#fff',
+            fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 'var(--r-sm)',
+          }}>
+            New in
+          </span>
+        )}
       </Link>
 
-      <div style={{ padding: '14px 16px 16px', display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+      <div style={{ padding: '12px 14px 14px', display: 'flex', flexDirection: 'column', gap: 5, flex: 1 }}>
         {/* Vendor */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: stripeColor, flexShrink: 0 }} />
-          <span style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{product.vendorName ?? 'Vendor'}</span>
-        </div>
+        <span style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{product.vendorName ?? 'Vendor'}</span>
 
         {/* Name */}
-        <Link to={`/products/${product.id}`} style={{ fontWeight: 600, fontSize: 15, color: 'var(--ink)', lineHeight: 1.3 }}>
+        <Link to={`/products/${product.id}`} style={{ fontWeight: 600, fontSize: 14, color: 'var(--ink)', lineHeight: 1.3, minHeight: 36 }}>
           {product.name}
         </Link>
 
-        {/* Stars placeholder — would come from popularity endpoint */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <Stars rating={4} />
-        </div>
+        {product.reviewCount > 0 && <Stars rating={rating} reviewCount={product.reviewCount} />}
 
+        {product.soldCount > 0 && (
+          <span className="num" style={{ fontSize: 11, color: 'var(--ink-soft)' }}>
+            {formatSold(product.soldCount)}
+          </span>
+        )}
+
+        {/* Urgency — real stock only */}
         <StockBadge product={product} />
 
         {/* Price + Add */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 8 }}>
-          <span style={{ fontSize: 18, fontWeight: 700 }}>
-            <span style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--ink-soft)', fontWeight: 400 }}>R</span>
-            <span className="num" style={{ fontSize: 20 }}>{Number(product.price).toFixed(2)}</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 6 }}>
+          <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--ink)' }}>
+            <span style={{ fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 400, color: 'var(--ink-soft)' }}>R</span>
+            <span className="num">{Number(product.price).toFixed(2)}</span>
           </span>
           <button
             disabled={!canAdd || addToCart.isPending}
             onClick={() => addToCart.mutate()}
             style={{
               padding: '7px 14px',
-              background: canAdd ? 'var(--ink)' : 'var(--line)',
+              background: canAdd ? 'var(--flame-gradient)' : 'var(--line)',
               color: canAdd ? '#fff' : 'var(--ink-soft)',
               border: 'none',
               borderRadius: 'var(--r-pill)',
-              fontSize: 13, fontWeight: 600,
+              fontSize: 12, fontWeight: 700,
               cursor: canAdd ? 'pointer' : 'not-allowed',
             }}
           >
-            {added ? 'Added' : 'Add to cart'}
+            {added ? '✓ Added' : 'Add to cart'}
           </button>
         </div>
       </div>

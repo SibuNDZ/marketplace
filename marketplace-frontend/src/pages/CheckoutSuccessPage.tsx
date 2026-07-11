@@ -27,7 +27,7 @@ export function CheckoutSuccessPage() {
   return (
     <>
       <Topbar />
-      <main className="page-shell" style={{ textAlign: 'center', paddingTop: 80 }}>
+      <main className="page-shell no-catrail" style={{ textAlign: 'center', paddingTop: 80 }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
         <h1 style={{ fontFamily: 'var(--display)', fontWeight: 800, fontSize: 30, marginBottom: 8 }}>Payment received!</h1>
         {order ? (

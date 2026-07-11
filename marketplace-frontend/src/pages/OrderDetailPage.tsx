@@ -22,12 +22,12 @@ export function OrderDetailPage() {
     onError: (e) => setCancelError(e instanceof ApiError ? e.detail : 'Could not cancel'),
   })
 
-  if (!order) return <><Topbar /><div className="page-shell">Loading…</div></>
+  if (!order) return <><Topbar /><div className="page-shell no-catrail">Loading…</div></>
 
   return (
     <>
       <Topbar />
-      <main className="page-shell">
+      <main className="page-shell no-catrail">
         <Link to="/orders" style={{ fontSize: 13, color: 'var(--ink-soft)', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24 }}>
           ← Orders
         </Link>

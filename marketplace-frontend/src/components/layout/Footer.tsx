@@ -102,7 +102,7 @@ export function Footer() {
             <StaticItem>Partner with Us</StaticItem>
           </Column>
 
-          <Column title="Download the App eRestyu.com">
+          <Column title="Download the eRestyu App">
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 5 }}>
               {APP_STORE_BENEFITS.map(b => (
                 <li key={b} style={{ fontSize: 12.5, color: 'var(--footer-text)', display: 'flex', gap: 6 }}>
@@ -116,7 +116,7 @@ export function Footer() {
             </div>
           </Column>
 
-          <Column title="Sell eRestyu">
+          <Column title="Sell on eRestyu">
             <LinkItem to="/register">Start Selling</LinkItem>
             <StaticItem>Become a Verified Supplier</StaticItem>
             <LinkItem to="/orders">Check Order Status</LinkItem>
@@ -204,13 +204,16 @@ export function Footer() {
           </label>
         </div>
 
-        {/* Legal bottom bar */}
+        {/* Legal bottom bar — Terms and Privacy are real pages now; the rest
+            stay static text until they exist (footer's own no-dead-links rule) */}
         <div style={{
           borderTop: '1px solid var(--footer-line)', paddingTop: 20, marginTop: 4,
           display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 16, textAlign: 'center',
         }}>
           <span style={{ fontSize: 12, color: 'var(--footer-text-dim)' }}>© 2026 eRestyu. All rights reserved.</span>
-          {['Terms of Service', 'Privacy Policy', 'Cookie Policy', 'Accessibility'].map(t => (
+          <Link to="/terms" style={{ fontSize: 12, color: 'var(--footer-text)' }}>Terms of Service</Link>
+          <Link to="/privacy" style={{ fontSize: 12, color: 'var(--footer-text)' }}>Privacy Policy</Link>
+          {['Cookie Policy', 'Accessibility'].map(t => (
             <span key={t} style={{ fontSize: 12, color: 'var(--footer-text-dim)' }}>{t}</span>
           ))}
         </div>

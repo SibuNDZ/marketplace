@@ -31,9 +31,9 @@ const SLIDES: Slide[] = [
   },
   {
     eyebrow: 'Local',
-    title: 'Weekend Market Picks',
+    title: 'Weekend Picks',
     sub: 'Hand-picked from Cape Town stalls, delivered to your door',
-    cta: 'Browse the market',
+    cta: 'Browse eRestyu',
     gradient: 'linear-gradient(120deg, #C97D00 0%, #FFB020 55%, #FFD76A 100%)',
     emoji: '🧺',
   },

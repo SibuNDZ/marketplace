@@ -60,7 +60,7 @@ export function Topbar() {
             background: 'var(--flame-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
           }}>
-            market
+            eRestyu
           </Link>
 
           {/* Search with category dropdown */}

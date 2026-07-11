@@ -101,8 +101,10 @@ public class DiscoveryController {
     public Page<ProductResponse> favorites(
             @AuthenticationPrincipal UserPrincipal me,
             @PageableDefault(size = 20) Pageable pageable) {
-        return favoriteService.list(me.getId(), pageable)
-                .map(f -> productService.toResponse(f.getProduct()));
+        // Page-shaped batch mapping — one popularity query for the whole page,
+        // not one per favorite (see ProductPopularityRepository).
+        return productService.toResponses(
+                favoriteService.list(me.getId(), pageable).map(Favorite::getProduct));
     }
 
     @PutMapping("/api/v1/products/{id}/favorite")
@@ -124,10 +126,11 @@ public class DiscoveryController {
         Map<Long, Product> byId = productRepository.findAllById(ids).stream()
                 .filter(p -> p.getDeletedAt() == null)
                 .collect(Collectors.toMap(Product::getId, Function.identity()));
-        return ids.stream()
+        List<Product> ordered = ids.stream()
                 .map(byId::get)
                 .filter(Objects::nonNull)
-                .map(productService::toResponse)
                 .toList();
+        // Batch mapping: one popularity query for the shelf, not one per product.
+        return productService.toResponses(ordered);
     }
 }

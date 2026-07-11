@@ -3,6 +3,7 @@ package com.marketplace.api.dto;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 public class ProductDtos {
 
@@ -18,6 +19,14 @@ public class ProductDtos {
     /**
      * Vendor is exposed as id + display name only — never the full User entity,
      * which would drag email and password hash into product listings.
+     *
+     * Signal fields come from the product_popularity read model (V9, rebuilt
+     * hourly): zeros when a product has no row yet — a product created since
+     * the last rebuild has no aggregates, and zeros are the truthful answer.
+     * soldCount counts KEPT sales only (PAID/SHIPPED/DELIVERED; refunds
+     * excluded — see PopularityJob). weighted_rating and views_30d stay
+     * internal: one ranks, one is a raw behavioral count; neither is a
+     * customer-facing fact. createdAt is LocalDateTime per BaseEntity.
      */
     public record ProductResponse(
             Long id,
@@ -27,6 +36,10 @@ public class ProductDtos {
             BigDecimal price,
             int stock,
             Long vendorId,
-            String vendorName
+            String vendorName,
+            BigDecimal avgRating,   // 0 when unreviewed
+            long reviewCount,       // 0 when unreviewed
+            long soldCount,         // kept sales only
+            LocalDateTime createdAt // real recency — feeds the honest "New in" chip
     ) {}
 }

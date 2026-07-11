@@ -2,6 +2,8 @@ package com.marketplace.api.service;
 
 import com.marketplace.api.dto.ProductDtos.ProductRequest;
 import com.marketplace.api.dto.ProductDtos.ProductResponse;
+import com.marketplace.api.discovery.ProductPopularity;
+import com.marketplace.api.discovery.ProductPopularityRepository;
 import com.marketplace.api.discovery.ProductViewRecorder;
 import com.marketplace.api.entity.Product;
 import com.marketplace.api.entity.User;
@@ -17,6 +19,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Product CRUD with the marketplace's core authorization rule: vendors manage
@@ -35,18 +43,21 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final ProductViewRecorder viewRecorder;
+    private final ProductPopularityRepository popularityRepository;
 
     public ProductService(ProductRepository productRepository,
                           UserRepository userRepository,
-                          ProductViewRecorder viewRecorder) {
+                          ProductViewRecorder viewRecorder,
+                          ProductPopularityRepository popularityRepository) {
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.viewRecorder = viewRecorder;
+        this.popularityRepository = popularityRepository;
     }
 
     @Transactional(readOnly = true)
     public Page<ProductResponse> list(Pageable pageable) {
-        return productRepository.findAllByDeletedAtIsNull(pageable).map(this::toResponse);
+        return toResponses(productRepository.findAllByDeletedAtIsNull(pageable));
     }
 
     @Transactional(readOnly = true)
@@ -125,12 +136,51 @@ public class ProductService {
         product.setStock(request.stock());
     }
 
+    // ---- mapping: ONE enriched mapper, three shapes over it -------------
+    // Batch is the required shape for any list (one popularity query per
+    // page); the single-product variant does one lookup and exists for
+    // get/create/update. Never loop the single variant over a list.
+
+    /** Single product — one popularity lookup. */
+    @Transactional(readOnly = true)
     public ProductResponse toResponse(Product p) {
+        return toResponse(p, popularityRepository.findById(p.getId()).orElse(null));
+    }
+
+    /** Batch — one findAllById covers the whole list. Preserves input order. */
+    @Transactional(readOnly = true)
+    public List<ProductResponse> toResponses(List<Product> products) {
+        Map<Long, ProductPopularity> pop = popularityMap(products);
+        return products.stream().map(p -> toResponse(p, pop.get(p.getId()))).toList();
+    }
+
+    /** Batch over a page — same single query, pagination metadata preserved. */
+    @Transactional(readOnly = true)
+    public Page<ProductResponse> toResponses(Page<Product> page) {
+        Map<Long, ProductPopularity> pop = popularityMap(page.getContent());
+        return page.map(p -> toResponse(p, pop.get(p.getId())));
+    }
+
+    private Map<Long, ProductPopularity> popularityMap(List<Product> products) {
+        List<Long> ids = products.stream().map(Product::getId).toList();
+        return popularityRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(ProductPopularity::getProductId, Function.identity()));
+    }
+
+    /**
+     * Null popularity is NORMAL, not exceptional — a product created since
+     * the last hourly rebuild has no row yet. Zeros are the truthful answer.
+     */
+    private ProductResponse toResponse(Product p, @Nullable ProductPopularity pop) {
         User vendor = p.getVendor();
         return new ProductResponse(
                 p.getId(), p.getName(), p.getDescription(), p.getSku(),
                 p.getPrice(), p.getStock(),
                 vendor != null ? vendor.getId() : null,
-                vendor != null ? vendor.getFullName() : null);
+                vendor != null ? vendor.getFullName() : null,
+                pop != null ? pop.getAvgRating() : BigDecimal.ZERO,
+                pop != null ? pop.getReviewCount() : 0L,
+                pop != null ? pop.getSalesCount() : 0L,
+                p.getCreatedAt());
     }
 }

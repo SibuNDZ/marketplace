@@ -72,12 +72,10 @@ jobs:
       # can't fail first; JWT_SECRET is then the first unresolvable placeholder.
       - name: Container starts and fails fast on missing config
         run: |
+          SPRING_AUTOCONFIGURE_EXCLUDE="org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration"
           set +e
           output=$(docker run --rm \
-            -e "SPRING_AUTOCONFIGURE_EXCLUDE=\
-org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,\
-org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration,\
-org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration" \
+            -e "SPRING_AUTOCONFIGURE_EXCLUDE=$SPRING_AUTOCONFIGURE_EXCLUDE" \
             marketplace-api:ci 2>&1)
           set -e
           echo "$output" | grep -q "JWT_SECRET" \

@@ -5,11 +5,13 @@ import com.marketplace.api.dto.ProductDtos.ProductResponse;
 import com.marketplace.api.discovery.ProductViewRecorder;
 import com.marketplace.api.entity.Product;
 import com.marketplace.api.entity.User;
+import com.marketplace.api.exception.ProductExceptions.DuplicateSkuException;
 import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
 import com.marketplace.api.repository.ProductRepository;
 import com.marketplace.api.repository.UserRepository;
 import com.marketplace.api.security.UserPrincipal;
 import org.springframework.lang.Nullable;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -59,10 +61,17 @@ public class ProductService {
 
     @Transactional
     public ProductResponse create(ProductRequest request, UserPrincipal me) {
+        assertSkuAvailable(request.sku());
         Product product = new Product();
         applyRequest(product, request);
         product.setVendor(userRepository.getReferenceById(me.getId()));
-        return toResponse(productRepository.save(product));
+        try {
+            // saveAndFlush: force the INSERT here so a SKU race surfaces inside
+            // the try (house pattern from ReviewService), not at commit.
+            return toResponse(productRepository.saveAndFlush(product));
+        } catch (DataIntegrityViolationException e) {
+            throw new DuplicateSkuException(request.sku());
+        }
     }
 
     @Transactional
@@ -70,8 +79,17 @@ public class ProductService {
         Product product = productRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new ProductNotFoundException(id));
         assertOwnerOrAdmin(product, me);
+        // Only check when the SKU actually changes — the product's own live row
+        // would otherwise fail the exists check against itself.
+        if (!request.sku().equals(product.getSku())) {
+            assertSkuAvailable(request.sku());
+        }
         applyRequest(product, request);
-        return toResponse(product);
+        try {
+            return toResponse(productRepository.saveAndFlush(product));
+        } catch (DataIntegrityViolationException e) {
+            throw new DuplicateSkuException(request.sku());
+        }
     }
 
     @Transactional
@@ -80,6 +98,13 @@ public class ProductService {
                 .orElseThrow(() -> new ProductNotFoundException(id));
         assertOwnerOrAdmin(product, me);
         product.setDeletedAt(java.time.LocalDateTime.now());
+    }
+
+    /** Pre-check for the clean 409; the saveAndFlush catch is the race backstop. */
+    private void assertSkuAvailable(String sku) {
+        if (productRepository.existsBySkuAndDeletedAtIsNull(sku)) {
+            throw new DuplicateSkuException(sku);
+        }
     }
 
     private void assertOwnerOrAdmin(Product product, UserPrincipal me) {

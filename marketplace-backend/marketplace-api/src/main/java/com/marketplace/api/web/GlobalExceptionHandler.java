@@ -2,6 +2,7 @@ package com.marketplace.api.web;
 
 import com.marketplace.api.auth.AuthService.EmailAlreadyRegisteredException;
 import com.marketplace.api.exception.OrderExceptions.*;
+import com.marketplace.api.exception.ProductExceptions.DuplicateSkuException;
 import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
 import com.marketplace.api.exception.ReviewExceptions.*;
 import com.marketplace.api.payment.PaymentExceptions.PaymentProviderException;
@@ -51,6 +52,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DuplicateReviewException.class)
     public ProblemDetail duplicateReview(DuplicateReviewException ex) {
         return problem(HttpStatus.CONFLICT, "Duplicate review", ex.getMessage());
+    }
+
+    // Deliberately NOT a blanket DataIntegrityViolationException → 409 mapping:
+    // that would dress every future FK/constraint bug as a polite conflict.
+    // Services translate the specific constraint they own (house pattern).
+    @ExceptionHandler(DuplicateSkuException.class)
+    public ProblemDetail duplicateSku(DuplicateSkuException ex) {
+        return problem(HttpStatus.CONFLICT, "Duplicate SKU", ex.getMessage());
     }
 
     @ExceptionHandler(InsufficientStockException.class)

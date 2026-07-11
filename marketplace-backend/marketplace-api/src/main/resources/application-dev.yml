@@ -12,6 +12,12 @@ spring:
 
 # Dev-only JWT secret fallback — do not replicate to application.yml or prod
 app:
+  # Dev iteration (and automated clickthroughs) burn auth calls fast; prod keeps
+  # the tight 10/min default from AuthRateLimitFilter.
+  rate-limit:
+    auth:
+      capacity: 100
+      refill-per-minute: 100
   jwt:
     secret: dGhpcy1pcy1hLXRlc3Qtb25seS1zZWNyZXQta2V5LTMyYnl0ZXM=
     # 1 hour for dev convenience; production uses the 15-minute default.

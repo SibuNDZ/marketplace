@@ -26,6 +26,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     boolean existsByIdAndDeletedAtIsNull(Long id);
 
     /**
+     * Live-only SKU check, matching the uq_products_sku_live partial index (V8):
+     * a soft-deleted product's SKU is intentionally reusable.
+     */
+    boolean existsBySkuAndDeletedAtIsNull(String sku);
+
+    /**
      * Pessimistic write lock (SELECT ... FOR UPDATE) for checkout stock
      * decrements. H2 supports FOR UPDATE but its semantics differ from
      * PostgreSQL — concurrency tests MUST use TestContainers PostgreSQL.

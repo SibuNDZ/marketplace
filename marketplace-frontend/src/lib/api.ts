@@ -186,6 +186,16 @@ export interface OrderResponse {
   items: OrderItemResponse[]
 }
 
+/** Admin list projection — no items by design (paged-fetch trap); drill into detail/history. */
+export interface AdminOrderSummary {
+  id: number
+  orderNumber: string
+  customerEmail: string
+  status: string
+  total: string
+  createdAt: string
+}
+
 export interface ReviewResponse {
   id: number
   productId: number
@@ -205,11 +215,20 @@ export const auth = {
     return r
   },
   async register(input: { email: string; password: string; firstName: string; lastName: string; role: 'CUSTOMER' | 'VENDOR' }) {
+    // Backend contract (AuthDtos.RegisterRequest) takes a single fullName —
+    // two form fields are a UX choice, joined here at the API boundary.
+    const { firstName, lastName, ...rest } = input
     const r = await api<AuthResponse>('/api/v1/auth/register', {
-      method: 'POST', body: input, auth: false,
+      method: 'POST',
+      body: { ...rest, fullName: `${firstName.trim()} ${lastName.trim()}`.trim() },
+      auth: false,
     })
     setSession(r.accessToken, r.refreshToken)
     return r
+  },
+  /** Who am I — used to rehydrate the user after a silent refresh on reload. */
+  async me() {
+    return api<{ userId: number; email: string; role: 'CUSTOMER' | 'VENDOR' | 'ADMIN' }>('/api/v1/auth/me')
   },
   async logout() {
     const refreshToken = localStorage.getItem(REFRESH_KEY)

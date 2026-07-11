@@ -7,6 +7,8 @@ import com.marketplace.api.exception.OrderExceptions.InvalidOrderStateException;
 import com.marketplace.api.exception.OrderExceptions.OrderNotFoundException;
 import com.marketplace.api.repository.OrderRepository;
 import com.marketplace.api.repository.OrderStatusHistoryRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,6 +70,18 @@ public class OrderAdminService {
 
         order.setStatus(target);
         recorder.record(order, current, target, adminUserId, note);
+    }
+
+    /**
+     * Paged list for the admin console. Returns entities with user pre-fetched
+     * (repository EntityGraph); the controller maps to a summary DTO that never
+     * touches orderItems — item detail belongs to findWithItemsById + history.
+     */
+    @Transactional(readOnly = true)
+    public Page<Order> list(OrderStatus status, Pageable pageable) {
+        return status == null
+                ? orderRepository.findBy(pageable)
+                : orderRepository.findByStatus(status, pageable);
     }
 
     @Transactional(readOnly = true)

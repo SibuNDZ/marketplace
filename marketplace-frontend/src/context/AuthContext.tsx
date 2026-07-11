@@ -31,13 +31,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    bootstrapSession().then((ok) => {
-      // After silent refresh the access token is in memory; we don't have
-      // the full user profile here so we'd need /api/v1/auth/me — for now
-      // leave user null (will be set on next login or page-level fetch).
-      // A /me endpoint is a natural follow-up.
-      setLoading(false)
-    })
+    // Silent refresh, then /auth/me to rehydrate the user — loading must hold
+    // until BOTH settle, or RequireAuth flashes /login on every reload.
+    bootstrapSession()
+      .then((ok) => (ok ? auth.me() : null))
+      .then((me) => { if (me) setUser(me) })
+      .catch(() => { /* stale session — stay logged out */ })
+      .finally(() => setLoading(false))
     const onLogout = () => { setUser(null) }
     window.addEventListener('mk:logout', onLogout)
     return () => window.removeEventListener('mk:logout', onLogout)

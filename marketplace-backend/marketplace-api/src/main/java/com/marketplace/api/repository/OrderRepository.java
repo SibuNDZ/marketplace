@@ -27,6 +27,17 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     Page<Order> findByUserId(Long userId, Pageable pageable);
 
+    /**
+     * Admin list views. EntityGraph on user (a to-one) keeps customerEmail out
+     * of N+1 territory and is pagination-safe — unlike fetching the orderItems
+     * collection, which would force Hibernate into in-memory paging.
+     */
+    @EntityGraph(attributePaths = {"user"})
+    Page<Order> findBy(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"user"})
+    Page<Order> findByStatus(OrderStatus status, Pageable pageable);
+
     Optional<Order> findByIdAndUserId(Long id, Long userId);
 
     /**

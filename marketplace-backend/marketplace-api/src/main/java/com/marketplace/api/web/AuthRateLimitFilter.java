@@ -53,13 +53,16 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     private final int capacity;
     private final int refillPerMinute;
+    private final CorsOrigins allowedOrigins;
     private final Cache<String, Bucket> buckets;
 
     public AuthRateLimitFilter(
             @Value("${app.rate-limit.auth.capacity:10}") int capacity,
-            @Value("${app.rate-limit.auth.refill-per-minute:10}") int refillPerMinute) {
+            @Value("${app.rate-limit.auth.refill-per-minute:10}") int refillPerMinute,
+            CorsOrigins allowedOrigins) {
         this.capacity = capacity;
         this.refillPerMinute = refillPerMinute;
+        this.allowedOrigins = allowedOrigins;
         this.buckets = Caffeine.newBuilder()
                 .maximumSize(100_000)
                 .expireAfterAccess(Duration.ofHours(1))
@@ -89,6 +92,17 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
         // Same problem+json shape as everything else; Retry-After makes
         // well-behaved clients back off instead of hammering.
+        //
+        // CORS headers set BY HAND: this filter runs before the security
+        // chain, whose CorsFilter would normally add them. Without these a
+        // browser client sees an opaque CORS TypeError instead of the 429 —
+        // the frontend can't show "too many attempts, retry in a minute".
+        String origin = request.getHeader("Origin");
+        if (origin != null && allowedOrigins.contains(origin)) {
+            response.setHeader("Access-Control-Allow-Origin", origin);
+            response.addHeader("Vary", "Origin");
+            response.setHeader("Access-Control-Expose-Headers", "X-Request-Id, Retry-After");
+        }
         response.setStatus(429);
         response.setHeader("Retry-After", "60");
         response.setContentType("application/problem+json");

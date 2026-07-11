@@ -44,6 +44,25 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Field-keyed errors for inline form rendering. Two sources, both real:
+ *  - 400 validation: body.errors is already field-keyed (GlobalExceptionHandler).
+ *  - 409 DuplicateSkuException: NOT a field error in the backend's shape —
+ *    it's a plain detail string ("SKU already in use: X") on a Conflict
+ *    response, because the backend's field-error envelope is specific to
+ *    @Valid body validation. Special-cased here by status+title match so
+ *    the create-product form can still point at the SKU input rather than
+ *    falling back to a generic toast for the one error a vendor filling
+ *    out the form is most likely to actually hit.
+ */
+export function fieldErrorsFrom(error: ApiError): Record<string, string[]> {
+  if (error.fieldErrors) return error.fieldErrors
+  if (error.status === 409 && error.title === 'Duplicate SKU') {
+    return { sku: [error.detail || 'SKU already in use'] }
+  }
+  return {}
+}
+
 async function toApiError(res: Response): Promise<ApiError> {
   const requestId = res.headers.get('X-Request-Id') ?? undefined
   try {
@@ -146,6 +165,9 @@ export interface AuthResponse {
   role: 'CUSTOMER' | 'VENDOR' | 'ADMIN'
 }
 
+// Exact match to backend ProductCategory enum names — no translation layer.
+export type ProductCategoryKey = 'PRODUCE' | 'PANTRY' | 'CRAFTS' | 'HOME' | 'OTHER'
+
 export interface ProductResponse {
   id: number
   name: string
@@ -162,6 +184,23 @@ export interface ProductResponse {
   reviewCount: number
   soldCount: number          // kept sales only (refunds excluded)
   createdAt: string          // real recency — feeds the "New in" chip
+  category: ProductCategoryKey
+}
+
+/** POST/PUT /api/v1/products body — mirrors backend ProductDtos.ProductRequest exactly. */
+export interface ProductRequest {
+  name: string
+  description?: string
+  sku: string
+  price: string
+  stock: number
+  category: ProductCategoryKey
+}
+
+/** GET /api/v1/products/categories — live counts per category, for the sidebar. */
+export interface CategoryCount {
+  category: ProductCategoryKey
+  count: number
 }
 
 /** Live aggregate from GET /products/{id}/reviews/summary — exact, not hourly. */

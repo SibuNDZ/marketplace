@@ -5,7 +5,9 @@ import com.marketplace.api.dto.ProductDtos.ProductResponse;
 import com.marketplace.api.discovery.ProductPopularity;
 import com.marketplace.api.discovery.ProductPopularityRepository;
 import com.marketplace.api.discovery.ProductViewRecorder;
+import com.marketplace.api.dto.ProductDtos.CategoryCount;
 import com.marketplace.api.entity.Product;
+import com.marketplace.api.entity.ProductCategory;
 import com.marketplace.api.entity.User;
 import com.marketplace.api.exception.ProductExceptions.DuplicateSkuException;
 import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
@@ -58,6 +60,24 @@ public class ProductService {
     @Transactional(readOnly = true)
     public Page<ProductResponse> list(Pageable pageable) {
         return toResponses(productRepository.findAllByDeletedAtIsNull(pageable));
+    }
+
+    /** ?category= catalog filter. Null category means "all" — same as list(pageable). */
+    @Transactional(readOnly = true)
+    public Page<ProductResponse> list(@Nullable ProductCategory category, Pageable pageable) {
+        if (category == null) return list(pageable);
+        return toResponses(productRepository.findAllByCategoryAndDeletedAtIsNull(category, pageable));
+    }
+
+    /**
+     * Live-product counts per category, for the sidebar. Replaces the
+     * frontend's id-arithmetic fabrication with a real grouped count.
+     */
+    @Transactional(readOnly = true)
+    public List<CategoryCount> categoryCounts() {
+        return productRepository.countLiveByCategory().stream()
+                .map(row -> new CategoryCount((ProductCategory) row[0], (Long) row[1]))
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -134,6 +154,7 @@ public class ProductService {
         product.setSku(request.sku());
         product.setPrice(request.price());
         product.setStock(request.stock());
+        product.setCategory(request.category());
     }
 
     // ---- mapping: ONE enriched mapper, three shapes over it -------------
@@ -181,6 +202,7 @@ public class ProductService {
                 pop != null ? pop.getAvgRating() : BigDecimal.ZERO,
                 pop != null ? pop.getReviewCount() : 0L,
                 pop != null ? pop.getSalesCount() : 0L,
-                p.getCreatedAt());
+                p.getCreatedAt(),
+                p.getCategory());
     }
 }

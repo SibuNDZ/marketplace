@@ -1,13 +1,12 @@
 import React, { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { api, Page, ProductResponse } from '../lib/api'
+import { api, CategoryCount, Page, ProductResponse } from '../lib/api'
 import { Topbar } from '../components/layout/Topbar'
 import { CategoryPills } from '../components/layout/CategoryPills'
 import { CategorySidebar } from '../components/layout/CategorySidebar'
 import { ProductCard } from '../components/product/ProductCard'
 import { PromoCarousel } from '../components/promo/PromoCarousel'
 import { CATEGORIES } from '../data/categories'
-import { getMarketplaceSignals } from '../lib/marketplaceSignals'
 
 // Both filters run on REAL aggregates from the popularity read model.
 // On a fresh catalog with no activity they simply match nothing — which
@@ -29,28 +28,34 @@ function SectionDivider({ icon, label }: { icon: string; label: string }) {
 }
 
 export function CatalogPage() {
-  const [category, setCategory] = useState('all')
+  const [category, setCategory] = useState('ALL')
   const [activeFilters, setActiveFilters] = useState<Set<QuickFilterKey>>(new Set())
   const [page, setPage] = useState(0)
   const PAGE_SIZE = 20
 
+  // Server-side category filter — real column (V10), not client-side
+  // id-arithmetic. Resets to page 0 whenever the category changes.
   const { data, isLoading } = useQuery<Page<ProductResponse>>({
-    queryKey: ['products', page, PAGE_SIZE],
-    queryFn: () => api(`/api/v1/products?page=${page}&size=${PAGE_SIZE}&sort=createdAt,desc`),
+    queryKey: ['products', category, page, PAGE_SIZE],
+    queryFn: () => api(
+      `/api/v1/products?page=${page}&size=${PAGE_SIZE}&sort=createdAt,desc`
+      + (category === 'ALL' ? '' : `&category=${category}`),
+    ),
   })
 
-  const products = data?.content ?? []
-
-  // Category assignment is the one remaining fabrication (see
-  // marketplaceSignals.ts) — counts are real counts of arbitrary groupings.
+  // Real counts from the backend's grouped query, not a client tally of a
+  // fabricated per-product assignment.
+  const { data: counts } = useQuery<CategoryCount[]>({
+    queryKey: ['category-counts'],
+    queryFn: () => api('/api/v1/products/categories'),
+  })
   const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = {}
-    products.forEach(p => {
-      const key = getMarketplaceSignals(p.id).categoryKey
-      counts[key] = (counts[key] ?? 0) + 1
-    })
-    return counts
-  }, [products])
+    const map: Record<string, number> = {}
+    counts?.forEach(c => { map[c.category] = c.count })
+    return map
+  }, [counts])
+
+  const products = data?.content ?? []
 
   // Real signal: rated well by actual reviewers. Hidden entirely until
   // review data exists — an empty shelf is not filled with guesses.
@@ -64,23 +69,23 @@ export function CatalogPage() {
     })
   }
 
-  let mainList = category === 'all'
-    ? products
-    : products.filter(p => getMarketplaceSignals(p.id).categoryKey === category)
+  const selectCategory = (key: string) => { setCategory(key); setPage(0) }
+
+  let mainList = products
   if (activeFilters.has('fiveStar')) mainList = mainList.filter(p => p.reviewCount > 0 && Number(p.avgRating) >= 4.5)
   if (activeFilters.has('bestSelling')) mainList = [...mainList].filter(p => p.soldCount > 0).sort((a, b) => b.soldCount - a.soldCount)
 
-  const categoryLabel = category === 'all' ? 'All products' : CATEGORIES.find(c => c.key === category)?.label ?? 'Products'
+  const categoryLabel = category === 'ALL' ? 'All products' : CATEGORIES.find(c => c.key === category)?.label ?? 'Products'
 
   return (
     <>
       <Topbar />
-      <CategoryPills active={category} onSelect={setCategory} />
+      <CategoryPills active={category} onSelect={selectCategory} />
       <main className="page-shell">
         <PromoCarousel />
 
         <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
-          <CategorySidebar active={category} onSelect={setCategory} counts={categoryCounts} />
+          <CategorySidebar active={category} onSelect={selectCategory} counts={categoryCounts} />
 
           <div style={{ flex: 1, minWidth: 0 }}>
             {/* Quick filter chips */}
@@ -109,7 +114,7 @@ export function CatalogPage() {
               </div>
             ) : (
               <>
-                {category === 'all' && recommended.length > 0 && (
+                {category === 'ALL' && recommended.length > 0 && (
                   <>
                     <SectionDivider icon="⭐" label="Highly rated" />
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>

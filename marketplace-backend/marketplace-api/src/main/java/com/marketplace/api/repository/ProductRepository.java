@@ -1,6 +1,7 @@
 package com.marketplace.api.repository;
 
 import com.marketplace.api.entity.Product;
+import com.marketplace.api.entity.ProductCategory;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +19,18 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     /** Live products only (deleted_at IS NULL). Used for public catalog. */
     Page<Product> findAllByDeletedAtIsNull(Pageable pageable);
+
+    /** Live products in one category — the ?category= catalog filter. */
+    Page<Product> findAllByCategoryAndDeletedAtIsNull(ProductCategory category, Pageable pageable);
+
+    /**
+     * Live-product counts per category for the sidebar (replaces the
+     * frontend's id-arithmetic fabrication). Object[] over a projection
+     * interface — matches the house Object[]-unwrap pattern used in
+     * ReviewService's aggregate query.
+     */
+    @Query("SELECT p.category, COUNT(p) FROM Product p WHERE p.deletedAt IS NULL GROUP BY p.category")
+    List<Object[]> countLiveByCategory();
 
     /** Live product by id. Returns empty for soft-deleted products (public 404). */
     Optional<Product> findByIdAndDeletedAtIsNull(Long id);

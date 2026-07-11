@@ -13,6 +13,7 @@ import { CheckoutCancelledPage } from './pages/CheckoutCancelledPage'
 import { OrdersPage } from './pages/OrdersPage'
 import { OrderDetailPage } from './pages/OrderDetailPage'
 import { VendorDashboardPage } from './pages/VendorDashboardPage'
+import { ProductFormPage } from './pages/ProductFormPage'
 import { AdminPage } from './pages/AdminPage'
 import { PrivacyPolicyPage } from './pages/legal/PrivacyPolicyPage'
 import { TermsPage } from './pages/legal/TermsPage'
@@ -47,6 +48,8 @@ export default function App() {
           <Route path="/orders" element={<RequireAuth><OrdersPage /></RequireAuth>} />
           <Route path="/orders/:id" element={<RequireAuth><OrderDetailPage /></RequireAuth>} />
           <Route path="/vendor" element={<RequireAuth><VendorDashboardPage /></RequireAuth>} />
+          <Route path="/vendor/products/new" element={<RequireAuth><ProductFormPage /></RequireAuth>} />
+          <Route path="/vendor/products/:id/edit" element={<RequireAuth><ProductFormPage /></RequireAuth>} />
           <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsPage />} />

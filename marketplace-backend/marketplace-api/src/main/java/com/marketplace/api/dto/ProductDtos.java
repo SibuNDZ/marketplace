@@ -1,5 +1,6 @@
 package com.marketplace.api.dto;
 
+import com.marketplace.api.entity.ProductCategory;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
@@ -13,7 +14,8 @@ public class ProductDtos {
             @NotBlank @Size(max = 64) String sku,
             @NotNull @DecimalMin(value = "0.00") @Digits(integer = 17, fraction = 2)
             BigDecimal price,
-            @NotNull @Min(0) Integer stock
+            @NotNull @Min(0) Integer stock,
+            @NotNull ProductCategory category
     ) {}
 
     /**
@@ -40,6 +42,10 @@ public class ProductDtos {
             BigDecimal avgRating,   // 0 when unreviewed
             long reviewCount,       // 0 when unreviewed
             long soldCount,         // kept sales only
-            LocalDateTime createdAt // real recency — feeds the honest "New in" chip
+            LocalDateTime createdAt, // real recency — feeds the honest "New in" chip
+            ProductCategory category
     ) {}
+
+    /** GET /api/v1/products/categories — live-product counts per category, for the sidebar. */
+    public record CategoryCount(ProductCategory category, long count) {}
 }

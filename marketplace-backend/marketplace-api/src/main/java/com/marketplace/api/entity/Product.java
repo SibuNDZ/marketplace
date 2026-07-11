@@ -73,6 +73,11 @@ public class Product {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "category", nullable = false)
+    @NotNull(message = "Category is required")
+    private ProductCategory category = ProductCategory.OTHER;
+
     // Constructors
     public Product() {}
 
@@ -197,6 +202,9 @@ public class Product {
 
     public LocalDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
+
+    public ProductCategory getCategory() { return category; }
+    public void setCategory(ProductCategory category) { this.category = category; }
 
     @Override
     public String toString() {

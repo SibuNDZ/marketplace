@@ -12,12 +12,14 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -106,6 +108,20 @@ public class GlobalExceptionHandler {
         }
         pd.setProperty("errors", errors);
         return pd;
+    }
+
+    /** ?category=NOTREAL and similar unconvertible query/path params -> 400, not 500. */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ProblemDetail typeMismatch(MethodArgumentTypeMismatchException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Invalid parameter",
+                "'%s' is not a valid value for '%s'".formatted(ex.getValue(), ex.getName()));
+    }
+
+    /** Malformed JSON body (bad enum value, wrong type, syntax error) -> 400, not 500. */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ProblemDetail malformedBody(HttpMessageNotReadableException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Malformed request",
+                "Request body could not be parsed");
     }
 
     @ExceptionHandler(BadCredentialsException.class)

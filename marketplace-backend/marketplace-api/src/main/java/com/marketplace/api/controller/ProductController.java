@@ -1,7 +1,9 @@
 package com.marketplace.api.controller;
 
+import com.marketplace.api.dto.ProductDtos.CategoryCount;
 import com.marketplace.api.dto.ProductDtos.ProductRequest;
 import com.marketplace.api.dto.ProductDtos.ProductResponse;
+import com.marketplace.api.entity.ProductCategory;
 import com.marketplace.api.security.UserPrincipal;
 import com.marketplace.api.service.ProductService;
 import com.marketplace.api.service.ProductStockService;
@@ -19,6 +21,7 @@ import org.springframework.security.access.prepost.PreAuthorize;import org.sprin
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.util.List;
 
 /**
  * GETs are public (SecurityConfig permits them). Writes: @PreAuthorize gates
@@ -47,9 +50,19 @@ public class ProductController {
 
     @GetMapping
     public Page<ProductResponse> list(
+            @RequestParam(required = false) ProductCategory category,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
             Pageable pageable) {
-        return productService.list(pageable);
+        return productService.list(category, pageable);
+    }
+
+    // Literal path segments beat {id}'s variable segment in Spring's route
+    // matching regardless of declaration order, but declared first for
+    // readability. Verify with a real request if this ever feels shaky —
+    // don't take routing specificity on faith.
+    @GetMapping("/categories")
+    public List<CategoryCount> categories() {
+        return productService.categoryCounts();
     }
 
     @GetMapping("/{id}")

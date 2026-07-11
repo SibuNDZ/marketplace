@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api, Page, ProductResponse, ApiError } from '../lib/api'
+import { api, Page, ProductResponse } from '../lib/api'
 import { Topbar } from '../components/layout/Topbar'
-import { StockBadge } from '../components/ui/StockBadge'
+import { CATEGORIES } from '../data/categories'
 
 export function VendorDashboardPage() {
   const qc = useQueryClient()
@@ -34,9 +35,12 @@ export function VendorDashboardPage() {
       <main className="page-shell no-catrail">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <h1 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 28 }}>Your stall</h1>
-          <button style={{ padding: '9px 18px', background: 'var(--aloe)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600 }}>
+          <Link to="/vendor/products/new" style={{
+            padding: '9px 18px', background: 'var(--flame-gradient)', color: '#fff',
+            borderRadius: 'var(--r-sm)', fontWeight: 700, display: 'inline-block',
+          }}>
             + New product
-          </button>
+          </Link>
         </div>
 
         {/* Tabs */}
@@ -55,7 +59,7 @@ export function VendorDashboardPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--line)' }}>
-                {['Product', 'SKU', 'Price', 'Stock', ''].map(h => (
+                {['Product', 'SKU', 'Category', 'Price', 'Stock', ''].map(h => (
                   <th key={h} style={{ padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)' }}>{h}</th>
                 ))}
               </tr>
@@ -65,6 +69,9 @@ export function VendorDashboardPage() {
                 <tr key={p.id} style={{ borderBottom: '1px solid var(--line)', opacity: p.deletedAt ? 0.5 : 1 }}>
                   <td style={{ padding: '12px 12px', fontWeight: 600 }}>{p.name}</td>
                   <td className="num" style={{ padding: '12px 12px', fontSize: 13, color: 'var(--ink-soft)' }}>{p.sku ?? '—'}</td>
+                  <td style={{ padding: '12px 12px', fontSize: 13, color: 'var(--ink-soft)' }}>
+                    {CATEGORIES.find(c => c.key === p.category)?.label ?? p.category}
+                  </td>
                   <td className="num" style={{ padding: '12px 12px' }}>R{Number(p.price).toFixed(2)}</td>
                   <td style={{ padding: '12px 12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -77,10 +84,15 @@ export function VendorDashboardPage() {
                   </td>
                   <td style={{ padding: '12px 12px' }}>
                     {!p.deletedAt && (
-                      <button onClick={() => { if (confirm('Delete this product?')) softDelete.mutate(p.id) }}
-                        style={{ fontSize: 12, color: 'var(--clay)', background: 'none', border: 'none', cursor: 'pointer' }}>
-                        Delete
-                      </button>
+                      <div style={{ display: 'flex', gap: 12 }}>
+                        <Link to={`/vendor/products/${p.id}/edit`} style={{ fontSize: 12, color: 'var(--trust-blue)' }}>
+                          Edit
+                        </Link>
+                        <button onClick={() => { if (confirm('Delete this product?')) softDelete.mutate(p.id) }}
+                          style={{ fontSize: 12, color: 'var(--clay)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                          Delete
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>

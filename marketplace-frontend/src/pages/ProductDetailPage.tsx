@@ -6,7 +6,7 @@ import { Topbar } from '../components/layout/Topbar'
 import { StockBadge } from '../components/ui/StockBadge'
 import { vendorHue } from '../lib/vendorHue'
 import { ErrorSurface } from '../components/ui/ErrorSurface'
-import { getMarketplaceSignals } from '../lib/marketplaceSignals'
+import { getImageSeed } from '../lib/marketplaceSignals'
 
 export function ProductDetailPage() {
   const { id } = useParams()
@@ -43,7 +43,7 @@ export function ProductDetailPage() {
 
   const stripe = vendorHue(product.vendorId ?? 1)
   const canAdd = product.stock > 0
-  const signals = getMarketplaceSignals(product.id)
+  const imageSeed = getImageSeed(product.id)
 
   return (
     <>
@@ -58,7 +58,7 @@ export function ProductDetailPage() {
           {/* Media */}
           <div style={{ borderRadius: 'var(--r)', aspectRatio: '4/3', overflow: 'hidden', background: '#EAEEED' }}>
             <img
-              src={`https://picsum.photos/seed/${signals.imageSeed}/800/600`}
+              src={`https://picsum.photos/seed/${imageSeed}/800/600`}
               alt={product.name}
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />

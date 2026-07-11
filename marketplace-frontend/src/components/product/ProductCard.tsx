@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, ProductResponse } from '../../lib/api'
 import { StockBadge } from '../ui/StockBadge'
-import { getMarketplaceSignals } from '../../lib/marketplaceSignals'
+import { getImageSeed } from '../../lib/marketplaceSignals'
 
 interface Props {
   product: ProductResponse
@@ -40,7 +40,7 @@ function isNewIn(p: ProductResponse): boolean {
 export function ProductCard({ product }: Props) {
   const qc = useQueryClient()
   const [added, setAdded] = useState(false)
-  const signals = getMarketplaceSignals(product.id)
+  const imageSeed = getImageSeed(product.id)
 
   const addToCart = useMutation({
     mutationFn: () => api('/api/v1/cart/items', {
@@ -73,7 +73,7 @@ export function ProductCard({ product }: Props) {
       {/* Product image */}
       <Link to={`/products/${product.id}`} style={{ position: 'relative', display: 'block', height: 180, flexShrink: 0, background: '#EAEEED' }}>
         <img
-          src={`https://picsum.photos/seed/${signals.imageSeed}/400/300`}
+          src={`https://picsum.photos/seed/${imageSeed}/400/300`}
           alt={product.name}
           loading="lazy"
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}

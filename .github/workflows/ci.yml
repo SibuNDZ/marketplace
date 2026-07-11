@@ -1,13 +1,19 @@
 # .github/workflows/ci.yml — place at the REPO root (projects/marketplace),
 # not inside marketplace-api; paths below are relative to the repo root.
 #
-# Two jobs:
-#   test  — mvnw verify with TestContainers (Docker is preinstalled on
-#           ubuntu-latest runners; the 28-test suite including the
-#           PostgreSQL concurrency tests runs unmodified)
-#   image — proves the Dockerfile builds; runs only after tests pass.
-#           Build-only for now — pushing to a registry comes with the
-#           deploy story, not the CI story.
+# Three jobs:
+#   test     — mvnw verify with TestContainers (Docker is preinstalled on
+#              ubuntu-latest runners; the 28-test suite including the
+#              PostgreSQL concurrency tests runs unmodified)
+#   image    — proves the Dockerfile builds; runs only after tests pass.
+#              Build-only for now — pushing to a registry comes with the
+#              deploy story, not the CI story.
+#   frontend — tsc + vite build, path-filtered like the backend jobs.
+#              Cloudflare Pages will also build independently on deploy,
+#              but Pages is the deploy step, not the gate — this job is
+#              the one to trust, and it's what catches a missing
+#              _redirects or a dev-only import before a broken bundle
+#              ever reaches Pages.
 
 name: CI
 
@@ -16,21 +22,22 @@ on:
     branches: [master, main]
     paths:
       - "marketplace-backend/**"
+      - "marketplace-frontend/**"
       - ".github/workflows/ci.yml"
   pull_request:
     paths:
       - "marketplace-backend/**"
+      - "marketplace-frontend/**"
       - ".github/workflows/ci.yml"
-
-defaults:
-  run:
-    working-directory: marketplace-backend/marketplace-api
 
 jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 25   # TestContainers pulls postgres:16-alpine on cache miss;
                           # a hung container test should fail the run, not eat 6h
+    defaults:
+      run:
+        working-directory: marketplace-backend/marketplace-api
     steps:
       - uses: actions/checkout@v4
 
@@ -60,6 +67,9 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: marketplace-backend/marketplace-api
     steps:
       - uses: actions/checkout@v4
 
@@ -81,3 +91,34 @@ jobs:
           echo "$output" | grep -q "JWT_SECRET" \
             && echo "OK: container boots and fails fast on missing JWT_SECRET" \
             || { echo "Container failed for an unexpected reason:"; echo "$output" | tail -40; exit 1; }
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: marketplace-frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: marketplace-frontend/package-lock.json
+
+      # npm ci, not npm install — the lockfile is the contract.
+      - run: npm ci
+
+      # `npm run build` is `tsc -b && vite build` (see package.json) — one
+      # step, not two, since a separate typecheck step would just repeat
+      # the first half of this command. Dummy but valid-shaped
+      # VITE_API_URL: this proves the build PIPELINE works (tsc, bundling,
+      # _redirects present) and that the fail-fast guard in vite.config.ts
+      # doesn't block a normal build — not that any specific deploy URL is
+      # wired. Pages' own build supplies the real one.
+      - name: Typecheck and build
+        run: VITE_API_URL=https://ci-placeholder.invalid npm run build
+
+      - name: SPA fallback file present in build output
+        run: test -f dist/_redirects

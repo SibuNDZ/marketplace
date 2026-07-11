@@ -1,0 +1,20 @@
+# Frontend (Vite/npm)
+node_modules/
+dist/
+*.tsbuildinfo
+.vite/
+
+# Backend (Maven)
+target/
+
+# Env files — never commit real secrets
+.env
+.env.local
+.env.*.local
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

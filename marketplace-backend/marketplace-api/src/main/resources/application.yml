@@ -8,11 +8,6 @@ spring:
   application:
     name: marketplace-api
 
-  servlet:
-    multipart:
-      max-file-size: 5MB
-      max-request-size: 6MB   # headroom over the file cap for multipart framing
-
   # JPA/Hibernate Configuration — Flyway owns the schema; Hibernate audits it
   jpa:
     hibernate:
@@ -71,17 +66,6 @@ app:
   discovery:
     popularity-refresh-ms: 3600000        # hourly
     view-retention-cron: "0 15 3 * * *"   # nightly sweep, 90-day window
-  storage:
-    r2:
-      # Fail-fast, no defaults — same philosophy as JWT_SECRET/STRIPE_SECRET_KEY.
-      account-id: ${R2_ACCOUNT_ID}
-      access-key-id: ${R2_ACCESS_KEY_ID}
-      secret-access-key: ${R2_SECRET_ACCESS_KEY}
-      bucket: erestyu-images
-      public-base-url: https://images.erestyu.com
-      # Blank in every real environment — tests point this at a MinIO
-      # testcontainer via @DynamicPropertySource.
-      endpoint-override: ${R2_ENDPOINT_OVERRIDE:}
 
 sentry:
   dsn: ${SENTRY_DSN:}             # blank = SDK disabled; dev needs nothing

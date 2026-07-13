@@ -145,34 +145,6 @@ export async function api<T>(path: string, opts: Options = {}): Promise<T> {
   return res.json() as Promise<T>
 }
 
-// ---------- multipart upload ----------
-// Deliberately NOT routed through api(): a JSON Content-Type header would
-// break the multipart boundary the browser sets automatically from the
-// FormData body. Shares the same 401→refresh→retry logic as api() instead
-// of duplicating it via a second bespoke path.
-export async function uploadProductImage(productId: number, file: File, _retried = false): Promise<{ imageUrl: string }> {
-  const headers: Record<string, string> = {}
-  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
-
-  const body = new FormData()
-  body.append('file', file)
-
-  const res = await fetch(`${BASE}/api/v1/products/${productId}/image`, {
-    method: 'POST',
-    headers,
-    body,
-  })
-
-  if (res.status === 401 && !_retried) {
-    if (await refreshSession()) return uploadProductImage(productId, file, true)
-    clearSession()
-    window.dispatchEvent(new Event('mk:logout'))
-    throw await toApiError(res)
-  }
-  if (!res.ok) throw await toApiError(res)
-  return res.json()
-}
-
 // ---------- DTOs (mirrors backend) ----------
 export interface Page<T> {
   content: T[]
@@ -213,7 +185,6 @@ export interface ProductResponse {
   soldCount: number          // kept sales only (refunds excluded)
   createdAt: string          // real recency — feeds the "New in" chip
   category: ProductCategoryKey
-  imageUrl: string | null    // null until a vendor uploads one — frontend falls back to a placeholder
 }
 
 /** POST/PUT /api/v1/products body — mirrors backend ProductDtos.ProductRequest exactly. */

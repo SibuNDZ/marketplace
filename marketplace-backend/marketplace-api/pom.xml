@@ -104,13 +104,6 @@
 			<version>29.0.0</version>
 		</dependency>
 
-		<!-- Cloudflare R2 (S3-compatible API) — product image storage -->
-		<dependency>
-			<groupId>software.amazon.awssdk</groupId>
-			<artifactId>s3</artifactId>
-			<version>2.29.9</version>
-		</dependency>
-
 		<!-- Development Tools -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

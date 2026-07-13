@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, Page, ProductResponse } from '../lib/api'
 import { Topbar } from '../components/layout/Topbar'
@@ -8,6 +8,12 @@ import { CATEGORIES } from '../data/categories'
 export function VendorDashboardPage() {
   const qc = useQueryClient()
   const [activeTab, setActiveTab] = useState<'live' | 'archived'>('live')
+  // No global toast system — ProductFormPage passes a one-shot notice
+  // (e.g. "image failed, retry from Edit") through router state instead.
+  const location = useLocation()
+  const [notice, setNotice] = useState<string | undefined>(
+    (location.state as { notice?: string } | null)?.notice,
+  )
 
   const { data, isLoading } = useQuery<Page<ProductResponse>>({
     queryKey: ['vendor-products'],
@@ -42,6 +48,19 @@ export function VendorDashboardPage() {
             + New product
           </Link>
         </div>
+
+        {notice && (
+          <div style={{
+            background: 'var(--sun-tint)', border: '1px solid var(--sun)',
+            borderRadius: 'var(--r-sm)', padding: '10px 14px', marginBottom: 16,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13,
+          }}>
+            <span>{notice}</span>
+            <button onClick={() => setNotice(undefined)} style={{
+              background: 'none', border: 'none', fontSize: 16, cursor: 'pointer', color: 'var(--ink-soft)',
+            }} aria-label="Dismiss">×</button>
+          </div>
+        )}
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid var(--line)', marginBottom: 20 }}>

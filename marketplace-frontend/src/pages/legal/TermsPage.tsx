@@ -5,10 +5,11 @@ import { LegalPage, LegalSection } from './LegalPage'
 // the code: 30-minute payment window (StripeCheckoutService.PAYMENT_WINDOW_MINUTES,
 // swept with a 5-minute grace by OrderExpiryJob), customer cancel on PENDING
 // restores stock (OrderService.cancelOrder), prices snapshot at purchase,
-// reviews require a delivered purchase (ReviewService).
+// reviews require a delivered purchase (ReviewService), uploaded photos are
+// served from a public URL with no auth required to view (ObjectStorageService.publicUrl).
 export function TermsPage() {
   return (
-    <LegalPage title="Terms of Service" lastUpdated="2026-07-11">
+    <LegalPage title="Terms of Service" lastUpdated="2026-07-13">
       <LegalSection heading="Orders">
         <p>
           An order is defined by your cart at the moment you place it. Prices are
@@ -48,7 +49,9 @@ export function TermsPage() {
         <p>
           Vendors manage only their own products and stock. Product listings are
           removed from the catalog when a vendor deletes them, but records of past
-          orders for those products are preserved.
+          orders for those products are preserved. By uploading a product photo,
+          a vendor confirms they hold the rights to it — uploaded photos are
+          served publicly and are visible to anyone browsing the catalog.
         </p>
       </LegalSection>
     </LegalPage>

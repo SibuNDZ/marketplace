@@ -1,5 +1,9 @@
-// REMAINING FABRICATION: placeholder product photography ONLY. Dies with
-// the image-upload slice.
+// REMAINING FABRICATION: placeholder product photography, and ONLY for
+// products a vendor hasn't uploaded a real photo for yet (V11 added
+// ProductResponse.imageUrl + the upload pipeline — ProductCard and
+// ProductDetailPage both try the real image first: `product.imageUrl ??
+// picsum placeholder`). imageSeed stays alive as the fallback for
+// pending-first-real-photo inventory, not because the pipeline is missing.
 //
 // Everything else this module once fabricated is gone:
 //   - ratings / review counts / sold counts → real, from ProductResponse
@@ -10,11 +14,6 @@
 //   - category assignment → real, ProductResponse.category (V10). Catalog
 //     filtering and the sidebar's counts both come from the backend now
 //     (GET /api/v1/products?category=, GET /api/v1/products/categories).
-//
-// imageSeed stays because Product has no image field and there is no
-// upload pipeline — picsum placeholders are presentational, not a claim
-// about anything, but they are still stand-ins for inventory that has no
-// real photo, which is why this file exists at all.
 
 export function getImageSeed(productId: number): string {
   return `mk-${productId}`

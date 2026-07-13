@@ -14,6 +14,7 @@ import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
 import com.marketplace.api.repository.ProductRepository;
 import com.marketplace.api.repository.UserRepository;
 import com.marketplace.api.security.UserPrincipal;
+import com.marketplace.api.storage.ObjectStorageService;
 import org.springframework.lang.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -46,15 +47,18 @@ public class ProductService {
     private final UserRepository userRepository;
     private final ProductViewRecorder viewRecorder;
     private final ProductPopularityRepository popularityRepository;
+    private final ObjectStorageService storage;
 
     public ProductService(ProductRepository productRepository,
                           UserRepository userRepository,
                           ProductViewRecorder viewRecorder,
-                          ProductPopularityRepository popularityRepository) {
+                          ProductPopularityRepository popularityRepository,
+                          ObjectStorageService storage) {
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.viewRecorder = viewRecorder;
         this.popularityRepository = popularityRepository;
+        this.storage = storage;
     }
 
     @Transactional(readOnly = true)
@@ -203,6 +207,7 @@ public class ProductService {
                 pop != null ? pop.getReviewCount() : 0L,
                 pop != null ? pop.getSalesCount() : 0L,
                 p.getCreatedAt(),
-                p.getCategory());
+                p.getCategory(),
+                p.getImageKey() != null ? storage.publicUrl(p.getImageKey()) : null);
     }
 }

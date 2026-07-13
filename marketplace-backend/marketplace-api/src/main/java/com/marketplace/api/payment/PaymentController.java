@@ -2,10 +2,12 @@ package com.marketplace.api.payment;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.marketplace.api.dto.ShippingDtos.ShippingAddressRequest;
 import com.marketplace.api.security.UserPrincipal;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
 import com.stripe.net.Webhook;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,8 +22,11 @@ import java.util.Map;
  * Two endpoints, two trust models:
  *
  * POST /api/v1/orders/{id}/pay — authenticated customer starts payment;
- * returns the Stripe-hosted checkout URL. The card never touches this
- * backend (no PCI scope beyond SAQ-A).
+ * body carries the shipping address (collected on eRestyu's own form, not
+ * Stripe's native shipping_address_collection — see StripeCheckoutService),
+ * saved in the same transaction that creates the session. Returns the
+ * Stripe-hosted checkout URL. The card never touches this backend (no PCI
+ * scope beyond SAQ-A).
  *
  * POST /api/v1/payments/stripe/webhook — UNAUTHENTICATED by design (Stripe
  * has no JWT); authenticity comes from the signature header verified against
@@ -64,8 +69,9 @@ public class PaymentController {
 
     @PostMapping("/api/v1/orders/{id}/pay")
     public Map<String, String> pay(@PathVariable Long id,
+                                   @Valid @RequestBody ShippingAddressRequest shipping,
                                    @AuthenticationPrincipal UserPrincipal me) {
-        return Map.of("checkoutUrl", checkoutService.createCheckoutSession(id, me.getId()));
+        return Map.of("checkoutUrl", checkoutService.createCheckoutSession(id, me.getId(), shipping));
     }
 
     @PostMapping("/api/v1/payments/stripe/webhook")

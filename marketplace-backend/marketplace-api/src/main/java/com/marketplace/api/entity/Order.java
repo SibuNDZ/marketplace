@@ -36,6 +36,33 @@ public class Order {
     @Column(name = "billing_address")
     private String billingAddress;
 
+    // Structured shipping address, added V12 — collected at pay-time via
+    // PaymentController.pay, not related to the shippingAddress/
+    // billingAddress single-string columns above (those are dead, unused
+    // since V1). addressLine1 null means "not yet submitted"; the other
+    // six are validated NOT-blank at the DTO layer whenever addressLine1
+    // is present, so they rise and fall together in practice.
+    @Column(name = "recipient_name")
+    private String recipientName;
+
+    @Column(name = "phone")
+    private String phone;
+
+    @Column(name = "address_line1")
+    private String addressLine1;
+
+    @Column(name = "address_line2")
+    private String addressLine2;
+
+    @Column(name = "city")
+    private String city;
+
+    @Column(name = "province")
+    private String province;
+
+    @Column(name = "postal_code")
+    private String postalCode;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -109,6 +136,62 @@ public class Order {
 
     public void setBillingAddress(String billingAddress) {
         this.billingAddress = billingAddress;
+    }
+
+    public String getRecipientName() {
+        return recipientName;
+    }
+
+    public void setRecipientName(String recipientName) {
+        this.recipientName = recipientName;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public String getAddressLine1() {
+        return addressLine1;
+    }
+
+    public void setAddressLine1(String addressLine1) {
+        this.addressLine1 = addressLine1;
+    }
+
+    public String getAddressLine2() {
+        return addressLine2;
+    }
+
+    public void setAddressLine2(String addressLine2) {
+        this.addressLine2 = addressLine2;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public String getProvince() {
+        return province;
+    }
+
+    public void setProvince(String province) {
+        this.province = province;
+    }
+
+    public String getPostalCode() {
+        return postalCode;
+    }
+
+    public void setPostalCode(String postalCode) {
+        this.postalCode = postalCode;
     }
 
     public LocalDateTime getCreatedAt() {

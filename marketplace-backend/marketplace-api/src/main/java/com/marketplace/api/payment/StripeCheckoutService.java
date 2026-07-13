@@ -1,5 +1,6 @@
 package com.marketplace.api.payment;
 
+import com.marketplace.api.dto.ShippingDtos.ShippingAddressRequest;
 import com.marketplace.api.entity.Order;
 import com.marketplace.api.entity.OrderItem;
 import com.marketplace.api.entity.OrderStatus;
@@ -65,17 +66,19 @@ public class StripeCheckoutService {
     /**
      * Ownership enforced via findByIdAndUserId — you pay for your own orders.
      * Calling this twice on a still-PENDING order creates a fresh session
-     * (fine: old sessions just expire; Stripe sessions are not reservations).
+     * (fine: old sessions just expire; Stripe sessions are not reservations,
+     * so the address is simply overwritten with whatever was submitted most
+     * recently — consistent with there being no separate "edit address"
+     * flow).
+     *
+     * Not readOnly: the shipping address is written onto the order in THIS
+     * transaction, before the Stripe session is created. One transaction —
+     * address saved and session created together, or neither is. No window
+     * where a checkout session exists for an order with no address on file.
      */
-    @Transactional(readOnly = true)
-    public String createCheckoutSession(Long orderId, Long userId) {
-        Order order = orderRepository.findByIdAndUserId(orderId, userId)
-                .orElseThrow(() -> new OrderNotFoundException(orderId));
-
-        if (order.getStatus() != OrderStatus.PENDING) {
-            throw new InvalidOrderStateException(
-                    "Order " + orderId + " is " + order.getStatus() + " — only PENDING orders can be paid");
-        }
+    @Transactional
+    public String createCheckoutSession(Long orderId, Long userId, ShippingAddressRequest shipping) {
+        Order order = attachShipping(orderId, userId, shipping);
 
         SessionCreateParams.Builder params = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
@@ -111,5 +114,37 @@ public class StripeCheckoutService {
 
     static long toCents(BigDecimal rand) {
         return rand.multiply(BigDecimal.valueOf(100)).longValueExact();
+    }
+
+    /**
+     * Loads, validates ownership + PENDING status, and writes the shipping
+     * address onto the order — the exact piece createCheckoutSession needs
+     * committed before it calls out to Stripe. Package-private so this is
+     * unit-testable on its own: Session.create() is a real network call to
+     * Stripe with no sandbox in this test suite (test/resources/
+     * application.yml deliberately stubs app.stripe.secret-key with a
+     * placeholder, same reasoning as the R2 storage stubs), so tests can't
+     * drive the full createCheckoutSession path — this is the piece of it
+     * that matters for the "address saved before session exists" guarantee,
+     * and it's fully exercisable without Stripe.
+     */
+    @Transactional
+    Order attachShipping(Long orderId, Long userId, ShippingAddressRequest shipping) {
+        Order order = orderRepository.findByIdAndUserId(orderId, userId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new InvalidOrderStateException(
+                    "Order " + orderId + " is " + order.getStatus() + " — only PENDING orders can be paid");
+        }
+
+        order.setRecipientName(shipping.recipientName());
+        order.setPhone(shipping.phone());
+        order.setAddressLine1(shipping.addressLine1());
+        order.setAddressLine2(shipping.addressLine2());
+        order.setCity(shipping.city());
+        order.setProvince(shipping.province());
+        order.setPostalCode(shipping.postalCode());
+        return order;
     }
 }

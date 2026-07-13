@@ -1,6 +1,7 @@
 package com.marketplace.api.service;
 
 import com.marketplace.api.dto.OrderResponse;
+import com.marketplace.api.dto.ShippingDtos;
 import com.marketplace.api.entity.*;
 import com.marketplace.api.exception.OrderExceptions.*;
 import com.marketplace.api.repository.CartRepository;
@@ -202,6 +203,19 @@ public class OrderService {
         return toResponse(order);
     }
 
+    /**
+     * Admin detail view — the one place an admin reads a single order's
+     * items and (masked) address before shipping it. findWithItemsById is
+     * the same EntityGraph the customer-facing getOrder relies on via
+     * toResponse's item mapping.
+     */
+    @Transactional(readOnly = true)
+    public OrderResponse getOrderForAdmin(Long orderId) {
+        Order order = orderRepository.findWithItemsById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+        return toResponse(order, true);
+    }
+
     @Transactional(readOnly = true)
     public Page<OrderResponse> getMyOrders(Long userId, Pageable pageable) {
         return orderRepository.findByUserId(userId, pageable).map(this::toResponse);
@@ -227,7 +241,12 @@ public class OrderService {
         return locked.stream().collect(Collectors.toMap(Product::getId, Function.identity()));
     }
 
+    /** Owner viewing their own order — always sees their own submitted address. */
     private OrderResponse toResponse(Order order) {
+        return toResponse(order, false);
+    }
+
+    private OrderResponse toResponse(Order order, boolean viewerIsPrivileged) {
         List<OrderResponse.OrderItemResponse> items = order.getOrderItems().stream()
                 .map(oi -> new OrderResponse.OrderItemResponse(
                         oi.getProduct() != null ? oi.getProduct().getId() : null,
@@ -242,6 +261,34 @@ public class OrderService {
                 order.getStatus().name(),
                 order.getTotalAmount(),
                 order.getCreatedAt(),
-                items);
+                items,
+                shippingFor(order, viewerIsPrivileged));
+    }
+
+    /**
+     * The entire masking rule, in one place, called from both viewer paths
+     * so it can never quietly diverge between them.
+     *
+     * CUSTOMER (viewerIsPrivileged=false): always sees their own submitted
+     * address, regardless of order status — it's their own data.
+     *
+     * ADMIN (viewerIsPrivileged=true): sees the address only once the order
+     * is committed (PAID or later). Not for PENDING (might still expire
+     * unpaid — same reasoning as why views expire after 90 days) and not
+     * for CANCELLED (the purchase didn't happen).
+     */
+    private ShippingDtos.ShippingAddressResponse shippingFor(Order order, boolean viewerIsPrivileged) {
+        if (order.getAddressLine1() == null) return null; // not submitted
+        boolean payerCommitted = order.getStatus() != OrderStatus.PENDING
+                && order.getStatus() != OrderStatus.CANCELLED;
+        if (viewerIsPrivileged && !payerCommitted) return null; // masked for admin
+        return new ShippingDtos.ShippingAddressResponse(
+                order.getRecipientName(),
+                order.getPhone(),
+                order.getAddressLine1(),
+                order.getAddressLine2(),
+                order.getCity(),
+                order.getProvince(),
+                order.getPostalCode());
     }
 }

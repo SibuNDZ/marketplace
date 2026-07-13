@@ -1,10 +1,12 @@
 package com.marketplace.api.controller;
 
+import com.marketplace.api.dto.OrderResponse;
 import com.marketplace.api.entity.Order;
 import com.marketplace.api.entity.OrderStatus;
 import com.marketplace.api.entity.OrderStatusHistory;
 import com.marketplace.api.security.UserPrincipal;
 import com.marketplace.api.service.OrderAdminService;
+import com.marketplace.api.service.OrderService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -33,9 +35,11 @@ import java.util.List;
 public class AdminOrderController {
 
     private final OrderAdminService orderAdminService;
+    private final OrderService orderService;
 
-    public AdminOrderController(OrderAdminService orderAdminService) {
+    public AdminOrderController(OrderAdminService orderAdminService, OrderService orderService) {
         this.orderAdminService = orderAdminService;
+        this.orderService = orderService;
     }
 
     public record TransitionRequest(
@@ -66,6 +70,18 @@ public class AdminOrderController {
                     o.getTotalAmount(),
                     o.getCreatedAt());
         }
+    }
+
+    /**
+     * Single-order detail — items plus the shipping address, masked per
+     * OrderService.shippingFor's rule (visible only once PAID or later).
+     * Without this, an admin could flip PAID->SHIPPED without ever seeing
+     * where the order is going, which defeats the point of collecting an
+     * address at all.
+     */
+    @GetMapping("/{id}")
+    public OrderResponse detail(@PathVariable Long id) {
+        return orderService.getOrderForAdmin(id);
     }
 
     @GetMapping

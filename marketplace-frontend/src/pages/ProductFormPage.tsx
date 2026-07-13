@@ -1,10 +1,13 @@
 import React, { FormEvent, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, ApiError, ProductCategoryKey, ProductRequest, ProductResponse, fieldErrorsFrom } from '../lib/api'
+import { api, ApiError, ProductCategoryKey, ProductRequest, ProductResponse, fieldErrorsFrom, uploadProductImage } from '../lib/api'
 import { Topbar } from '../components/layout/Topbar'
 import { ErrorSurface } from '../components/ui/ErrorSurface'
 import { CATEGORIES } from '../data/categories'
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+const ACCEPTED_IMAGE_TYPES = 'image/jpeg,image/png,image/webp'
 
 const EMPTY: ProductRequest = {
   name: '', description: '', sku: '', price: '', stock: 0, category: 'OTHER',
@@ -37,6 +40,10 @@ export function ProductFormPage() {
   const [genericError, setGenericError] = useState<ApiError>()
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
 
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [imageError, setImageError] = useState<string>()
+
   const { data: existing } = useQuery<ProductResponse>({
     queryKey: ['product', id],
     queryFn: () => api(`/api/v1/products/${id}`),
@@ -56,16 +63,56 @@ export function ProductFormPage() {
     }
   }, [existing])
 
+  // Object URLs must be revoked or they leak for the tab's lifetime.
+  useEffect(() => {
+    if (!imageFile) return
+    const url = URL.createObjectURL(imageFile)
+    setImagePreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [imageFile])
+
   const set = <K extends keyof ProductRequest>(key: K, value: ProductRequest[K]) =>
     setForm(f => ({ ...f, [key]: value }))
+
+  const onImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    setImageError(undefined)
+    if (!file) { setImageFile(null); return }
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setImageError('Only JPEG, PNG, or WebP images are allowed')
+      e.target.value = ''
+      return
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setImageError('Image too large — 5MB max')
+      e.target.value = ''
+      return
+    }
+    setImageFile(file)
+  }
 
   const save = useMutation({
     mutationFn: () => isEdit
       ? api<ProductResponse>(`/api/v1/products/${id}`, { method: 'PUT', body: form })
       : api<ProductResponse>('/api/v1/products', { method: 'POST', body: form }),
-    onSuccess: () => {
+    onSuccess: async (saved) => {
       qc.invalidateQueries({ queryKey: ['vendor-products'] })
       qc.invalidateQueries({ queryKey: ['products'] })
+
+      if (imageFile) {
+        // A failed image upload does NOT mean the product save failed — the
+        // product already exists. Navigate away regardless; pass a notice
+        // through router state pointing back at Edit rather than blocking
+        // on the retry (there's no toast system in this app to show it here
+        // — the dashboard renders whatever notice arrives in location.state).
+        try {
+          await uploadProductImage(saved.id, imageFile)
+          qc.invalidateQueries({ queryKey: ['product', String(saved.id)] })
+        } catch {
+          navigate('/vendor', { state: { notice: 'Product saved, but the image failed to upload — retry from Edit.' } })
+          return
+        }
+      }
       navigate('/vendor')
     },
     onError: (e) => {
@@ -105,6 +152,16 @@ export function ProductFormPage() {
           <Field label="Description" error={fieldErrors.description}>
             <textarea rows={3} value={form.description} onChange={e => set('description', e.target.value)}
               style={{ ...inputStyle(!!fieldErrors.description), resize: 'vertical', fontFamily: 'var(--body)' }} />
+          </Field>
+
+          <Field label="Photo" error={imageError ? [imageError] : undefined}>
+            {(imagePreview ?? existing?.imageUrl) && (
+              <img src={imagePreview ?? existing!.imageUrl!} alt="" style={{
+                width: 120, height: 90, objectFit: 'cover', borderRadius: 'var(--r-sm)', marginBottom: 6,
+              }} />
+            )}
+            <input type="file" accept={ACCEPTED_IMAGE_TYPES} onChange={onImageChange}
+              style={{ fontSize: 13 }} />
           </Field>
 
           <div style={{ display: 'flex', gap: 12 }}>

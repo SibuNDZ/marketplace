@@ -78,6 +78,13 @@ public class Product {
     @NotNull(message = "Category is required")
     private ProductCategory category = ProductCategory.OTHER;
 
+    // R2 object key (e.g. products/42/9f3a....webp), not the URL — the
+    // public URL is derived (base + key) so the serving domain can change
+    // without a data migration. Null means no image uploaded yet; the
+    // frontend's fallback chain is what makes that state presentable.
+    @Column(name = "image_key")
+    private String imageKey;
+
     // Constructors
     public Product() {}
 
@@ -205,6 +212,9 @@ public class Product {
 
     public ProductCategory getCategory() { return category; }
     public void setCategory(ProductCategory category) { this.category = category; }
+
+    public String getImageKey() { return imageKey; }
+    public void setImageKey(String imageKey) { this.imageKey = imageKey; }
 
     @Override
     public String toString() {

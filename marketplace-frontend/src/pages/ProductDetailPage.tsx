@@ -58,7 +58,7 @@ export function ProductDetailPage() {
           {/* Media */}
           <div style={{ borderRadius: 'var(--r)', aspectRatio: '4/3', overflow: 'hidden', background: '#EAEEED' }}>
             <img
-              src={`https://picsum.photos/seed/${imageSeed}/800/600`}
+              src={product.imageUrl ?? `https://picsum.photos/seed/${imageSeed}/800/600`}
               alt={product.name}
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />

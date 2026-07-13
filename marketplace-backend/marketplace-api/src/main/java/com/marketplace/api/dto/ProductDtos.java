@@ -43,7 +43,8 @@ public class ProductDtos {
             long reviewCount,       // 0 when unreviewed
             long soldCount,         // kept sales only
             LocalDateTime createdAt, // real recency — feeds the honest "New in" chip
-            ProductCategory category
+            ProductCategory category,
+            String imageUrl          // null until a vendor uploads one — frontend falls back to a placeholder
     ) {}
 
     /** GET /api/v1/products/categories — live-product counts per category, for the sidebar. */

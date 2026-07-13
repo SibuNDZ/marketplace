@@ -7,6 +7,7 @@ import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
 import com.marketplace.api.exception.ReviewExceptions.*;
 import com.marketplace.api.payment.PaymentExceptions.PaymentProviderException;
 import com.marketplace.api.service.ProductStockService.InsufficientAdjustmentException;
+import com.marketplace.api.storage.ProductImageService.UnsupportedImageTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -95,6 +97,19 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(EmptyCartException.class)
     public ProblemDetail emptyCart(EmptyCartException ex) {
         return problem(HttpStatus.BAD_REQUEST, "Empty cart", ex.getMessage());
+    }
+
+    @ExceptionHandler(UnsupportedImageTypeException.class)
+    public ProblemDetail unsupportedImageType(UnsupportedImageTypeException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Unsupported image", ex.getMessage());
+    }
+
+    // Spring throws this BEFORE the controller when multipart limits trip
+    // (application.yml's max-file-size) — without this mapping an oversized
+    // upload is an ugly 500 instead of a clean 400.
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ProblemDetail uploadTooLarge(MaxUploadSizeExceededException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Image too large", "Image too large — 5MB max");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

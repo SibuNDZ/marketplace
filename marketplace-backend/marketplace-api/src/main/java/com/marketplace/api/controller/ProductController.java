@@ -7,7 +7,6 @@ import com.marketplace.api.entity.ProductCategory;
 import com.marketplace.api.security.UserPrincipal;
 import com.marketplace.api.service.ProductService;
 import com.marketplace.api.service.ProductStockService;
-import com.marketplace.api.storage.ProductImageService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -17,15 +16,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;import org.springframework.security.core.annotation.AuthenticationPrincipal;import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URI;
 import java.util.List;
-import java.util.Map;
 
 /**
  * GETs are public (SecurityConfig permits them). Writes: @PreAuthorize gates
@@ -45,14 +41,11 @@ public class ProductController {
 
     private final ProductService productService;
     private final ProductStockService productStockService;
-    private final ProductImageService productImageService;
 
     public ProductController(ProductService productService,
-                             ProductStockService productStockService,
-                             ProductImageService productImageService) {
+                             ProductStockService productStockService) {
         this.productService = productService;
         this.productStockService = productStockService;
-        this.productImageService = productImageService;
     }
 
     @GetMapping
@@ -115,13 +108,5 @@ public class ProductController {
             @AuthenticationPrincipal UserPrincipal me) {
         return new StockAdjustmentResponse(id,
                 productStockService.adjustStock(id, request.delta(), me));
-    }
-
-    @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('VENDOR','ADMIN')")
-    public Map<String, String> uploadImage(@PathVariable Long id,
-            @RequestParam("file") MultipartFile file,
-            @AuthenticationPrincipal UserPrincipal me) {
-        return Map.of("imageUrl", productImageService.upload(id, file, me));
     }
 }

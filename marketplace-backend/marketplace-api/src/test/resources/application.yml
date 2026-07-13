@@ -12,14 +12,3 @@ app:
   bootstrap:
     admin-email: ""
     admin-password: ""
-  storage:
-    r2:
-      account-id: test-account-id
-      access-key-id: test-access-key-id
-      secret-access-key: test-secret-access-key
-      bucket: erestyu-images-test
-      public-base-url: https://images.erestyu.com
-      # Individual tests that actually exercise storage (e.g.
-      # ProductImageServiceTest) override account-id/keys/endpoint-override
-      # via @DynamicPropertySource to point at a real MinIO testcontainer —
-      # these are safe no-op placeholders for every other test.

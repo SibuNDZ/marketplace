@@ -4,11 +4,15 @@ import { LegalPage, LegalSection } from './LegalPage'
 // Every statement here is backed by code that actually behaves that way:
 // the 90-day view retention is PopularityJob.sweepOldViews (nightly 03:15),
 // the Stripe claim is StripeCheckoutService (hosted checkout — card data
-// never reaches this backend), refresh-token handling is RefreshTokenService.
-// This page is the privacy notice the discovery slice's POPIA note promised.
+// never reaches this backend), refresh-token handling is RefreshTokenService,
+// and the shipping address line is OrderService.shippingFor — collected via
+// PaymentController.pay, shared with the admin (today's single fulfiller,
+// per AdminOrderController's new detail endpoint) only once an order is
+// PAID or later. This page is the privacy notice the discovery slice's
+// POPIA note promised.
 export function PrivacyPolicyPage() {
   return (
-    <LegalPage title="Privacy Policy" lastUpdated="2026-07-11">
+    <LegalPage title="Privacy Policy" lastUpdated="2026-07-13">
       <LegalSection heading="What we collect">
         <p>
           <strong>Account details</strong> — your email address, name, and a hash
@@ -20,6 +24,13 @@ export function PrivacyPolicyPage() {
           orders you place, kept as a permanent record of the transaction.
         </p>
         <p>
+          <strong>Shipping and contact details</strong> — the recipient name,
+          phone number, and delivery address you submit at checkout. This is
+          shared with the fulfilling admin once your payment is confirmed (today
+          the marketplace has a single admin fulfiller; this will be scoped to
+          the specific vendor if a dedicated vendor fulfilment view ships later).
+        </p>
+        <p>
           <strong>Product views</strong> — which product pages you visit, used for
           your "recently viewed" list and the popularity rankings. Anonymous
           visits are counted for rankings but are not linked to any account.
@@ -28,9 +39,10 @@ export function PrivacyPolicyPage() {
 
       <LegalSection heading="Why we collect it">
         <p>
-          Order fulfilment (we cannot deliver what we cannot record), account
-          access, and product discovery — view history feeds the recently-viewed
-          shelf and the hourly popularity model that ranks the catalog.
+          Order fulfilment (we cannot deliver what we cannot record or ship what
+          we don't know the address of), account access, and product discovery —
+          view history feeds the recently-viewed shelf and the hourly popularity
+          model that ranks the catalog.
         </p>
       </LegalSection>
 

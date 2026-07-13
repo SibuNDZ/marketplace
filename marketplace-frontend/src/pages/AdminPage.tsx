@@ -1,4 +1,5 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, Page, AdminOrderSummary } from '../lib/api'
 import { Topbar } from '../components/layout/Topbar'
@@ -44,7 +45,9 @@ export function AdminPage() {
             <tbody>
               {orders.map(o => (
                 <tr key={o.id} style={{ borderBottom: '1px solid var(--line)' }}>
-                  <td className="num" style={{ padding: '14px 12px', fontWeight: 700 }}>{o.orderNumber}</td>
+                  <td className="num" style={{ padding: '14px 12px', fontWeight: 700 }}>
+                    <Link to={`/admin/orders/${o.id}`} style={{ color: 'inherit' }}>{o.orderNumber}</Link>
+                  </td>
                   <td style={{ padding: '14px 12px', color: 'var(--ink-soft)', fontSize: 13 }}>{o.customerEmail}</td>
                   <td className="num" style={{ padding: '14px 12px' }}>R{Number(o.total).toFixed(2)}</td>
                   <td style={{ padding: '14px 12px' }}><StatusChip status={o.status} /></td>

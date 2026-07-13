@@ -259,12 +259,31 @@ export interface OrderItemResponse {
   quantity: number
   lineTotal: string
 }
+
+/**
+ * Submitted once, at pay-time — matches ShippingDtos.ShippingAddressRequest
+ * field-for-field. addressLine2 is the only optional field.
+ */
+export interface ShippingAddress {
+  recipientName: string
+  phone: string
+  addressLine1: string
+  addressLine2?: string | null
+  city: string
+  province: string
+  postalCode: string
+}
+
 export interface OrderResponse {
   id: number
   status: string
   total: string
   createdAt: string
   items: OrderItemResponse[]
+  // null until submitted at pay-time, and masked entirely by the backend
+  // for admin viewers on orders that aren't PAID-or-later — the frontend
+  // trusts that masking completely rather than re-deriving it here.
+  shippingAddress?: ShippingAddress | null
 }
 
 /** Admin list projection — no items by design (paged-fetch trap); drill into detail/history. */

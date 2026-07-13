@@ -15,6 +15,7 @@ import { OrderDetailPage } from './pages/OrderDetailPage'
 import { VendorDashboardPage } from './pages/VendorDashboardPage'
 import { ProductFormPage } from './pages/ProductFormPage'
 import { AdminPage } from './pages/AdminPage'
+import { AdminOrderDetailPage } from './pages/AdminOrderDetailPage'
 import { PrivacyPolicyPage } from './pages/legal/PrivacyPolicyPage'
 import { TermsPage } from './pages/legal/TermsPage'
 
@@ -51,6 +52,7 @@ export default function App() {
           <Route path="/vendor/products/new" element={<RequireAuth><ProductFormPage /></RequireAuth>} />
           <Route path="/vendor/products/:id/edit" element={<RequireAuth><ProductFormPage /></RequireAuth>} />
           <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
+          <Route path="/admin/orders/:id" element={<RequireAuth><AdminOrderDetailPage /></RequireAuth>} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

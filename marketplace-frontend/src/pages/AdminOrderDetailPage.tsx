@@ -1,25 +1,26 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api, OrderResponse, ApiError } from '../lib/api'
+import { useQuery } from '@tanstack/react-query'
+import { api, OrderResponse } from '../lib/api'
 import { Topbar } from '../components/layout/Topbar'
 import { StatusChip } from '../components/ui/StatusChip'
 
-export function OrderDetailPage() {
+/**
+ * Read-only — the whole point of this page is to let an admin actually see
+ * an order (items, address) before shipping it; the transition buttons stay
+ * on AdminPage's table. shippingAddress is rendered whenever the API
+ * returns it and hidden whenever it doesn't — the backend's PAID-or-later
+ * masking rule (OrderService.shippingFor) is trusted completely here, not
+ * re-derived from order.status. That duplication is exactly what the
+ * backend note warns against.
+ */
+export function AdminOrderDetailPage() {
   const { id } = useParams()
-  const qc = useQueryClient()
-  const [cancelError, setCancelError] = useState<string>()
 
   const { data: order } = useQuery<OrderResponse>({
-    queryKey: ['order', id],
-    queryFn: () => api(`/api/v1/orders/${id}`),
+    queryKey: ['admin-order', id],
+    queryFn: () => api(`/api/v1/admin/orders/${id}`),
     enabled: !!id,
-  })
-
-  const cancel = useMutation({
-    mutationFn: () => api(`/api/v1/orders/${id}/cancel`, { method: 'POST' }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['order', id] }),
-    onError: (e) => setCancelError(e instanceof ApiError ? e.detail : 'Could not cancel'),
   })
 
   if (!order) return <><Topbar /><div className="page-shell no-catrail">Loading…</div></>
@@ -27,14 +28,15 @@ export function OrderDetailPage() {
   return (
     <>
       <Topbar />
-      <main className="page-shell no-catrail">
-        <Link to="/orders" style={{ fontSize: 13, color: 'var(--ink-soft)', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24 }}>
+      <main className="page-shell no-catrail" style={{ maxWidth: 640 }}>
+        <Link to="/admin" style={{ fontSize: 13, color: 'var(--ink-soft)', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24 }}>
           ← Orders
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
           <h1 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 26 }} className="num">Order #{order.id}</h1>
           <StatusChip status={order.status} />
         </div>
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {order.items.map((item, i) => (
             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid var(--line)' }}>
@@ -54,9 +56,9 @@ export function OrderDetailPage() {
           </div>
         </div>
 
-        {order.shippingAddress && (
-          <div style={{ marginTop: 28 }}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>Shipping to</h2>
+        <div style={{ marginTop: 28 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>Shipping to</h2>
+          {order.shippingAddress ? (
             <div style={{ background: 'var(--card)', borderRadius: 'var(--r)', padding: 18, boxShadow: 'var(--shadow)', fontSize: 14, lineHeight: 1.6 }}>
               <p style={{ fontWeight: 600 }}>{order.shippingAddress.recipientName}</p>
               <p>{order.shippingAddress.addressLine1}</p>
@@ -64,22 +66,12 @@ export function OrderDetailPage() {
               <p>{order.shippingAddress.city}, {order.shippingAddress.province} {order.shippingAddress.postalCode}</p>
               <p style={{ color: 'var(--ink-soft)', marginTop: 4 }} className="num">{order.shippingAddress.phone}</p>
             </div>
-          </div>
-        )}
-
-        {order.status === 'PENDING' && (
-          <div style={{ marginTop: 24 }}>
-            {cancelError && <p style={{ color: 'var(--clay)', fontSize: 13, marginBottom: 8 }}>{cancelError}</p>}
-            <button onClick={() => {
-              if (confirm('Cancel this order? Stock will be released.')) cancel.mutate()
-            }} disabled={cancel.isPending} style={{
-              padding: '9px 20px', border: '1.5px solid var(--clay)', color: 'var(--clay)',
-              borderRadius: 'var(--r-sm)', background: 'none', fontWeight: 600,
-            }}>
-              Cancel order
-            </button>
-          </div>
-        )}
+          ) : (
+            <p style={{ color: 'var(--ink-soft)', fontSize: 13 }}>
+              Not available yet — visible once the order is paid.
+            </p>
+          )}
+        </div>
       </main>
     </>
   )

@@ -224,8 +224,32 @@ export interface RegisterResponse {
   emailSent: boolean
 }
 
-// Exact match to backend ProductCategory enum names — no translation layer.
-export type ProductCategoryKey = 'PRODUCE' | 'PANTRY' | 'CRAFTS' | 'HOME' | 'OTHER'
+// Categories are a table now (backend V14), not an enum, so there is no
+// union type to mirror — the taxonomy can change without a frontend deploy,
+// which was the entire point. Slugs are the identifier everywhere.
+
+/** GET /api/v1/categories — the browse tree, two levels deep. */
+export interface CategoryNode {
+  id: number
+  slug: string
+  name: string
+  icon: string | null
+  /**
+   * SUBTREE total. A root's count already includes everything filed under
+   * its children, so do NOT sum a parent and its children to get a total —
+   * that double-counts.
+   */
+  productCount: number
+  children: CategoryNode[]
+}
+
+/** GET /api/v1/categories/options — flat list for the vendor form picker. */
+export interface CategoryOption {
+  id: number
+  slug: string
+  name: string
+  parentSlug: string | null
+}
 
 export interface ProductResponse {
   id: number
@@ -243,7 +267,11 @@ export interface ProductResponse {
   reviewCount: number
   soldCount: number          // kept sales only (refunds excluded)
   createdAt: string          // real recency — feeds the "New in" chip
-  category: ProductCategoryKey
+  categorySlug: string
+  categoryName: string
+  parentCategorySlug: string | null  // null when filed directly on a top-level category
+  handmade: boolean
+  tags: string[]
   imageUrl: string | null    // null until a vendor uploads one — frontend falls back to a placeholder
 }
 
@@ -254,14 +282,14 @@ export interface ProductRequest {
   sku: string
   price: string
   stock: number
-  category: ProductCategoryKey
+  categorySlug: string
+  handmade: boolean
+  tags: string[]
 }
 
-/** GET /api/v1/products/categories — live counts per category, for the sidebar. */
-export interface CategoryCount {
-  category: ProductCategoryKey
-  count: number
-}
+// The old /products/categories count endpoint is gone — counts now ride
+// along on the category tree itself, so the sidebar needs one request
+// instead of two and the counts cannot disagree with the tree they label.
 
 /** Live aggregate from GET /products/{id}/reviews/summary — exact, not hourly. */
 export interface ReviewSummary {
@@ -337,6 +365,22 @@ export interface ReviewResponse {
 }
 
 // ---------- typed endpoints ----------
+export const categories = {
+  /**
+   * includeEmpty defaults false so shoppers are never offered a category
+   * that leads to an empty page. The vendor form passes true — a brand-new
+   * category has no products yet and still has to be selectable, or nothing
+   * could ever become the first product in it.
+   */
+  tree(includeEmpty = false) {
+    return api<CategoryNode[]>(
+      `/api/v1/categories?includeEmpty=${includeEmpty}`, { auth: false })
+  },
+  options() {
+    return api<CategoryOption[]>('/api/v1/categories/options', { auth: false })
+  },
+}
+
 export const auth = {
   async login(email: string, password: string) {
     const r = await api<AuthResponse>('/api/v1/auth/login', {

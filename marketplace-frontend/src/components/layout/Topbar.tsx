@@ -6,7 +6,6 @@ import { api, CartResponse } from '../../lib/api'
 import { useCartDrawer } from '../../context/CartDrawerContext'
 import { TopTrustBar } from './TopTrustBar'
 import { CartDrawer } from '../cart/CartDrawer'
-import { PILL_CATEGORIES } from '../../data/categories'
 
 function IconButton({ label, children, onClick }: { label: string; children: React.ReactNode; onClick?: () => void }) {
   return (
@@ -68,13 +67,11 @@ export function Topbar() {
             flex: 1, maxWidth: 560, display: 'flex', alignItems: 'stretch',
             border: '1.5px solid var(--line)', borderRadius: 'var(--r-pill)', overflow: 'hidden', background: 'var(--card)',
           }}>
-            <select aria-label="Category" style={{
-              border: 'none', borderRight: '1px solid var(--line)', background: 'var(--paper)',
-              fontSize: 13, fontWeight: 500, color: 'var(--ink-soft)', padding: '0 10px',
-              maxWidth: 150,
-            }}>
-              {PILL_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.icon} {c.label}</option>)}
-            </select>
+            {/* The category dropdown that used to sit here was wired to
+                nothing — it rendered the taxonomy, but changing it did not
+                filter the search or anything else. Rather than port dead UI
+                onto the new tree, it is removed. The chip row and sidebar
+                are the real category controls; this is a search box. */}
             <input
               type="search"
               placeholder="Search products or vendors"

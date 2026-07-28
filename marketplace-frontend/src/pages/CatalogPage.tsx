@@ -1,17 +1,25 @@
-import React, { useMemo, useState } from 'react'
+import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { api, CategoryCount, Page, ProductResponse } from '../lib/api'
+import { api, Page, ProductResponse } from '../lib/api'
 import { Topbar } from '../components/layout/Topbar'
 import { CategoryPills } from '../components/layout/CategoryPills'
 import { CategorySidebar } from '../components/layout/CategorySidebar'
 import { ProductCard } from '../components/product/ProductCard'
 import { PromoCarousel } from '../components/promo/PromoCarousel'
-import { CATEGORIES } from '../data/categories'
+import { ALL_SLUG } from '../data/categories'
+import { useCategoryTree, findBySlug } from '../hooks/useCategoryTree'
 
-// Both filters run on REAL aggregates from the popularity read model.
-// On a fresh catalog with no activity they simply match nothing — which
-// is the truthful result, not a bug.
+// bestSelling and fiveStar run on REAL aggregates from the popularity read
+// model. On a fresh catalog with no activity they simply match nothing —
+// the truthful result, not a bug.
+//
+// handmade is different in kind and that difference is deliberate: it is a
+// SERVER-side filter on a product column, so it goes in the query rather
+// than filtering the current page client-side. Filtering handmade in the
+// browser would only ever search the 20 products already loaded, which
+// silently lies once there is more than one page.
 const QUICK_FILTERS = [
+  { key: 'handmade', label: '🧵 Handmade' },
   { key: 'bestSelling', label: '🔥 Best-Selling' },
   { key: 'fiveStar', label: '⭐ Top Rated' },
 ] as const
@@ -28,32 +36,29 @@ function SectionDivider({ icon, label }: { icon: string; label: string }) {
 }
 
 export function CatalogPage() {
-  const [category, setCategory] = useState('ALL')
+  const [category, setCategory] = useState(ALL_SLUG)
   const [activeFilters, setActiveFilters] = useState<Set<QuickFilterKey>>(new Set())
   const [page, setPage] = useState(0)
   const PAGE_SIZE = 20
 
-  // Server-side category filter — real column (V10), not client-side
-  // id-arithmetic. Resets to page 0 whenever the category changes.
+  // Counts arrive on the tree itself, so there is no second request and no
+  // way for a category and the number beside it to disagree.
+  const { data: tree } = useCategoryTree()
+  const categoryTree = tree ?? []
+
+  const handmadeOnly = activeFilters.has('handmade')
+
+  // Category AND handmade are both server-side. Category is a slug now, and
+  // a top-level slug also matches its subcategories on the backend, so
+  // selecting Fashion returns the jewellery filed one level down.
   const { data, isLoading } = useQuery<Page<ProductResponse>>({
-    queryKey: ['products', category, page, PAGE_SIZE],
+    queryKey: ['products', category, handmadeOnly, page, PAGE_SIZE],
     queryFn: () => api(
       `/api/v1/products?page=${page}&size=${PAGE_SIZE}&sort=createdAt,desc`
-      + (category === 'ALL' ? '' : `&category=${category}`),
+      + (category === ALL_SLUG ? '' : `&category=${category}`)
+      + (handmadeOnly ? '&handmade=true' : ''),
     ),
   })
-
-  // Real counts from the backend's grouped query, not a client tally of a
-  // fabricated per-product assignment.
-  const { data: counts } = useQuery<CategoryCount[]>({
-    queryKey: ['category-counts'],
-    queryFn: () => api('/api/v1/products/categories'),
-  })
-  const categoryCounts = useMemo(() => {
-    const map: Record<string, number> = {}
-    counts?.forEach(c => { map[c.category] = c.count })
-    return map
-  }, [counts])
 
   const products = data?.content ?? []
 
@@ -67,6 +72,10 @@ export function CatalogPage() {
       next.has(key) ? next.delete(key) : next.add(key)
       return next
     })
+    // handmade changes the QUERY, not just the client-side view, so the
+    // current page number no longer means anything. The other two filter
+    // what is already loaded and can leave paging alone.
+    if (key === 'handmade') setPage(0)
   }
 
   const selectCategory = (key: string) => { setCategory(key); setPage(0) }
@@ -75,17 +84,25 @@ export function CatalogPage() {
   if (activeFilters.has('fiveStar')) mainList = mainList.filter(p => p.reviewCount > 0 && Number(p.avgRating) >= 4.5)
   if (activeFilters.has('bestSelling')) mainList = [...mainList].filter(p => p.soldCount > 0).sort((a, b) => b.soldCount - a.soldCount)
 
-  const categoryLabel = category === 'ALL' ? 'All products' : CATEGORIES.find(c => c.key === category)?.label ?? 'Products'
+  const found = category === ALL_SLUG ? undefined : findBySlug(categoryTree, category)
+  const categoryLabel = category === ALL_SLUG
+    ? 'All products'
+    : found
+      // "Fashion / Jewellery" rather than a bare "Jewellery": at two levels
+      // the subcategory name alone loses the context the user just clicked
+      // through, and several names (Shoes, Bags) read as ambiguous without it.
+      ? (found.parent ? `${found.parent.name} / ${found.node.name}` : found.node.name)
+      : 'Products'
 
   return (
     <>
       <Topbar />
-      <CategoryPills active={category} onSelect={selectCategory} />
+      <CategoryPills tree={categoryTree} active={category} onSelect={selectCategory} />
       <main className="page-shell">
         <PromoCarousel />
 
         <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
-          <CategorySidebar active={category} onSelect={selectCategory} counts={categoryCounts} />
+          <CategorySidebar tree={categoryTree} active={category} onSelect={selectCategory} />
 
           <div style={{ flex: 1, minWidth: 0 }}>
             {/* Quick filter chips */}
@@ -114,7 +131,7 @@ export function CatalogPage() {
               </div>
             ) : (
               <>
-                {category === 'ALL' && recommended.length > 0 && (
+                {category === ALL_SLUG && recommended.length > 0 && (
                   <>
                     <SectionDivider icon="⭐" label="Highly rated" />
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>

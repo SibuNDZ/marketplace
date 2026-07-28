@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, Page, ProductResponse } from '../lib/api'
 import { Topbar } from '../components/layout/Topbar'
-import { CATEGORIES } from '../data/categories'
 
 export function VendorDashboardPage() {
   const qc = useQueryClient()
@@ -89,7 +88,12 @@ export function VendorDashboardPage() {
                   <td style={{ padding: '12px 12px', fontWeight: 600 }}>{p.name}</td>
                   <td className="num" style={{ padding: '12px 12px', fontSize: 13, color: 'var(--ink-soft)' }}>{p.sku ?? '—'}</td>
                   <td style={{ padding: '12px 12px', fontSize: 13, color: 'var(--ink-soft)' }}>
-                    {CATEGORIES.find(c => c.key === p.category)?.label ?? p.category}
+                    {/* The response carries the resolved name, so the
+                        client-side key-to-label lookup table is gone. */}
+                    {p.categoryName}
+                    {p.handmade && (
+                      <span title="Handmade" style={{ marginLeft: 6 }} aria-label="Handmade">🧵</span>
+                    )}
                   </td>
                   <td className="num" style={{ padding: '12px 12px' }}>R{Number(p.price).toFixed(2)}</td>
                   <td style={{ padding: '12px 12px' }}>

@@ -61,6 +61,11 @@
   --trustbar-h: 30px;
   --topbar-h: 60px;
   --catrail-h: 46px;
+  /* Total height the category rail currently occupies. CategoryPills sets
+     this to two rows when a root is selected and its subcategory row is
+     showing; everything that offsets content below the fixed header must
+     read THIS, not --catrail-h, or the second row covers the first cards. */
+  --catrail-total: var(--catrail-h);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -93,7 +98,7 @@ button { cursor: pointer; font: inherit; }
 .page-shell {
   max-width: var(--content-max);
   margin: 0 auto;
-  padding: calc(var(--trustbar-h) + var(--topbar-h) + var(--catrail-h) + 24px) var(--gutter) 48px;
+  padding: calc(var(--trustbar-h) + var(--topbar-h) + var(--catrail-total) + 24px) var(--gutter) 48px;
 }
 
 /* pages without the category rail (cart, orders, admin, vendor, auth) */

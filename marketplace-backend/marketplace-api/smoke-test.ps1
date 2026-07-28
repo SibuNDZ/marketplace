@@ -17,10 +17,18 @@ function Get2($url, $token) {
     Invoke-RestMethod -Uri $url -Headers @{ Authorization = "Bearer $token" }
 }
 
-Write-Host "1) Register vendor..."
-$vendor = Post "$base/auth/register" @{
+Write-Host "1) Register vendor (then verify + login: register no longer returns a session)..."
+Post "$base/auth/register" @{
     email = "vendor$stamp@test.local"; password = "password123"
-    fullName = "Smoke Vendor"; role = "VENDOR"
+    firstName = "Smoke"; lastName = "Vendor"
+    username = "smokevendor$stamp"; role = "VENDOR"
+} | Out-Null
+# Login is gated on email verification and this script has no inbox, so it
+# flips the flag directly. Requires DATABASE_URL to point at the same dev DB
+# the API is using.
+& psql $env:DATABASE_URL -c "UPDATE users SET is_verified = TRUE WHERE email = 'vendor$stamp@test.local';" | Out-Null
+$vendor = Post "$base/auth/login" @{
+    email = "vendor$stamp@test.local"; password = "password123"
 }
 Write-Host "   vendor userId=$($vendor.userId) role=$($vendor.role)"
 
@@ -32,9 +40,14 @@ $product = Post "$base/products" @{
 Write-Host "   productId=$($product.id) vendor=$($product.vendorName)"
 
 Write-Host "3) Register customer + /me sanity..."
-$cust = Post "$base/auth/register" @{
+Post "$base/auth/register" @{
     email = "cust$stamp@test.local"; password = "password123"
-    fullName = "Smoke Customer"; role = "CUSTOMER"
+    firstName = "Smoke"; lastName = "Customer"
+    username = "smokecust$stamp"; role = "CUSTOMER"
+} | Out-Null
+& psql $env:DATABASE_URL -c "UPDATE users SET is_verified = TRUE WHERE email = 'cust$stamp@test.local';" | Out-Null
+$cust = Post "$base/auth/login" @{
+    email = "cust$stamp@test.local"; password = "password123"
 }
 $me = Get2 "$base/auth/me" $cust.accessToken
 if ($me.userId -ne $cust.userId) { throw "/me returned wrong user!" }

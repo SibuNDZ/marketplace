@@ -56,6 +56,26 @@ app:
     secret: ${JWT_SECRET}
     # 15 minutes: short enough to limit a leaked token's window; refresh
     # tokens extend the session without forcing re-login.
+    expiry-seconds: ${JWT_EXPIRY_SECONDS:900}
+    # 7 days: refresh token lifetime. Rotate-on-use means an active user
+    # never actually sees this expiry; it bounds abandoned sessions.
+    refresh-expiry-seconds: ${REFRESH_TOKEN_EXPIRY_SECONDS:604800}
+  # Single source of truth for "where does the browser live". The Stripe
+  # return URLs below and the links in verification/reset emails all derive
+  # from it — three places that must never disagree.
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
+  email:
+    # Blank disables sending and logs the link instead (see EmailService).
+    # Deliberately NOT fail-fast like JWT_SECRET: a missing key here means
+    # the resend button is a no-op, not a crash loop.
+    resend-api-key: ${RESEND_API_KEY:}
+    from: ${APP_EMAIL_FROM:eRestyu <noreply@erestyu.com>}
+  tokens:
+    # 24h: people register on a phone and read mail on a laptop later. The
+    # cost of expiry is a resend.
+    verification-expiry-seconds: ${VERIFICATION_TOKEN_EXPIRY_SECONDS:86400}
+    # 1h: a reset link is an account-takeover primitive sitting in an inbox.
+    reset-expiry-seconds: ${RESET_TOKEN_EXPIRY_SECONDS:3600}
   stripe:
     secret-key: ${STRIPE_SECRET_KEY}
     webhook-secret: ${STRIPE_WEBHOOK_SECRET}
@@ -89,7 +109,3 @@ sentry:
   traces-sample-rate: 0.0       # errors only; perf tracing later if ever
   logging:
     minimum-event-level: error  # every log.error() becomes a Sentry event
-    expiry-seconds: ${JWT_EXPIRY_SECONDS:900}
-    # 7 days: refresh token lifetime. Rotate-on-use means an active user
-    # never actually sees this expiry; it bounds abandoned sessions.
-    refresh-expiry-seconds: ${REFRESH_TOKEN_EXPIRY_SECONDS:604800}

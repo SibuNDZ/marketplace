@@ -1,17 +1,19 @@
 import React, { FormEvent, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, ApiError, ProductCategoryKey, ProductRequest, ProductResponse, fieldErrorsFrom, uploadProductImage } from '../lib/api'
+import { api, ApiError, CategoryOption, ProductRequest, ProductResponse, categories as categoriesApi, fieldErrorsFrom, uploadProductImage } from '../lib/api'
 import { Topbar } from '../components/layout/Topbar'
 import { ErrorSurface } from '../components/ui/ErrorSurface'
-import { CATEGORIES } from '../data/categories'
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 const ACCEPTED_IMAGE_TYPES = 'image/jpeg,image/png,image/webp'
 
 const EMPTY: ProductRequest = {
-  name: '', description: '', sku: '', price: '', stock: 0, category: 'OTHER',
+  name: '', description: '', sku: '', price: '', stock: 0,
+  categorySlug: '', handmade: false, tags: [],
 }
+
+const MAX_TAGS = 10
 
 function Field({ label, error, children }: { label: string; error?: string[]; children: React.ReactNode }) {
   return (
@@ -58,7 +60,9 @@ export function ProductFormPage() {
         sku: existing.sku ?? '',
         price: existing.price,
         stock: existing.stock,
-        category: existing.category,
+        categorySlug: existing.categorySlug,
+        handmade: existing.handmade,
+        tags: existing.tags ?? [],
       })
     }
   }, [existing])
@@ -73,6 +77,40 @@ export function ProductFormPage() {
 
   const set = <K extends keyof ProductRequest>(key: K, value: ProductRequest[K]) =>
     setForm(f => ({ ...f, [key]: value }))
+
+  // includeEmpty=true: a brand-new category has no products yet and still
+  // has to be selectable, otherwise nothing could ever become the first
+  // product in it. The shopper-facing tree uses the opposite default.
+  const { data: categoryOptions } = useQuery<CategoryOption[]>({
+    queryKey: ['category-options'],
+    queryFn: () => categoriesApi.options(),
+    staleTime: 5 * 60 * 1000,
+  })
+  const options = categoryOptions ?? []
+  const roots = options.filter(c => c.parentSlug === null)
+  const childrenOf = (slug: string) => options.filter(c => c.parentSlug === slug)
+
+  const [tagDraft, setTagDraft] = useState('')
+
+  const commitTag = () => {
+    // Normalised the same way the backend does on write, so what the vendor
+    // sees in the chip is exactly what gets stored and filtered on.
+    const tag = tagDraft.trim().toLowerCase()
+    setTagDraft('')
+    if (!tag || form.tags.includes(tag) || form.tags.length >= MAX_TAGS) return
+    set('tags', [...form.tags, tag])
+  }
+
+  const onTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Enter must not submit the form — in a single-input row the browser
+    // treats Enter as submit, which would save a half-filled product.
+    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); commitTag() }
+    else if (e.key === 'Backspace' && !tagDraft && form.tags.length > 0) {
+      set('tags', form.tags.slice(0, -1))
+    }
+  }
+
+  const removeTag = (tag: string) => set('tags', form.tags.filter(t => t !== tag))
 
   const onImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -171,14 +209,69 @@ export function ProductFormPage() {
               </Field>
             </div>
             <div style={{ flex: 1 }}>
-              <Field label="Category" error={fieldErrors.category}>
-                <select required value={form.category} onChange={e => set('category', e.target.value as ProductCategoryKey)}
-                  style={inputStyle(!!fieldErrors.category)}>
-                  {CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.icon} {c.label}</option>)}
+              <Field label="Category" error={fieldErrors.categorySlug}>
+                {/* Grouped by parent so a 41-entry list stays navigable, and
+                    roots are selectable too — a product that genuinely does
+                    not fit any subcategory should not be forced into a wrong
+                    one just to satisfy the picker. */}
+                <select required value={form.categorySlug}
+                  onChange={e => set('categorySlug', e.target.value)}
+                  style={inputStyle(!!fieldErrors.categorySlug)}>
+                  <option value="" disabled>Choose a category…</option>
+                  {roots.map(root => (
+                    <optgroup key={root.slug} label={root.name}>
+                      <option value={root.slug}>{root.name} (general)</option>
+                      {childrenOf(root.slug).map(c => (
+                        <option key={c.slug} value={c.slug}>{c.name}</option>
+                      ))}
+                    </optgroup>
+                  ))}
                 </select>
               </Field>
             </div>
           </div>
+
+          <Field label="Tags" error={fieldErrors.tags}>
+            <input
+              value={tagDraft}
+              onChange={e => setTagDraft(e.target.value)}
+              onKeyDown={onTagKeyDown}
+              onBlur={commitTag}
+              placeholder={form.tags.length >= MAX_TAGS
+                ? `Maximum ${MAX_TAGS} tags`
+                : 'Type a tag and press Enter'}
+              disabled={form.tags.length >= MAX_TAGS}
+              style={inputStyle(!!fieldErrors.tags)} />
+            <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--ink-soft)' }}>
+              For anything the categories do not cover — “vegan”, “gluten-free”, “gift”.
+            </span>
+            {form.tags.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                {form.tags.map(tag => (
+                  <button key={tag} type="button" onClick={() => removeTag(tag)} style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '4px 10px', borderRadius: 'var(--r-pill)',
+                    border: '1px solid var(--line)', background: 'var(--paper)',
+                    fontSize: 12, fontWeight: 500,
+                  }}>
+                    {tag}<span aria-label={`Remove ${tag}`} style={{ color: 'var(--ink-soft)' }}>×</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </Field>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 500 }}>
+            <input type="checkbox" checked={form.handmade}
+              onChange={e => set('handmade', e.target.checked)}
+              style={{ width: 16, height: 16 }} />
+            <span>
+              Handmade
+              <span style={{ display: 'block', fontWeight: 400, fontSize: 12, color: 'var(--ink-soft)' }}>
+                Independent of category — a handmade necklace still files under Fashion / Jewellery.
+              </span>
+            </span>
+          </label>
 
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{ flex: 1 }}>

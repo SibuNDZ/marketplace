@@ -1,9 +1,7 @@
 package com.marketplace.api.controller;
 
-import com.marketplace.api.dto.ProductDtos.CategoryCount;
 import com.marketplace.api.dto.ProductDtos.ProductRequest;
 import com.marketplace.api.dto.ProductDtos.ProductResponse;
-import com.marketplace.api.entity.ProductCategory;
 import com.marketplace.api.security.UserPrincipal;
 import com.marketplace.api.service.ProductService;
 import com.marketplace.api.service.ProductStockService;
@@ -55,21 +53,23 @@ public class ProductController {
         this.productImageService = productImageService;
     }
 
+    /**
+     * category is a SLUG now, not an enum name — ?category=jewellery. A
+     * top-level slug also matches its subcategories, so ?category=fashion
+     * returns the jewellery too.
+     *
+     * handmade is a separate axis on purpose: ?handmade=true crosses every
+     * category, and combining the two (?category=fashion&handmade=true)
+     * is the case that a handmade-as-a-category taxonomy could not express
+     * at all.
+     */
     @GetMapping
     public Page<ProductResponse> list(
-            @RequestParam(required = false) ProductCategory category,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Boolean handmade,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
             Pageable pageable) {
-        return productService.list(category, pageable);
-    }
-
-    // Literal path segments beat {id}'s variable segment in Spring's route
-    // matching regardless of declaration order, but declared first for
-    // readability. Verify with a real request if this ever feels shaky —
-    // don't take routing specificity on faith.
-    @GetMapping("/categories")
-    public List<CategoryCount> categories() {
-        return productService.categoryCounts();
+        return productService.list(category, handmade, pageable);
     }
 
     @GetMapping("/{id}")

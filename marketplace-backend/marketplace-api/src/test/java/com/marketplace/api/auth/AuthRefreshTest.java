@@ -53,12 +53,32 @@ class AuthRefreshTest {
 
     // ---- helpers --------------------------------------------------------
 
+    /**
+     * Register, verify, log in.
+     *
+     * register() no longer returns a session — login is gated on email
+     * verification, so it hands back only a "check your inbox" receipt.
+     * These tests are about refresh-token rotation and need a real session,
+     * so the verification step is short-circuited here by flipping the flag
+     * directly rather than round-tripping a token out of the mail service.
+     * verifyEmail() itself is covered in AuthVerificationTest.
+     */
     private AuthResponse register(String tag) {
-        return authService.register(new RegisterRequest(
-                tag + "@refresh-test.local",
+        String email = tag + "@refresh-test.local";
+
+        authService.register(new RegisterRequest(
+                email,
                 "password123",
-                tag + " User",
+                tag,
+                "User",
+                tag.replace("-", "_"),
                 "CUSTOMER"));
+
+        User user = userRepository.findByEmail(email).orElseThrow();
+        user.setIsVerified(true);
+        userRepository.save(user);
+
+        return authService.login(new LoginRequest(email, "password123"));
     }
 
     // ---- tests ----------------------------------------------------------

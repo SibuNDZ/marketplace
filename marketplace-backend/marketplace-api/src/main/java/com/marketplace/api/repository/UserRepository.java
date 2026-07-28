@@ -12,6 +12,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
 
+    /** Usernames are stored lowercase; callers must normalise before asking. */
+    boolean existsByUsername(String username);
+
     boolean existsByRole(UserRole role);
 }
 

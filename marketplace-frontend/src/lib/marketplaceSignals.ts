@@ -11,9 +11,11 @@
 //   - discount % / was-prices / countdown / flash sale / verified badge /
 //     free shipping / MOQ / shipping origin → deleted outright, no
 //     replacement (see the honest-signals slice commit).
-//   - category assignment → real, ProductResponse.category (V10). Catalog
-//     filtering and the sidebar's counts both come from the backend now
-//     (GET /api/v1/products?category=, GET /api/v1/products/categories).
+//   - category assignment → real, ProductResponse.categorySlug. Categories
+//     are a table since V14, served as a two-level tree by
+//     GET /api/v1/categories with subtree product counts included, so the
+//     sidebar no longer needs a separate count request. Catalog filtering
+//     is GET /api/v1/products?category=<slug>&handmade=<bool>.
 
 export function getImageSeed(productId: number): string {
   return `mk-${productId}`

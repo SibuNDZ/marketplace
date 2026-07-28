@@ -33,9 +33,19 @@ public class User {
     @NotBlank(message = "First name is required")
     private String firstName;
 
+    // NOT @NotBlank: mononyms are common and a required surname rejects real
+    // people. The column stays NOT NULL and an absent surname is stored as
+    // "". The previous @NotBlank here turned every single-name registration
+    // into an opaque 500 at flush time.
     @Column(name = "last_name", nullable = false)
-    @NotBlank(message = "Last name is required")
     private String lastName;
+
+    // Stored lowercase — the DB has a plain UNIQUE constraint, so casing is
+    // normalised on the way in (AuthService) rather than relying on a
+    // functional index Hibernate's validate mode cannot see.
+    @Column(name = "username", nullable = false, length = 30, unique = true)
+    @NotBlank(message = "Username is required")
+    private String username;
 
     @Column(name = "phone_number")
     private String phoneNumber;
@@ -43,7 +53,10 @@ public class User {
     @Column(name = "is_active")
     private Boolean isActive = true;
 
-    @Column(name = "is_verified")
+    // "Has this person proved they own this address", NOT "is this account
+    // allowed in" — that is isActive, which UserPrincipal maps to isEnabled().
+    // Login checks both, for different reasons.
+    @Column(name = "is_verified", nullable = false)
     private Boolean isVerified = false;
 
     @Enumerated(EnumType.STRING)
@@ -117,6 +130,14 @@ public class User {
 
     public void setLastName(String lastName) {
         this.lastName = lastName;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
     }
 
     public String getPhoneNumber() {

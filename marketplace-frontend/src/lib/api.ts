@@ -39,6 +39,11 @@ export class ApiError extends Error {
     public requestId?: string,
     public shortages?: Shortage[],
     public fieldErrors?: Record<string, string[]>,
+    // Machine-readable discriminator the backend attaches to responses whose
+    // status alone is ambiguous. EMAIL_NOT_VERIFIED is the first: a 403 on
+    // login could be several things, and the UI has to tell that one apart
+    // to offer a resend rather than a dead end.
+    public code?: string,
   ) {
     super(detail || title)
   }
@@ -74,6 +79,7 @@ async function toApiError(res: Response): Promise<ApiError> {
       body.requestId ?? requestId,
       body.shortages,
       body.errors,
+      body.code,
     )
   } catch {
     return new ApiError(res.status, 'Request failed', res.statusText, requestId)
@@ -205,8 +211,45 @@ export interface AuthResponse {
   role: 'CUSTOMER' | 'VENDOR' | 'ADMIN'
 }
 
-// Exact match to backend ProductCategory enum names — no translation layer.
-export type ProductCategoryKey = 'PRODUCE' | 'PANTRY' | 'CRAFTS' | 'HOME' | 'OTHER'
+/**
+ * What registration returns now that it no longer logs you in.
+ *
+ * emailSent=false means the account WAS created but the provider rejected
+ * the message. The UI has to say so and offer a resend — telling the user
+ * to check an inbox nothing was sent to strands them on an account they
+ * cannot log into and cannot re-register.
+ */
+export interface RegisterResponse {
+  email: string
+  emailSent: boolean
+}
+
+// Categories are a table now (backend V14), not an enum, so there is no
+// union type to mirror — the taxonomy can change without a frontend deploy,
+// which was the entire point. Slugs are the identifier everywhere.
+
+/** GET /api/v1/categories — the browse tree, two levels deep. */
+export interface CategoryNode {
+  id: number
+  slug: string
+  name: string
+  icon: string | null
+  /**
+   * SUBTREE total. A root's count already includes everything filed under
+   * its children, so do NOT sum a parent and its children to get a total —
+   * that double-counts.
+   */
+  productCount: number
+  children: CategoryNode[]
+}
+
+/** GET /api/v1/categories/options — flat list for the vendor form picker. */
+export interface CategoryOption {
+  id: number
+  slug: string
+  name: string
+  parentSlug: string | null
+}
 
 export interface ProductResponse {
   id: number
@@ -224,7 +267,11 @@ export interface ProductResponse {
   reviewCount: number
   soldCount: number          // kept sales only (refunds excluded)
   createdAt: string          // real recency — feeds the "New in" chip
-  category: ProductCategoryKey
+  categorySlug: string
+  categoryName: string
+  parentCategorySlug: string | null  // null when filed directly on a top-level category
+  handmade: boolean
+  tags: string[]
   imageUrl: string | null    // null until a vendor uploads one — frontend falls back to a placeholder
 }
 
@@ -235,14 +282,14 @@ export interface ProductRequest {
   sku: string
   price: string
   stock: number
-  category: ProductCategoryKey
+  categorySlug: string
+  handmade: boolean
+  tags: string[]
 }
 
-/** GET /api/v1/products/categories — live counts per category, for the sidebar. */
-export interface CategoryCount {
-  category: ProductCategoryKey
-  count: number
-}
+// The old /products/categories count endpoint is gone — counts now ride
+// along on the category tree itself, so the sidebar needs one request
+// instead of two and the counts cannot disagree with the tree they label.
 
 /** Live aggregate from GET /products/{id}/reviews/summary — exact, not hourly. */
 export interface ReviewSummary {
@@ -318,6 +365,22 @@ export interface ReviewResponse {
 }
 
 // ---------- typed endpoints ----------
+export const categories = {
+  /**
+   * includeEmpty defaults false so shoppers are never offered a category
+   * that leads to an empty page. The vendor form passes true — a brand-new
+   * category has no products yet and still has to be selectable, or nothing
+   * could ever become the first product in it.
+   */
+  tree(includeEmpty = false) {
+    return api<CategoryNode[]>(
+      `/api/v1/categories?includeEmpty=${includeEmpty}`, { auth: false })
+  },
+  options() {
+    return api<CategoryOption[]>('/api/v1/categories/options', { auth: false })
+  },
+}
+
 export const auth = {
   async login(email: string, password: string) {
     const r = await api<AuthResponse>('/api/v1/auth/login', {
@@ -326,17 +389,48 @@ export const auth = {
     setSession(r.accessToken, r.refreshToken)
     return r
   },
-  async register(input: { email: string; password: string; firstName: string; lastName: string; role: 'CUSTOMER' | 'VENDOR' }) {
-    // Backend contract (AuthDtos.RegisterRequest) takes a single fullName —
-    // two form fields are a UX choice, joined here at the API boundary.
-    const { firstName, lastName, ...rest } = input
-    const r = await api<AuthResponse>('/api/v1/auth/register', {
-      method: 'POST',
-      body: { ...rest, fullName: `${firstName.trim()} ${lastName.trim()}`.trim() },
-      auth: false,
+  /**
+   * Returns a receipt, NOT a session. Login is gated on email verification,
+   * so there is no token to store here and the caller must route to the
+   * "check your inbox" screen rather than into the app.
+   *
+   * firstName/lastName go over the wire as-is. They used to be joined into
+   * a fullName the server re-split on the first space, which lost mononyms
+   * and mangled two-word first names.
+   */
+  async register(input: {
+    email: string; password: string; firstName: string; lastName: string
+    username: string; role: 'CUSTOMER' | 'VENDOR'
+  }) {
+    return api<RegisterResponse>('/api/v1/auth/register', {
+      method: 'POST', body: input, auth: false,
     })
-    setSession(r.accessToken, r.refreshToken)
-    return r
+  },
+  async verifyEmail(token: string) {
+    return api<void>('/api/v1/auth/verify-email', {
+      method: 'POST', body: { token }, auth: false,
+    })
+  },
+  async resendVerification(email: string) {
+    return api<void>('/api/v1/auth/resend-verification', {
+      method: 'POST', body: { email }, auth: false,
+    })
+  },
+  async forgotPassword(email: string) {
+    return api<void>('/api/v1/auth/forgot-password', {
+      method: 'POST', body: { email }, auth: false,
+    })
+  },
+  async resetPassword(token: string, password: string) {
+    return api<void>('/api/v1/auth/reset-password', {
+      method: 'POST', body: { token, password }, auth: false,
+    })
+  },
+  async usernameAvailable(username: string) {
+    return api<{ username: string; available: boolean }>(
+      `/api/v1/auth/username-available?username=${encodeURIComponent(username)}`,
+      { auth: false },
+    )
   },
   /** Who am I — used to rehydrate the user after a silent refresh on reload. */
   async me() {

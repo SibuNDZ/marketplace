@@ -5,9 +5,8 @@ import com.marketplace.api.dto.ProductDtos.ProductResponse;
 import com.marketplace.api.discovery.ProductPopularity;
 import com.marketplace.api.discovery.ProductPopularityRepository;
 import com.marketplace.api.discovery.ProductViewRecorder;
-import com.marketplace.api.dto.ProductDtos.CategoryCount;
 import com.marketplace.api.entity.Product;
-import com.marketplace.api.entity.ProductCategory;
+import com.marketplace.api.entity.Category;
 import com.marketplace.api.entity.User;
 import com.marketplace.api.exception.ProductExceptions.DuplicateSkuException;
 import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
@@ -26,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -48,17 +48,20 @@ public class ProductService {
     private final ProductViewRecorder viewRecorder;
     private final ProductPopularityRepository popularityRepository;
     private final ObjectStorageService storage;
+    private final CategoryService categoryService;
 
     public ProductService(ProductRepository productRepository,
                           UserRepository userRepository,
                           ProductViewRecorder viewRecorder,
                           ProductPopularityRepository popularityRepository,
-                          ObjectStorageService storage) {
+                          ObjectStorageService storage,
+                          CategoryService categoryService) {
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.viewRecorder = viewRecorder;
         this.popularityRepository = popularityRepository;
         this.storage = storage;
+        this.categoryService = categoryService;
     }
 
     @Transactional(readOnly = true)
@@ -66,22 +69,27 @@ public class ProductService {
         return toResponses(productRepository.findAllByDeletedAtIsNull(pageable));
     }
 
-    /** ?category= catalog filter. Null category means "all" — same as list(pageable). */
-    @Transactional(readOnly = true)
-    public Page<ProductResponse> list(@Nullable ProductCategory category, Pageable pageable) {
-        if (category == null) return list(pageable);
-        return toResponses(productRepository.findAllByCategoryAndDeletedAtIsNull(category, pageable));
-    }
-
     /**
-     * Live-product counts per category, for the sidebar. Replaces the
-     * frontend's id-arithmetic fabrication with a real grouped count.
+     * ?category= and ?handmade= catalogue filters. Both null means "all".
+     *
+     * A top-level slug matches the root AND its children (CategoryService
+     * .resolveToIds): browsing Fashion has to show the jewellery, not an
+     * empty page because everything is filed one level down. That single
+     * behaviour is why this takes a slug and expands it here rather than
+     * matching one id.
      */
     @Transactional(readOnly = true)
-    public List<CategoryCount> categoryCounts() {
-        return productRepository.countLiveByCategory().stream()
-                .map(row -> new CategoryCount((ProductCategory) row[0], (Long) row[1]))
-                .toList();
+    public Page<ProductResponse> list(@Nullable String categorySlug,
+                                      @Nullable Boolean handmade,
+                                      Pageable pageable) {
+        List<Long> categoryIds = categorySlug == null || categorySlug.isBlank()
+                ? null
+                : categoryService.resolveToIds(categorySlug);
+
+        if (categoryIds == null && handmade == null) return list(pageable);
+
+        return toResponses(
+                productRepository.findFiltered(categoryIds, handmade, pageable));
     }
 
     @Transactional(readOnly = true)
@@ -158,7 +166,26 @@ public class ProductService {
         product.setSku(request.sku());
         product.setPrice(request.price());
         product.setStock(request.stock());
-        product.setCategory(request.category());
+        product.setCategory(categoryService.requireBySlug(request.categorySlug()));
+        product.setHandmade(request.handmadeOrFalse());
+        product.setTags(normaliseTags(request.tagsOrEmpty()));
+    }
+
+    /**
+     * Lowercased, trimmed, deduplicated, blanks dropped, order preserved.
+     *
+     * Without this "Vegan", "vegan ", and "vegan" are three different tags
+     * and the filter silently splits a vendor's own catalogue across them.
+     * Normalising on write rather than on read means the GIN index matches
+     * exactly what a filter chip sends.
+     */
+    private static List<String> normaliseTags(List<String> raw) {
+        return raw.stream()
+                .filter(Objects::nonNull)
+                .map(t -> t.trim().toLowerCase())
+                .filter(t -> !t.isEmpty())
+                .distinct()
+                .toList();
     }
 
     // ---- mapping: ONE enriched mapper, three shapes over it -------------
@@ -198,6 +225,7 @@ public class ProductService {
      */
     private ProductResponse toResponse(Product p, @Nullable ProductPopularity pop) {
         User vendor = p.getVendor();
+        Category category = p.getCategory();
         return new ProductResponse(
                 p.getId(), p.getName(), p.getDescription(), p.getSku(),
                 p.getPrice(), p.getStock(),
@@ -207,7 +235,11 @@ public class ProductService {
                 pop != null ? pop.getReviewCount() : 0L,
                 pop != null ? pop.getSalesCount() : 0L,
                 p.getCreatedAt(),
-                p.getCategory(),
+                category.getSlug(),
+                category.getName(),
+                category.isTopLevel() ? null : category.getParent().getSlug(),
+                Boolean.TRUE.equals(p.getHandmade()),
+                List.copyOf(p.getTags()),
                 p.getImageKey() != null ? storage.publicUrl(p.getImageKey()) : null);
     }
 }

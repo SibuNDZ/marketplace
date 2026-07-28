@@ -98,6 +98,18 @@ public class RefreshTokenService {
         return token.getUser();
     }
 
+    /**
+     * Revoke every active token for a user (force logout everywhere).
+     *
+     * Same primitive reuse detection uses, exposed for password reset: the
+     * point of resetting is to evict whoever you think is in your account,
+     * which does nothing if their refresh token still rotates happily.
+     */
+    @Transactional
+    public void revokeAllForUser(Long userId) {
+        refreshTokenRepository.revokeAllActiveByUserId(userId, LocalDateTime.now());
+    }
+
     /** Revoke a single token (logout). Idempotent: already-revoked tokens are silently ignored. */
     @Transactional
     public void revoke(String raw) {

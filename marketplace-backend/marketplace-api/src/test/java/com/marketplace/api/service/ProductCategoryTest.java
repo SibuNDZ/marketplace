@@ -1,10 +1,10 @@
 package com.marketplace.api.service;
 
-import com.marketplace.api.dto.ProductDtos.CategoryCount;
+import com.marketplace.api.dto.CategoryDtos.CategoryNode;
 import com.marketplace.api.dto.ProductDtos.ProductRequest;
 import com.marketplace.api.dto.ProductDtos.ProductResponse;
-import com.marketplace.api.entity.ProductCategory;
 import com.marketplace.api.entity.User;
+import com.marketplace.api.exception.CategoryExceptions.CategoryNotFoundException;
 import com.marketplace.api.security.UserPrincipal;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,12 +23,16 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * V10's category column: the real replacement for the frontend's
- * id-arithmetic category fabrication.
+ * V14's category tree, replacing V10's five-value enum.
+ *
+ * The cases that matter here are the ones the enum could not express at
+ * all: a top-level filter that has to reach its children, and handmade as
+ * an axis crossing every category.
  */
 @Testcontainers
 @SpringBootTest
@@ -47,67 +51,157 @@ class ProductCategoryTest {
                 () -> "dGhpcy1pcy1hLXRlc3Qtb25seS1zZWNyZXQta2V5LTMyYnl0ZXM=");
     }
 
-    @Autowired ProductService productService;
-    @Autowired TestFixtures  fixtures;
-    @Autowired MockMvc       mockMvc;
+    @Autowired ProductService  productService;
+    @Autowired CategoryService categoryService;
+    @Autowired TestFixtures    fixtures;
+    @Autowired MockMvc         mockMvc;
 
-    private ProductResponse createProduct(String skuSuffix, ProductCategory category, User vendor) {
+    private ProductResponse createProduct(String skuSuffix, String categorySlug,
+                                          boolean handmade, List<String> tags, User vendor) {
         String sku = "SKU-CAT-" + skuSuffix + "-" + UUID.randomUUID().toString().substring(0, 8);
         ProductRequest req = new ProductRequest(
                 "Category Test " + skuSuffix, "desc", sku,
-                new BigDecimal("20.00"), 5, category);
+                new BigDecimal("20.00"), 5, categorySlug, handmade, tags);
         return productService.create(req, UserPrincipal.from(vendor));
     }
 
     @Test
-    void createWithCategory_roundTrips() {
+    void createWithSubcategory_roundTripsWithParent() {
         User vendor = fixtures.vendor("cat-vendor1");
-        ProductResponse created = createProduct("RT", ProductCategory.PANTRY, vendor);
+        ProductResponse created = createProduct("RT", "jewellery", false, List.of(), vendor);
 
-        assertThat(created.category()).isEqualTo(ProductCategory.PANTRY);
+        assertThat(created.categorySlug()).isEqualTo("jewellery");
+        assertThat(created.parentCategorySlug()).isEqualTo("fashion");
 
         ProductResponse fetched = productService.get(created.id(), null);
-        assertThat(fetched.category()).isEqualTo(ProductCategory.PANTRY);
+        assertThat(fetched.categorySlug()).isEqualTo("jewellery");
+        assertThat(fetched.categoryName()).isEqualTo("Jewellery");
     }
 
+    /**
+     * The whole point of the tree. Filtering on the ROOT must return a
+     * product filed on a CHILD — under the old enum this could not even be
+     * asked, and getting it wrong shows an empty Fashion page while
+     * jewellery sits in it.
+     */
     @Test
-    void categoryFilter_excludesOthersAndSoftDeleted() {
+    void topLevelFilter_includesSubcategoryProducts() {
         User vendor = fixtures.vendor("cat-vendor2");
-        ProductResponse produceA = createProduct("PA", ProductCategory.PRODUCE, vendor);
-        createProduct("PB", ProductCategory.PANTRY, vendor); // different category
-        ProductResponse produceC = createProduct("PC", ProductCategory.PRODUCE, vendor);
-        productService.delete(produceC.id(), UserPrincipal.from(vendor)); // soft-deleted
+        ProductResponse necklace = createProduct("JW", "jewellery", false, List.of(), vendor);
+        ProductResponse apple    = createProduct("AP", "produce", false, List.of(), vendor);
 
-        var page = productService.list(ProductCategory.PRODUCE, PageRequest.of(0, 200));
+        var page = productService.list("fashion", null, PageRequest.of(0, 200));
         List<Long> ids = page.getContent().stream().map(ProductResponse::id).toList();
 
-        assertThat(ids).contains(produceA.id());
-        assertThat(ids).doesNotContain(produceC.id());
-        page.getContent().forEach(p -> assertThat(p.category()).isEqualTo(ProductCategory.PRODUCE));
+        assertThat(ids).contains(necklace.id());
+        assertThat(ids).doesNotContain(apple.id());
     }
 
     @Test
-    void categoryCounts_sumsCorrectly() {
+    void subcategoryFilter_doesNotLeakSiblings() {
         User vendor = fixtures.vendor("cat-vendor3");
-        ProductResponse craftsA = createProduct("CA", ProductCategory.CRAFTS, vendor);
-        createProduct("CB", ProductCategory.CRAFTS, vendor);
-        ProductResponse craftsC = createProduct("CC", ProductCategory.CRAFTS, vendor);
-        productService.delete(craftsC.id(), UserPrincipal.from(vendor)); // must not be counted
+        ProductResponse necklace = createProduct("J2", "jewellery", false, List.of(), vendor);
+        ProductResponse shoe     = createProduct("SH", "shoes", false, List.of(), vendor);
 
-        long craftsCount = productService.categoryCounts().stream()
-                .filter(c -> c.category() == ProductCategory.CRAFTS)
-                .map(CategoryCount::count)
-                .findFirst().orElse(0L);
+        var page = productService.list("jewellery", null, PageRequest.of(0, 200));
+        List<Long> ids = page.getContent().stream().map(ProductResponse::id).toList();
 
-        // >= 2, not ==, since other tests in this class also create CRAFTS-
-        // adjacent rows against the same shared Testcontainers database.
-        assertThat(craftsCount).isGreaterThanOrEqualTo(2L);
-        assertThat(craftsA.category()).isEqualTo(ProductCategory.CRAFTS);
+        assertThat(ids).contains(necklace.id());
+        assertThat(ids).doesNotContain(shoe.id());
     }
 
     @Test
-    void invalidCategoryValue_returns400() throws Exception {
-        mockMvc.perform(get("/api/v1/products").param("category", "NOTREAL"))
-                .andExpect(status().isBadRequest());
+    void categoryFilter_excludesSoftDeleted() {
+        User vendor = fixtures.vendor("cat-vendor4");
+        ProductResponse keep = createProduct("K1", "produce", false, List.of(), vendor);
+        ProductResponse gone = createProduct("K2", "produce", false, List.of(), vendor);
+        productService.delete(gone.id(), UserPrincipal.from(vendor));
+
+        var page = productService.list("produce", null, PageRequest.of(0, 200));
+        List<Long> ids = page.getContent().stream().map(ProductResponse::id).toList();
+
+        assertThat(ids).contains(keep.id());
+        assertThat(ids).doesNotContain(gone.id());
+    }
+
+    /** handmade crosses categories — the reason it is a flag and not one. */
+    @Test
+    void handmadeFilter_crossesCategories() {
+        User vendor = fixtures.vendor("cat-vendor5");
+        ProductResponse handmadeNecklace = createProduct("HM1", "jewellery", true, List.of(), vendor);
+        ProductResponse handmadeBowl     = createProduct("HM2", "decor",     true, List.of(), vendor);
+        ProductResponse factoryShoe      = createProduct("HM3", "shoes",     false, List.of(), vendor);
+
+        var page = productService.list(null, true, PageRequest.of(0, 500));
+        List<Long> ids = page.getContent().stream().map(ProductResponse::id).toList();
+
+        assertThat(ids).contains(handmadeNecklace.id(), handmadeBowl.id());
+        assertThat(ids).doesNotContain(factoryShoe.id());
+        page.getContent().forEach(p -> assertThat(p.handmade()).isTrue());
+    }
+
+    @Test
+    void categoryAndHandmade_combine() {
+        User vendor = fixtures.vendor("cat-vendor6");
+        ProductResponse handmadeNecklace = createProduct("CB1", "jewellery", true, List.of(), vendor);
+        ProductResponse plainNecklace    = createProduct("CB2", "jewellery", false, List.of(), vendor);
+        ProductResponse handmadeBowl     = createProduct("CB3", "decor",     true, List.of(), vendor);
+
+        var page = productService.list("fashion", true, PageRequest.of(0, 500));
+        List<Long> ids = page.getContent().stream().map(ProductResponse::id).toList();
+
+        assertThat(ids).contains(handmadeNecklace.id());
+        assertThat(ids).doesNotContain(plainNecklace.id(), handmadeBowl.id());
+    }
+
+    @Test
+    void tags_areNormalisedAndDeduplicated() {
+        User vendor = fixtures.vendor("cat-vendor7");
+        ProductResponse p = createProduct(
+                "TG", "produce", false, List.of(" Vegan ", "vegan", "ORGANIC", ""), vendor);
+
+        assertThat(p.tags()).containsExactly("vegan", "organic");
+    }
+
+    /**
+     * Subtree counts, not direct ones: a root showing 0 while its child
+     * shows 3 is the number that makes people distrust the page.
+     */
+    @Test
+    void tree_rollsChildCountsIntoParent() {
+        User vendor = fixtures.vendor("cat-vendor8");
+        createProduct("TR", "ceramics", false, List.of(), vendor);
+
+        CategoryNode artAndCrafts = categoryService.tree(true).stream()
+                .filter(n -> n.slug().equals("art-and-crafts"))
+                .findFirst().orElseThrow();
+
+        assertThat(artAndCrafts.productCount()).isGreaterThanOrEqualTo(1L);
+        assertThat(artAndCrafts.children())
+                .extracting(CategoryNode::slug)
+                .contains("ceramics", "art-and-prints");
+    }
+
+    @Test
+    void tree_hasEightTopLevelCategories() {
+        assertThat(categoryService.tree(true))
+                .extracting(CategoryNode::slug)
+                .containsExactly("produce", "pantry", "fashion", "beauty-and-personal-care",
+                        "home-and-living", "art-and-crafts", "kids-and-baby", "other");
+    }
+
+    @Test
+    void unknownCategorySlug_is404NotEmptyPage() throws Exception {
+        assertThatThrownBy(() -> productService.list("not-a-category", null, PageRequest.of(0, 20)))
+                .isInstanceOf(CategoryNotFoundException.class);
+
+        mockMvc.perform(get("/api/v1/products").param("category", "not-a-category"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void categoryTreeEndpoint_isPublic() throws Exception {
+        mockMvc.perform(get("/api/v1/categories")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/categories/options")).andExpect(status().isOk());
     }
 }

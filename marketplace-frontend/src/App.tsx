@@ -5,6 +5,10 @@ import { CartDrawerProvider } from './context/CartDrawerContext'
 import { Footer } from './components/layout/Footer'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
+import { CheckEmailPage } from './pages/CheckEmailPage'
+import { VerifyEmailPage } from './pages/VerifyEmailPage'
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
+import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { CatalogPage } from './pages/CatalogPage'
 import { ProductDetailPage } from './pages/ProductDetailPage'
 import { CartPage } from './pages/CartPage'
@@ -28,9 +32,14 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
 // Rendered once after Routes so it lands below whatever page just rendered.
 // Hidden on auth pages — a marketing footer is clutter on a login/register form.
+const AUTH_ROUTES = new Set([
+  '/login', '/register', '/check-email', '/verify-email',
+  '/forgot-password', '/reset-password',
+])
+
 function ChromeFooter() {
   const { pathname } = useLocation()
-  if (pathname === '/login' || pathname === '/register') return null
+  if (AUTH_ROUTES.has(pathname)) return null
   return <Footer />
 }
 
@@ -43,6 +52,10 @@ export default function App() {
           <Route path="/products/:id" element={<ProductDetailPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/check-email" element={<CheckEmailPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
           <Route path="/checkout/cancelled" element={<CheckoutCancelledPage />} />
           <Route path="/cart" element={<RequireAuth><CartPage /></RequireAuth>} />

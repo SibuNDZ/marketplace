@@ -1,6 +1,10 @@
 package com.marketplace.api.web;
 
 import com.marketplace.api.auth.AuthService.EmailAlreadyRegisteredException;
+import com.marketplace.api.auth.AuthService.EmailNotVerifiedException;
+import com.marketplace.api.auth.AuthService.UsernameTakenException;
+import com.marketplace.api.auth.UserTokenService;
+import com.marketplace.api.exception.CategoryExceptions.CategoryNotFoundException;
 import com.marketplace.api.exception.OrderExceptions.*;
 import com.marketplace.api.exception.ProductExceptions.DuplicateSkuException;
 import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
@@ -43,7 +47,8 @@ public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler({OrderNotFoundException.class, CartNotFoundException.class,
-            ProductNotFoundException.class, ReviewNotFoundException.class})
+            ProductNotFoundException.class, ReviewNotFoundException.class,
+            CategoryNotFoundException.class})
     public ProblemDetail notFound(RuntimeException ex) {
         return problem(HttpStatus.NOT_FOUND, "Resource not found", ex.getMessage());
     }
@@ -87,6 +92,37 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(EmailAlreadyRegisteredException.class)
     public ProblemDetail emailTaken(EmailAlreadyRegisteredException ex) {
         return problem(HttpStatus.CONFLICT, "Email already registered", ex.getMessage());
+    }
+
+    @ExceptionHandler(UsernameTakenException.class)
+    public ProblemDetail usernameTaken(UsernameTakenException ex) {
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "Username taken",
+                "That username is already in use.");
+        // Field-keyed so the register form can mark the username input
+        // rather than showing a detached banner, matching how 400 validation
+        // errors already render.
+        pd.setProperty("errors", Map.of("username", List.of("That username is already in use.")));
+        return pd;
+    }
+
+    /**
+     * 403 with a machine-readable code, NOT 401. A 401 would send the
+     * frontend's api.ts into its refresh-then-retry path, which cannot
+     * possibly help — there is no session to refresh — and would end with a
+     * generic "invalid credentials" for someone whose password was correct.
+     * The code is what lets the login page offer a resend button.
+     */
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    public ProblemDetail emailNotVerified(EmailNotVerifiedException ex) {
+        ProblemDetail pd = problem(HttpStatus.FORBIDDEN, "Email not verified", ex.getMessage());
+        pd.setProperty("code", "EMAIL_NOT_VERIFIED");
+        return pd;
+    }
+
+    /** Expired, already-used, and unknown tokens are one case on purpose. */
+    @ExceptionHandler(UserTokenService.InvalidTokenException.class)
+    public ProblemDetail invalidToken(UserTokenService.InvalidTokenException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Invalid or expired link", ex.getMessage());
     }
 
     @ExceptionHandler(InsufficientAdjustmentException.class)

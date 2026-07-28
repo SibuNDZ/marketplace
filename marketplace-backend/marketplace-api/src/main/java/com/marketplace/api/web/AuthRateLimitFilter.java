@@ -8,6 +8,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -51,6 +53,8 @@ import java.time.Duration;
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
 public class AuthRateLimitFilter extends OncePerRequestFilter {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthRateLimitFilter.class);
 
     private final int capacity;
     private final int refillPerMinute;
@@ -106,6 +110,14 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
             return;
         }
+
+        // Log every rejection. Without this the limiter is INVISIBLE: it does
+        // not touch the controller, so nothing downstream logs, and a week of
+        // production logs can show zero errors while users are being turned
+        // away. That silence is what made this filter's role in a registration
+        // outage so expensive to find — the logs looked healthy.
+        log.warn("Auth rate limit exceeded: {} {} from {} — returning 429",
+                request.getMethod(), request.getRequestURI(), request.getRemoteAddr());
 
         // Same problem+json shape as everything else; Retry-After makes
         // well-behaved clients back off instead of hammering.

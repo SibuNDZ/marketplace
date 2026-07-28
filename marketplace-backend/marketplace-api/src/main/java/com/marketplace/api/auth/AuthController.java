@@ -1,10 +1,16 @@
 package com.marketplace.api.auth;
 
 import com.marketplace.api.auth.AuthDtos.AuthResponse;
+import com.marketplace.api.auth.AuthDtos.ForgotPasswordRequest;
 import com.marketplace.api.auth.AuthDtos.LoginRequest;
 import com.marketplace.api.auth.AuthDtos.LogoutRequest;
 import com.marketplace.api.auth.AuthDtos.RefreshRequest;
 import com.marketplace.api.auth.AuthDtos.RegisterRequest;
+import com.marketplace.api.auth.AuthDtos.RegisterResponse;
+import com.marketplace.api.auth.AuthDtos.ResendVerificationRequest;
+import com.marketplace.api.auth.AuthDtos.ResetPasswordRequest;
+import com.marketplace.api.auth.AuthDtos.UsernameAvailableResponse;
+import com.marketplace.api.auth.AuthDtos.VerifyEmailRequest;
 import com.marketplace.api.security.UserPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -25,8 +31,55 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
+    }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<Void> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        authService.verifyEmail(request.token());
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Always 202, whether the address is unknown, already verified, or a
+     * mail actually went out. Anything else makes this unauthenticated
+     * endpoint an enumeration oracle.
+     */
+    @PostMapping("/resend-verification")
+    public ResponseEntity<Void> resendVerification(
+            @Valid @RequestBody ResendVerificationRequest request) {
+        authService.resendVerification(request.email());
+        return ResponseEntity.accepted().build();
+    }
+
+    /** Always 202. Same enumeration reasoning as resend-verification. */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request.email());
+        return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request.token(), request.password());
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Availability check for the registration form.
+     *
+     * This one DOES disclose whether a username exists, unavoidably — that
+     * is the entire feature, and every site with usernames leaks the same
+     * thing by rejecting a taken one at submit. Usernames are public
+     * identifiers here, unlike email addresses. It sits behind the auth
+     * rate limiter like the rest of /api/v1/auth/**, which bounds scraping.
+     */
+    @GetMapping("/username-available")
+    public UsernameAvailableResponse usernameAvailable(@RequestParam String username) {
+        return new UsernameAvailableResponse(
+                username, authService.isUsernameAvailable(username));
     }
 
     @PostMapping("/login")

@@ -51,11 +51,38 @@ public class AdminBootstrap {
             admin.setPassword(passwordEncoder.encode(password));
             admin.setFirstName("Platform");
             admin.setLastName("Admin");
+            admin.setUsername(freeUsername(userRepository, email));
+            // Bootstrapped out of band, so there is no inbox to send a
+            // verification link to and no one to click it. Without this the
+            // admin is created unverified and login gating locks the platform
+            // out of its own order state machine on the very first boot.
+            admin.setIsVerified(true);
             admin.setRole(UserRole.ADMIN);
             userRepository.save(admin);
             log.info("Bootstrap ADMIN user created: {}", admin.getEmail());
             // The password came from the environment — rotate it after first
             // login if the env var lives anywhere semi-durable.
         };
+    }
+
+    /**
+     * Usernames are UNIQUE, and V13 backfilled every pre-existing account
+     * with one derived from its email — so a hardcoded "admin" can collide
+     * with a real user who happens to be admin@…, and a unique-constraint
+     * violation here fails the CommandLineRunner and takes the whole boot
+     * down. Derive from the same rule V13 used, then walk suffixes.
+     */
+    private static String freeUsername(UserRepository userRepository, String email) {
+        String stem = email.split("@")[0].toLowerCase().replaceAll("[^a-z0-9_]", "");
+        if (stem.isBlank()) {
+            stem = "admin";
+        }
+        stem = stem.substring(0, Math.min(stem.length(), 24));
+
+        String candidate = stem;
+        for (int i = 2; userRepository.existsByUsername(candidate); i++) {
+            candidate = stem + i;
+        }
+        return candidate;
     }
 }

@@ -39,6 +39,11 @@ export class ApiError extends Error {
     public requestId?: string,
     public shortages?: Shortage[],
     public fieldErrors?: Record<string, string[]>,
+    // Machine-readable discriminator the backend attaches to responses whose
+    // status alone is ambiguous. EMAIL_NOT_VERIFIED is the first: a 403 on
+    // login could be several things, and the UI has to tell that one apart
+    // to offer a resend rather than a dead end.
+    public code?: string,
   ) {
     super(detail || title)
   }
@@ -74,6 +79,7 @@ async function toApiError(res: Response): Promise<ApiError> {
       body.requestId ?? requestId,
       body.shortages,
       body.errors,
+      body.code,
     )
   } catch {
     return new ApiError(res.status, 'Request failed', res.statusText, requestId)
@@ -205,6 +211,19 @@ export interface AuthResponse {
   role: 'CUSTOMER' | 'VENDOR' | 'ADMIN'
 }
 
+/**
+ * What registration returns now that it no longer logs you in.
+ *
+ * emailSent=false means the account WAS created but the provider rejected
+ * the message. The UI has to say so and offer a resend — telling the user
+ * to check an inbox nothing was sent to strands them on an account they
+ * cannot log into and cannot re-register.
+ */
+export interface RegisterResponse {
+  email: string
+  emailSent: boolean
+}
+
 // Exact match to backend ProductCategory enum names — no translation layer.
 export type ProductCategoryKey = 'PRODUCE' | 'PANTRY' | 'CRAFTS' | 'HOME' | 'OTHER'
 
@@ -326,17 +345,48 @@ export const auth = {
     setSession(r.accessToken, r.refreshToken)
     return r
   },
-  async register(input: { email: string; password: string; firstName: string; lastName: string; role: 'CUSTOMER' | 'VENDOR' }) {
-    // Backend contract (AuthDtos.RegisterRequest) takes a single fullName —
-    // two form fields are a UX choice, joined here at the API boundary.
-    const { firstName, lastName, ...rest } = input
-    const r = await api<AuthResponse>('/api/v1/auth/register', {
-      method: 'POST',
-      body: { ...rest, fullName: `${firstName.trim()} ${lastName.trim()}`.trim() },
-      auth: false,
+  /**
+   * Returns a receipt, NOT a session. Login is gated on email verification,
+   * so there is no token to store here and the caller must route to the
+   * "check your inbox" screen rather than into the app.
+   *
+   * firstName/lastName go over the wire as-is. They used to be joined into
+   * a fullName the server re-split on the first space, which lost mononyms
+   * and mangled two-word first names.
+   */
+  async register(input: {
+    email: string; password: string; firstName: string; lastName: string
+    username: string; role: 'CUSTOMER' | 'VENDOR'
+  }) {
+    return api<RegisterResponse>('/api/v1/auth/register', {
+      method: 'POST', body: input, auth: false,
     })
-    setSession(r.accessToken, r.refreshToken)
-    return r
+  },
+  async verifyEmail(token: string) {
+    return api<void>('/api/v1/auth/verify-email', {
+      method: 'POST', body: { token }, auth: false,
+    })
+  },
+  async resendVerification(email: string) {
+    return api<void>('/api/v1/auth/resend-verification', {
+      method: 'POST', body: { email }, auth: false,
+    })
+  },
+  async forgotPassword(email: string) {
+    return api<void>('/api/v1/auth/forgot-password', {
+      method: 'POST', body: { email }, auth: false,
+    })
+  },
+  async resetPassword(token: string, password: string) {
+    return api<void>('/api/v1/auth/reset-password', {
+      method: 'POST', body: { token, password }, auth: false,
+    })
+  },
+  async usernameAvailable(username: string) {
+    return api<{ username: string; available: boolean }>(
+      `/api/v1/auth/username-available?username=${encodeURIComponent(username)}`,
+      { auth: false },
+    )
   },
   /** Who am I — used to rehydrate the user after a silent refresh on reload. */
   async me() {

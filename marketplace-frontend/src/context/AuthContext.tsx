@@ -1,7 +1,7 @@
 import React, {
   createContext, useCallback, useContext, useEffect, useState,
 } from 'react'
-import { auth, bootstrapSession, clearSession, AuthResponse } from '../lib/api'
+import { auth, bootstrapSession, clearSession, AuthResponse, RegisterResponse } from '../lib/api'
 
 interface AuthUser {
   userId: number
@@ -13,13 +13,23 @@ interface AuthCtx {
   user: AuthUser | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
-  register: (input: { email: string; password: string; firstName: string; lastName: string; role: 'CUSTOMER' | 'VENDOR' }) => Promise<void>
+  /**
+   * Resolves to the registration receipt, NOT a logged-in user. Verification
+   * gating means there is no session to set here; the caller routes to the
+   * check-your-inbox screen and reads emailSent to decide what it says.
+   */
+  register: (input: {
+    email: string; password: string; firstName: string; lastName: string
+    username: string; role: 'CUSTOMER' | 'VENDOR'
+  }) => Promise<RegisterResponse>
   logout: () => Promise<void>
 }
 
 const Ctx = createContext<AuthCtx>({
   user: null, loading: true,
-  login: async () => {}, register: async () => {}, logout: async () => {},
+  login: async () => {},
+  register: async () => ({ email: '', emailSent: false }),
+  logout: async () => {},
 })
 
 function toUser(r: AuthResponse): AuthUser {
@@ -48,9 +58,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(toUser(r))
   }, [])
 
+  // Deliberately does NOT setUser: the account exists but cannot sign in
+  // until the email is confirmed, so there is no session to reflect here.
   const register = useCallback(async (input: Parameters<typeof auth.register>[0]) => {
-    const r = await auth.register(input)
-    setUser(toUser(r))
+    return auth.register(input)
   }, [])
 
   const logout = useCallback(async () => {

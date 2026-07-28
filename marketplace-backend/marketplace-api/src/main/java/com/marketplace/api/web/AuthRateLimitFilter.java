@@ -8,9 +8,12 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -51,6 +54,8 @@ import java.time.Duration;
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
 public class AuthRateLimitFilter extends OncePerRequestFilter {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthRateLimitFilter.class);
+
     private final int capacity;
     private final int refillPerMinute;
     private final CorsOrigins allowedOrigins;
@@ -71,6 +76,22 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
+        // CORS preflight is NEVER rate-limited. Two reasons, both load-bearing:
+        //
+        // 1. A 429 is not a successful preflight, so the browser discards it
+        //    and never sends the real request. The client sees an opaque CORS
+        //    TypeError, not the 429 — so the hand-stamped CORS headers below
+        //    are useless on this path and the frontend cannot say "too many
+        //    attempts". A registration failure surfaces as "Something went
+        //    wrong" with no way to tell it from the server being down.
+        // 2. Counting the preflight halves the real limit: every JSON POST is
+        //    two requests, so capacity 10 meant 5 actual login attempts.
+        //
+        // Preflights carry no credentials, so exempting them gives an attacker
+        // nothing — the POST that follows is still counted.
+        if (HttpMethod.OPTIONS.matches(request.getMethod())) {
+            return true;
+        }
         return !request.getRequestURI().startsWith("/api/v1/auth/");
     }
 
@@ -89,6 +110,14 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
             return;
         }
+
+        // Log every rejection. Without this the limiter is INVISIBLE: it does
+        // not touch the controller, so nothing downstream logs, and a week of
+        // production logs can show zero errors while users are being turned
+        // away. That silence is what made this filter's role in a registration
+        // outage so expensive to find — the logs looked healthy.
+        log.warn("Auth rate limit exceeded: {} {} from {} — returning 429",
+                request.getMethod(), request.getRequestURI(), request.getRemoteAddr());
 
         // Same problem+json shape as everything else; Retry-After makes
         // well-behaved clients back off instead of hammering.

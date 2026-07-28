@@ -128,11 +128,23 @@ export async function api<T>(path: string, opts: Options = {}): Promise<T> {
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   if (auth && accessToken) headers['Authorization'] = `Bearer ${accessToken}`
 
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  })
+  // fetch() rejects with a bare TypeError for every transport-level failure:
+  // DNS, connection reset, offline, and — the one that bit us — a rejected
+  // CORS preflight. Left unwrapped it escapes as a non-ApiError, so callers
+  // fall through to their generic "something went wrong" branch and every
+  // such failure looks identical. Wrapping it keeps ONE error type on the way
+  // out and lets the UI say something true. status 0 = never reached the server.
+  let res: Response
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    })
+  } catch {
+    throw new ApiError(0, 'Network error',
+      "Couldn't reach the server. Check your connection and try again.")
+  }
 
   if (res.status === 401 && auth && !_retried) {
     if (await refreshSession()) return api<T>(path, { ...opts, _retried: true })

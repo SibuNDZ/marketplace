@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -71,6 +72,22 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
+        // CORS preflight is NEVER rate-limited. Two reasons, both load-bearing:
+        //
+        // 1. A 429 is not a successful preflight, so the browser discards it
+        //    and never sends the real request. The client sees an opaque CORS
+        //    TypeError, not the 429 — so the hand-stamped CORS headers below
+        //    are useless on this path and the frontend cannot say "too many
+        //    attempts". A registration failure surfaces as "Something went
+        //    wrong" with no way to tell it from the server being down.
+        // 2. Counting the preflight halves the real limit: every JSON POST is
+        //    two requests, so capacity 10 meant 5 actual login attempts.
+        //
+        // Preflights carry no credentials, so exempting them gives an attacker
+        // nothing — the POST that follows is still counted.
+        if (HttpMethod.OPTIONS.matches(request.getMethod())) {
+            return true;
+        }
         return !request.getRequestURI().startsWith("/api/v1/auth/");
     }
 

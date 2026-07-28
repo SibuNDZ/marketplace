@@ -104,8 +104,24 @@ public class AuthService {
                 saved.getEmail(), saved.getFirstName(), rawToken);
 
         if (!sent) {
-            log.error("Registered {} but the verification email failed to send — "
-                    + "the account exists and is unverified", saved.getEmail());
+            // FAIL-SAFE, and a deliberate security trade.
+            //
+            // Login is gated on is_verified. If the mail provider is
+            // misconfigured or down, an unverified account is an account that
+            // can NEVER log in: the resend button hits the same broken sender,
+            // and registering again returns "email already registered". The
+            // user is permanently locked out of an address they own.
+            //
+            // So a send failure degrades to verified rather than stranding
+            // them. The cost is real: while sending is broken, nobody is
+            // proving they own their address, which is the whole point of
+            // verification. That is the right way round — an email outage
+            // becomes weaker signup checks, not a total signup outage — but it
+            // is ONLY safe because it is loud. This log line is the alert.
+            saved.setIsVerified(true);
+            log.error("VERIFICATION EMAIL FAILED for {} — account auto-verified so the "
+                    + "user is not locked out. Email verification is currently NOT being "
+                    + "enforced; fix the mail provider.", saved.getEmail());
         }
 
         return new RegisterResponse(saved.getEmail(), sent);

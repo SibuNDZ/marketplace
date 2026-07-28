@@ -40,7 +40,11 @@ export function ResetPasswordPage() {
     } finally { setLoading(false) }
   }
 
+  // Single-column here, so stretch already sizes these correctly — but keep
+  // the same box model as RegisterPage so moving a field into a two-up row
+  // later does not silently reintroduce the intrinsic-width overflow.
   const inputStyle: React.CSSProperties = {
+    width: '100%', boxSizing: 'border-box', minWidth: 0,
     padding: '9px 12px', border: '1.5px solid var(--line)',
     borderRadius: 'var(--r-sm)', fontFamily: 'var(--body)', fontSize: 14,
   }

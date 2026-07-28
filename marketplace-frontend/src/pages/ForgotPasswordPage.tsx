@@ -54,7 +54,7 @@ export function ForgotPasswordPage() {
           Email
           <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
             autoCapitalize="none" autoCorrect="off"
-            style={{ padding: '9px 12px', border: '1.5px solid var(--line)', borderRadius: 'var(--r-sm)', fontFamily: 'var(--body)', fontSize: 14 }} />
+            style={{ width: '100%', boxSizing: 'border-box', minWidth: 0, padding: '9px 12px', border: '1.5px solid var(--line)', borderRadius: 'var(--r-sm)', fontFamily: 'var(--body)', fontSize: 14 }} />
         </label>
         <button type="submit" disabled={loading}
           style={{ background: 'var(--ink)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', padding: '11px', fontWeight: 600, fontSize: 15, opacity: loading ? 0.6 : 1 }}>

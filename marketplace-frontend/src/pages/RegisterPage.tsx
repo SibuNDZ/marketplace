@@ -17,7 +17,7 @@ export function RegisterPage() {
   const navigate = useNavigate()
   const [role, setRole] = useState<'CUSTOMER' | 'VENDOR'>('CUSTOMER')
   const [form, setForm] = useState({
-    email: '', password: '', firstName: '', lastName: '', username: '',
+    email: '', password: '', confirmPassword: '', firstName: '', lastName: '', username: '',
   })
   const [error, setError] = useState<string>()
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
@@ -60,10 +60,29 @@ export function RegisterPage() {
     return () => { cancelled = true; clearTimeout(timer) }
   }, [form.username])
 
+  // Only surfaces once they have actually typed a confirmation — flagging a
+  // mismatch against an empty box while they are still on the first field is
+  // just shouting at someone mid-sentence.
+  const passwordMismatch =
+    form.confirmPassword.length > 0 && form.password !== form.confirmPassword
+
   const submit = async (e: FormEvent) => {
-    e.preventDefault(); setLoading(true); setError(undefined); setFieldErrors({})
+    e.preventDefault()
+
+    // Guard before the request, not after. A mismatch is knowable here, and
+    // letting it through would create the account with whichever value the
+    // first box held — the exact typo the second box exists to catch.
+    if (form.password !== form.confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
+    setLoading(true); setError(undefined); setFieldErrors({})
     try {
-      const result = await register({ ...form, role })
+      // confirmPassword is a client-side guard and is not part of the API
+      // contract, so it is dropped rather than sent and ignored.
+      const { confirmPassword: _confirmPassword, ...payload } = form
+      const result = await register({ ...payload, role })
       // Never lands in the app: the account cannot sign in until confirmed.
       navigate('/check-email', {
         state: { email: result.email, emailSent: result.emailSent },
@@ -91,9 +110,23 @@ export function RegisterPage() {
     </button>
   )
 
+  // width:100% + border-box is load-bearing, not decoration. A bare <input>
+  // carries an intrinsic width from its default size attribute (~20 chars),
+  // which is wider than half this 440px card. Without these the two-up name
+  // row overflows the card edge. border-box so the 12px padding and 1.5px
+  // border are counted INSIDE that 100% rather than added on top of it.
   const inputStyle: React.CSSProperties = {
+    width: '100%', boxSizing: 'border-box', minWidth: 0,
     padding: '9px 12px', border: '1.5px solid var(--line)',
     borderRadius: 'var(--r-sm)', fontFamily: 'var(--body)', fontSize: 14,
+  }
+
+  // Flex items default to min-width:auto, which refuses to shrink below the
+  // content's intrinsic width — so flex:1 alone does NOT stop the overflow
+  // above. minWidth:0 is the half of the fix that lives on the column.
+  const halfField: React.CSSProperties = {
+    flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
+    gap: 4, fontSize: 13, fontWeight: 500,
   }
 
   const usernameHint = () => {
@@ -130,12 +163,12 @@ export function RegisterPage() {
             <p style={{ background: 'var(--clay-tint)', color: 'var(--clay)', padding: '10px 14px', borderRadius: 'var(--r-sm)', fontSize: 13 }}>{error}</p>
           )}
           <div style={{ display: 'flex', gap: 12 }}>
-            <label style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 500 }}>
+            <label style={halfField}>
               First name
               <input required value={form.firstName} onChange={e => set('firstName', e.target.value)}
                 style={inputStyle} />
             </label>
-            <label style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 500 }}>
+            <label style={halfField}>
               {/* Not required: mononyms are common, and the API accepts an
                   absent surname. */}
               Last name <span style={{ fontWeight: 400, color: 'var(--ink-soft)' }}>(optional)</span>
@@ -165,13 +198,29 @@ export function RegisterPage() {
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 500 }}>
             Password
             <input type="password" required minLength={8} value={form.password} onChange={e => set('password', e.target.value)}
+              autoComplete="new-password"
               style={inputStyle} />
           </label>
-          <button type="submit" disabled={loading || usernameState.kind === 'taken'}
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 500 }}>
+            Confirm password
+            <input type="password" required value={form.confirmPassword}
+              onChange={e => set('confirmPassword', e.target.value)}
+              autoComplete="new-password"
+              style={{
+                ...inputStyle,
+                borderColor: passwordMismatch ? 'var(--clay)' : 'var(--line)',
+              }} />
+            {passwordMismatch && (
+              <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--clay)' }}>
+                Passwords do not match
+              </span>
+            )}
+          </label>
+          <button type="submit" disabled={loading || usernameState.kind === 'taken' || passwordMismatch}
             style={{
               background: 'var(--ink)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)',
               padding: '11px', fontWeight: 600, fontSize: 15, marginTop: 6,
-              opacity: loading || usernameState.kind === 'taken' ? 0.6 : 1,
+              opacity: loading || usernameState.kind === 'taken' || passwordMismatch ? 0.6 : 1,
             }}>
             {loading ? 'Creating account…' : 'Create account'}
           </button>

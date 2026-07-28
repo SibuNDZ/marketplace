@@ -60,6 +60,8 @@ public class SecurityConfig {
                     .requestMatchers("/api/v1/auth/**").permitAll()
                     .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
+                    // Chip row and sidebar render before anyone signs in.
+                    .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/reviews/**").permitAll()
                     .requestMatchers("/api/v1/payments/stripe/webhook").permitAll()
                     .requestMatchers("/actuator/health/**").permitAll()  // probe-reachable without JWT

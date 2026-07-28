@@ -1,7 +1,6 @@
 package com.marketplace.api.repository;
 
 import com.marketplace.api.entity.Product;
-import com.marketplace.api.entity.ProductCategory;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,17 +19,27 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     /** Live products only (deleted_at IS NULL). Used for public catalog. */
     Page<Product> findAllByDeletedAtIsNull(Pageable pageable);
 
-    /** Live products in one category — the ?category= catalog filter. */
-    Page<Product> findAllByCategoryAndDeletedAtIsNull(ProductCategory category, Pageable pageable);
-
     /**
-     * Live-product counts per category for the sidebar (replaces the
-     * frontend's id-arithmetic fabrication). Object[] over a projection
-     * interface — matches the house Object[]-unwrap pattern used in
-     * ReviewService's aggregate query.
+     * Live catalogue with the optional ?category= and ?handmade= filters.
+     *
+     * ONE query with null-guarded predicates rather than four repository
+     * methods for the combinations. The `:ids IS NULL` idiom lets an absent
+     * filter drop out of the WHERE clause entirely, so the planner still
+     * uses idx_products_category_id_live when a category IS supplied.
+     *
+     * categoryIds is a list, not a single id, because a top-level category
+     * has to match its children too — CategoryService.resolveToIds does
+     * that expansion.
      */
-    @Query("SELECT p.category, COUNT(p) FROM Product p WHERE p.deletedAt IS NULL GROUP BY p.category")
-    List<Object[]> countLiveByCategory();
+    @Query("""
+           SELECT p FROM Product p
+           WHERE p.deletedAt IS NULL
+             AND (:categoryIds IS NULL OR p.category.id IN :categoryIds)
+             AND (:handmade IS NULL OR p.handmade = :handmade)
+           """)
+    Page<Product> findFiltered(@Param("categoryIds") List<Long> categoryIds,
+                               @Param("handmade") Boolean handmade,
+                               Pageable pageable);
 
     /** Live product by id. Returns empty for soft-deleted products (public 404). */
     Optional<Product> findByIdAndDeletedAtIsNull(Long id);

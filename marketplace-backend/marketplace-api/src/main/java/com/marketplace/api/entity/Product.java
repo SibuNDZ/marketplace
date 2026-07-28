@@ -6,7 +6,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -73,10 +75,37 @@ public class Product {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "category", nullable = false)
+    /**
+     * EAGER, unusually — every product read renders its category name, so
+     * lazy here buys nothing and costs an N+1 on every catalogue page.
+     */
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "category_id", nullable = false)
     @NotNull(message = "Category is required")
-    private ProductCategory category = ProductCategory.OTHER;
+    private Category category;
+
+    /**
+     * "How was it made", deliberately independent of category ("what is
+     * it"). A handmade beaded necklace files under Fashion > Jewellery
+     * where shoppers look for it, and still surfaces for anyone filtering
+     * on handmade. As a category it could only be one or the other, and
+     * the vendor had to guess.
+     */
+    @Column(name = "handmade", nullable = false)
+    private Boolean handmade = false;
+
+    /**
+     * Free-text long tail. Vendors always want a label the taxonomy did
+     * not anticipate; tags absorb that without growing the tree every week.
+     *
+     * Stored as a Postgres TEXT[] (GIN indexed) rather than a join table:
+     * tags are read with the product and replaced wholesale on edit, so
+     * the two things a join table buys — querying them independently and
+     * mutating one at a time — are both unused.
+     */
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "tags", nullable = false, columnDefinition = "text[]")
+    private List<String> tags = new ArrayList<>();
 
     // R2 object key (e.g. products/42/9f3a....webp), not the URL — the
     // public URL is derived (base + key) so the serving domain can change
@@ -210,8 +239,14 @@ public class Product {
     public LocalDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
 
-    public ProductCategory getCategory() { return category; }
-    public void setCategory(ProductCategory category) { this.category = category; }
+    public Category getCategory() { return category; }
+    public void setCategory(Category category) { this.category = category; }
+
+    public Boolean getHandmade() { return handmade; }
+    public void setHandmade(Boolean handmade) { this.handmade = handmade; }
+
+    public List<String> getTags() { return tags; }
+    public void setTags(List<String> tags) { this.tags = tags; }
 
     public String getImageKey() { return imageKey; }
     public void setImageKey(String imageKey) { this.imageKey = imageKey; }

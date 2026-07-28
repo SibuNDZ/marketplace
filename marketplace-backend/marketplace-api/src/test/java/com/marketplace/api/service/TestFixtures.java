@@ -3,6 +3,7 @@ package com.marketplace.api.service;
 import com.marketplace.api.entity.*;
 import com.marketplace.api.payment.PaymentEventService;
 import com.marketplace.api.repository.CartRepository;
+import com.marketplace.api.repository.CategoryRepository;
 import com.marketplace.api.repository.ProductRepository;
 import com.marketplace.api.repository.UserRepository;
 import org.springframework.stereotype.Component;
@@ -27,17 +28,20 @@ public class TestFixtures {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final CartRepository cartRepository;
+    private final CategoryRepository categoryRepository;
     private final PaymentEventService paymentEventService;
     private final OrderAdminService orderAdminService;
 
     public TestFixtures(ProductRepository productRepository,
                         UserRepository userRepository,
                         CartRepository cartRepository,
+                        CategoryRepository categoryRepository,
                         PaymentEventService paymentEventService,
                         OrderAdminService orderAdminService) {
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.cartRepository = cartRepository;
+        this.categoryRepository = categoryRepository;
         this.paymentEventService = paymentEventService;
         this.orderAdminService = orderAdminService;
     }
@@ -50,6 +54,12 @@ public class TestFixtures {
         p.setPrice(price);
         p.setStock(stock);
         p.setVendor(testVendor()); // real products always have a vendor
+        // category_id is NOT NULL since V14 and the entity no longer carries a
+        // default, so every fixture product needs one explicitly. 'other' is
+        // the honest choice: these fixtures exist for order/stock/concurrency
+        // tests that do not care where a product files.
+        p.setCategory(categoryRepository.findBySlug("other").orElseThrow(
+                () -> new IllegalStateException("V14 seed missing: no 'other' category")));
         return productRepository.save(p);
     }
 

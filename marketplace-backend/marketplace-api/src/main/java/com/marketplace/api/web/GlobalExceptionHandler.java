@@ -4,6 +4,7 @@ import com.marketplace.api.auth.AuthService.EmailAlreadyRegisteredException;
 import com.marketplace.api.auth.AuthService.EmailNotVerifiedException;
 import com.marketplace.api.auth.AuthService.UsernameTakenException;
 import com.marketplace.api.auth.UserTokenService;
+import com.marketplace.api.exception.CategoryExceptions.CategoryNotFoundException;
 import com.marketplace.api.exception.OrderExceptions.*;
 import com.marketplace.api.exception.ProductExceptions.DuplicateSkuException;
 import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
@@ -46,7 +47,8 @@ public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler({OrderNotFoundException.class, CartNotFoundException.class,
-            ProductNotFoundException.class, ReviewNotFoundException.class})
+            ProductNotFoundException.class, ReviewNotFoundException.class,
+            CategoryNotFoundException.class})
     public ProblemDetail notFound(RuntimeException ex) {
         return problem(HttpStatus.NOT_FOUND, "Resource not found", ex.getMessage());
     }

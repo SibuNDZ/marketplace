@@ -13,6 +13,20 @@ interface NavState { email?: string; emailSent?: boolean }
  * account exists but nothing was delivered. Telling the second group to
  * check their mail leaves them waiting for something that is never coming,
  * on an account they also cannot re-register.
+ *
+ * The two states therefore lead with DIFFERENT actions:
+ *
+ *   emailSent=true  -> the inbox is the next step. Resending is the useful
+ *                      button; signing in now would just fail the gate.
+ *   emailSent=false -> AuthService's fail-safe already marked this account
+ *                      verified precisely so a mail outage cannot lock
+ *                      anyone out. Signing in works RIGHT NOW, so that is
+ *                      the primary action and resending is the footnote.
+ *
+ * Leading with "Resend" in the failure state pushes every user toward
+ * retrying the exact thing that just failed — and while the sending domain
+ * is unverified, that retry cannot ever succeed. It reads as a dead end on
+ * an account that is actually ready to use.
  */
 export function CheckEmailPage() {
   const { state } = useLocation()
@@ -56,12 +70,10 @@ export function CheckEmailPage() {
           Open it to finish setting up your account. It expires in 24 hours.
         </p>
       ) : (
-        <p style={{
-          fontSize: 14, lineHeight: 1.6, background: 'var(--clay-tint)',
-          color: 'var(--clay)', padding: '12px 14px', borderRadius: 'var(--r-sm)',
-        }}>
-          Your account was created, but we could not send the confirmation email
-          to <strong>{email}</strong> just now. Try again below.
+        <p style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--ink-soft)' }}>
+          Your account is ready and you can sign in now. We could not send a
+          confirmation email to <strong style={{ color: 'var(--ink)' }}>{email}</strong>,
+          so nothing is waiting in your inbox.
         </p>
       )}
 
@@ -72,18 +84,45 @@ export function CheckEmailPage() {
       )}
       {error && <p style={{ fontSize: 13, color: 'var(--clay)' }}>{error}</p>}
 
-      <button onClick={resend} disabled={sending || resent}
-        style={{
-          background: 'var(--ink)', color: '#fff', border: 'none',
-          borderRadius: 'var(--r-sm)', padding: '11px', fontWeight: 600,
-          fontSize: 15, opacity: sending || resent ? 0.6 : 1,
-        }}>
-        {sending ? 'Sending…' : resent ? 'Email sent' : 'Resend confirmation email'}
-      </button>
-
-      <Link to="/login" style={{ color: 'var(--aloe)', fontWeight: 600, fontSize: 14, textAlign: 'center' }}>
-        Back to sign in
-      </Link>
+      {emailSent ? (
+        <>
+          <button onClick={resend} disabled={sending || resent} style={primaryButton(sending || resent)}>
+            {sending ? 'Sending…' : resent ? 'Email sent' : 'Resend confirmation email'}
+          </button>
+          <Link to="/login" style={secondaryLink}>Back to sign in</Link>
+        </>
+      ) : (
+        <>
+          <Link to="/login" style={{ ...primaryButton(false), textAlign: 'center', textDecoration: 'none' }}>
+            Sign in
+          </Link>
+          <button onClick={resend} disabled={sending || resent} style={secondaryButton(sending || resent)}>
+            {sending ? 'Sending…' : resent ? 'Email sent' : 'Try sending the email again'}
+          </button>
+        </>
+      )}
     </AuthShell>
   )
+}
+
+const secondaryLink: React.CSSProperties = {
+  color: 'var(--aloe)', fontWeight: 600, fontSize: 14, textAlign: 'center',
+}
+
+function primaryButton(dimmed: boolean): React.CSSProperties {
+  return {
+    background: 'var(--ink)', color: '#fff', border: 'none',
+    borderRadius: 'var(--r-sm)', padding: '11px', fontWeight: 600,
+    fontSize: 15, opacity: dimmed ? 0.6 : 1,
+  }
+}
+
+/** Same shape, no fill — reads as the alternative, not the instruction. */
+function secondaryButton(dimmed: boolean): React.CSSProperties {
+  return {
+    background: 'transparent', color: 'var(--ink-soft)',
+    border: '1.5px solid var(--line)',
+    borderRadius: 'var(--r-sm)', padding: '11px', fontWeight: 600,
+    fontSize: 14, opacity: dimmed ? 0.6 : 1,
+  }
 }

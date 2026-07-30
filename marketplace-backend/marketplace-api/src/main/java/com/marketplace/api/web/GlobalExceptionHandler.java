@@ -3,6 +3,8 @@ package com.marketplace.api.web;
 import com.marketplace.api.auth.AuthService.EmailAlreadyRegisteredException;
 import com.marketplace.api.auth.AuthService.EmailNotVerifiedException;
 import com.marketplace.api.auth.AuthService.UsernameTakenException;
+import com.marketplace.api.ai.DraftExceptions.DraftProviderException;
+import com.marketplace.api.ai.DraftExceptions.DraftRateLimitExceededException;
 import com.marketplace.api.auth.UserTokenService;
 import com.marketplace.api.exception.CategoryExceptions.CategoryNotFoundException;
 import com.marketplace.api.exception.OrderExceptions.*;
@@ -17,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -178,6 +181,33 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadCredentialsException.class)
     public ProblemDetail badCredentials(BadCredentialsException ex) {
         return problem(HttpStatus.UNAUTHORIZED, "Unauthorized", "Invalid email or password");
+    }
+
+    /**
+     * 502, mirroring PaymentProviderException: the vendor's photo was fine,
+     * an upstream we depend on returned something unusable. The raw model
+     * output is logged (truncated) in ListingDraftService and never returned
+     * to the browser — it is unvalidated third-party text.
+     */
+    @ExceptionHandler(DraftProviderException.class)
+    public ProblemDetail draftProviderError(DraftProviderException ex) {
+        log.error("Listing draft provider error", ex);
+        return problem(HttpStatus.BAD_GATEWAY, "Drafting unavailable",
+                "Drafting service returned an unusable response — try again");
+    }
+
+    /**
+     * ResponseEntity rather than a bare ProblemDetail so Retry-After can ride
+     * along. The window is the real time to the next token, not a constant.
+     */
+    @ExceptionHandler(DraftRateLimitExceededException.class)
+    public ResponseEntity<ProblemDetail> draftRateLimited(DraftRateLimitExceededException ex) {
+        ProblemDetail pd = problem(HttpStatus.TOO_MANY_REQUESTS, "Too many requests",
+                "You have used this hour's drafting allowance. Retry after "
+                        + ex.getRetryAfterSeconds() + " seconds, or fill the form manually.");
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+                .body(pd);
     }
 
     @ExceptionHandler(PaymentProviderException.class)

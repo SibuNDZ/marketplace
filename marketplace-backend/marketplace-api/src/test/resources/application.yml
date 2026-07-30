@@ -2,6 +2,20 @@
 # (fail-fast properties that require real env vars in production).
 # These placeholder values are safe for test runs — no real Stripe account is hit.
 app:
+  ai:
+    # api-key is deliberately blank here and set per-test:
+    #   ListingDraftTest gives it a dummy value (the model is mocked anyway),
+    #   AnthropicDraftFaultIsolationTest leaves it blank on purpose — that IS
+    #   the condition under test.
+    api-key: ""
+    # model has NO in-code default, so it must be stubbed here or the context
+    # cannot start. Tests that mock ListingDraftModel never notice, because the
+    # bean needing this is replaced — only the fault-isolation test, which uses
+    # the real one, surfaces it. That is why it is easy to miss.
+    model: claude-sonnet-5
+    max-tokens: 1024
+    rate-limit:
+      per-hour: 10
   stripe:
     secret-key: sk_test_placeholder_for_tests
     webhook-secret: whsec_placeholder_for_tests

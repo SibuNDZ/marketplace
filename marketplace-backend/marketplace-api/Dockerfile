@@ -3,7 +3,7 @@
 # CI's test job is the gate; the image build assumes green.
 
 # ---------- Stage 1: build ----------
-FROM eclipse-temurin:21-jdk-jammy AS build
+FROM eclipse-temurin:25-jdk-jammy AS build
 WORKDIR /workspace
 
 # Dependency layer first: as long as pom.xml is unchanged, Docker reuses
@@ -22,10 +22,10 @@ RUN ./mvnw --no-transfer-progress package -DskipTests -q
 # Your code changes daily; your dependencies change monthly — after this,
 # a code-only change rebuilds a layer of a few hundred KB instead of
 # re-shipping an 80MB fat jar every deploy.
-RUN java -Djarmode=layertools -jar target/*.jar extract --destination extracted
+RUN java -Djarmode=tools -jar target/*.jar extract --destination extracted
 
 # ---------- Stage 2: runtime ----------
-FROM eclipse-temurin:21-jre-jammy
+FROM eclipse-temurin:25-jre-jammy
 
 # Non-root: a container compromise shouldn't hand out root, and platforms
 # increasingly refuse root containers outright.

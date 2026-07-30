@@ -191,7 +191,50 @@ export async function uploadProductImage(productId: number, file: File, _retried
   return res.json()
 }
 
+/**
+ * AI listing draft from a product photo.
+ *
+ * Deliberately NOT routed through api() for the same reason as
+ * uploadProductImage: a JSON Content-Type header breaks the multipart
+ * boundary the browser sets from the FormData body.
+ *
+ * Returns a suggestion only. Nothing is created server-side — the vendor's
+ * own form submission is still the only thing that writes a product.
+ */
+export async function draftListingFromPhoto(file: File, _retried = false): Promise<ListingDraft> {
+  const headers: Record<string, string> = {}
+  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+
+  const body = new FormData()
+  body.append('file', file)
+
+  let res: Response
+  try {
+    res = await fetch(`${BASE}/api/v1/vendor/products/draft`, { method: 'POST', headers, body })
+  } catch {
+    throw new ApiError(0, 'Network error',
+      "Couldn't reach the server. Check your connection and try again.")
+  }
+
+  if (res.status === 401 && !_retried) {
+    if (await refreshSession()) return draftListingFromPhoto(file, true)
+    clearSession()
+    window.dispatchEvent(new Event('mk:logout'))
+    throw await toApiError(res)
+  }
+  if (!res.ok) throw await toApiError(res)
+  return res.json()
+}
+
 // ---------- DTOs (mirrors backend) ----------
+
+/** POST /api/v1/vendor/products/draft — a suggestion, never a persisted product. */
+export interface ListingDraft {
+  name: string
+  description: string
+  categorySlug: string
+  disclaimer: string
+}
 export interface Page<T> {
   content: T[]
   totalElements: number

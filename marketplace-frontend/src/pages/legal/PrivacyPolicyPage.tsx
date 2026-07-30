@@ -10,6 +10,11 @@ import { LegalPage, LegalSection } from './LegalPage'
 // per AdminOrderController's new detail endpoint) only once an order is
 // PAID or later. This page is the privacy notice the discovery slice's
 // POPIA note promised.
+//
+// The drafting-assistant claim is ListingDraftController: the photo is read
+// from the multipart request, passed to the model, and discarded — that
+// endpoint persists nothing, which is why "not stored by us for this purpose"
+// is a statement about code rather than a policy promise.
 export function PrivacyPolicyPage() {
   return (
     <LegalPage title="Privacy Policy" lastUpdated="2026-07-13">
@@ -66,6 +71,17 @@ export function PrivacyPolicyPage() {
           Card details never touch this system. Payment happens on Stripe's hosted
           checkout page; we receive confirmation that payment succeeded, the order
           reference, and nothing about your card.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="Product photos and the drafting assistant">
+        <p>
+          If a vendor uses the "Draft listing from photo" button, that product
+          photo is sent to Anthropic, our AI provider, to generate a draft name,
+          description, and category suggestion. It is used for that draft and
+          nothing else — not for training, not for any other feature, and the
+          photo is not stored by us for this purpose. Drafting is optional; the
+          product form works exactly the same without it.
         </p>
       </LegalSection>
 

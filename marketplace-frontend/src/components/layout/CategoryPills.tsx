@@ -38,18 +38,38 @@ export function CategoryPills({ tree, active, onSelect }: Props) {
     return () => { root.style.removeProperty('--catrail-total') }
   }, [showsSubRow])
 
-  const pill = (slug: string, name: string, icon: string, isActive: boolean) => (
-    <button key={slug} onClick={() => onSelect(slug)} style={{
-      flexShrink: 0,
-      display: 'flex', alignItems: 'center', gap: 6,
-      padding: '7px 14px',
-      borderRadius: 'var(--r-pill)',
-      border: isActive ? 'none' : '1px solid var(--line)',
-      background: isActive ? 'var(--flame-gradient)' : 'var(--card)',
-      color: isActive ? '#fff' : 'var(--ink)',
-      fontWeight: isActive ? 700 : 500,
-      fontSize: 13,
-    }}>
+  /**
+   * `empty` renders the chip visibly but inert.
+   *
+   * The catalogue asks for the FULL tree, so a shopper sees all eight
+   * departments from the first visit rather than only the ones that happen
+   * to have stock today. A marketplace showing one category reads as a shop
+   * that sells one thing; showing eight with most awaiting stock reads as a
+   * marketplace at day one, which is the accurate impression.
+   *
+   * Inert rather than hidden, and inert rather than clickable: clicking
+   * through to "no products" is the dead end the whole includeEmpty rule
+   * exists to prevent. disabled + aria-disabled so it is skipped by keyboard
+   * and announced by screen readers, not just greyed for sighted users.
+   */
+  const pill = (slug: string, name: string, icon: string, isActive: boolean, empty = false) => (
+    <button key={slug} onClick={() => onSelect(slug)}
+      disabled={empty}
+      aria-disabled={empty}
+      title={empty ? `${name} — nothing listed yet` : undefined}
+      style={{
+        flexShrink: 0,
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '7px 14px',
+        borderRadius: 'var(--r-pill)',
+        border: isActive ? 'none' : '1px solid var(--line)',
+        background: isActive ? 'var(--flame-gradient)' : 'var(--card)',
+        color: isActive ? '#fff' : 'var(--ink)',
+        fontWeight: isActive ? 700 : 500,
+        fontSize: 13,
+        opacity: empty ? 0.4 : 1,
+        cursor: empty ? 'default' : 'pointer',
+      }}>
       <span aria-hidden>{icon}</span>{name}
     </button>
   )
@@ -68,7 +88,8 @@ export function CategoryPills({ tree, active, onSelect }: Props) {
     }}>
       <div className="scroll-rail" style={railStyle}>
         {pill(ALL_SLUG, ALL_PILL.name, ALL_PILL.icon, active === ALL_SLUG)}
-        {tree.map(root => pill(root.slug, root.name, iconFor(root), root.slug === active))}
+        {tree.map(root =>
+          pill(root.slug, root.name, iconFor(root), root.slug === active, root.productCount === 0))}
       </div>
 
       {activeRoot && activeRoot.children.length > 0 && (

@@ -51,9 +51,22 @@ export function CategorySidebar({ tree, active, onSelect }: Props) {
       {tree.map(root => {
         const isActive = root.slug === active
         const isExpanded = activeRoot?.slug === root.slug
+        // The catalogue requests the full tree, so departments with no stock
+        // still appear — visibly, but inert. Clicking into an empty category
+        // is the dead end that hiding them was meant to avoid; greying them
+        // keeps the breadth of the marketplace legible without it.
+        const isEmpty = root.productCount === 0
         return (
           <div key={root.slug}>
-            <button onClick={() => onSelect(root.slug)} style={rowStyle(isActive)}>
+            <button onClick={() => onSelect(root.slug)}
+              disabled={isEmpty}
+              aria-disabled={isEmpty}
+              title={isEmpty ? `${root.name} — nothing listed yet` : undefined}
+              style={{
+                ...rowStyle(isActive),
+                opacity: isEmpty ? 0.45 : 1,
+                cursor: isEmpty ? 'default' : 'pointer',
+              }}>
               <span aria-hidden style={{ fontSize: 15 }}>{iconFor(root)}</span>
               <span style={{ flex: 1 }}>{root.name}</span>
               {root.productCount > 0 && (

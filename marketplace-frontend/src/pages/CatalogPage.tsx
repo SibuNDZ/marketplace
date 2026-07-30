@@ -43,7 +43,10 @@ export function CatalogPage() {
 
   // Counts arrive on the tree itself, so there is no second request and no
   // way for a category and the number beside it to disagree.
-  const { data: tree } = useCategoryTree()
+  // includeEmpty=true: show all eight departments, not just the ones with
+  // stock today. CategoryPills and CategorySidebar render the empty ones
+  // inert, so breadth is visible without any chip leading to a dead end.
+  const { data: tree } = useCategoryTree(true)
   const categoryTree = tree ?? []
 
   const handmadeOnly = activeFilters.has('handmade')

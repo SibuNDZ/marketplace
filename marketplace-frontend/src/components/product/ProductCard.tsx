@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { api, ProductResponse } from '../../lib/api'
+import { ApiError, api, ProductResponse } from '../../lib/api'
 import { StockBadge } from '../ui/StockBadge'
 import { getImageSeed } from '../../lib/marketplaceSignals'
 
@@ -39,6 +39,8 @@ function isNewIn(p: ProductResponse): boolean {
 
 export function ProductCard({ product }: Props) {
   const qc = useQueryClient()
+  const navigate = useNavigate()
+  const location = useLocation()
   const [added, setAdded] = useState(false)
   const imageSeed = getImageSeed(product.id)
 
@@ -51,6 +53,16 @@ export function ProductCard({ product }: Props) {
       qc.invalidateQueries({ queryKey: ['cart'] })
       setAdded(true)
       setTimeout(() => setAdded(false), 1500)
+    },
+    onError: (e) => {
+      // There was NO error handler here, so a signed-out shopper clicking
+      // Add to cart got nothing at all — the click looked broken. A grid
+      // card has no room for an inline banner, so send them to sign-in and
+      // bring them back to the exact catalogue view they were browsing,
+      // filters and all.
+      if (e instanceof ApiError && e.status === 401) {
+        navigate('/login', { state: { from: location.pathname + location.search } })
+      }
     },
   })
 

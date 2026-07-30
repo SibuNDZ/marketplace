@@ -13,6 +13,10 @@ export function ProductDetailPage() {
   const qc = useQueryClient()
   const [qty, setQty] = useState(1)
   const [cartError, setCartError] = useState<ApiError>()
+  // A signed-out visitor is not an error condition. Kept separate from
+  // cartError so a 401 never renders through ErrorSurface, which is built
+  // for genuine failures and shows a request id.
+  const [needsSignIn, setNeedsSignIn] = useState(false)
 
   const { data: product, isLoading } = useQuery<ProductResponse>({
     queryKey: ['product', id],
@@ -35,7 +39,14 @@ export function ProductDetailPage() {
       method: 'POST', body: { productId: Number(id), quantity: qty },
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['cart'] }) },
-    onError: (e) => { if (e instanceof ApiError) setCartError(e) },
+    onError: (e) => {
+      if (!(e instanceof ApiError)) return
+      // 401 means "we don't know who you are", not "something broke".
+      // Showing an Unauthorized banner with a request id to a shopper who
+      // simply is not signed in reads as a site fault and loses the sale.
+      if (e.status === 401) { setNeedsSignIn(true); setCartError(undefined) }
+      else { setCartError(e); setNeedsSignIn(false) }
+    },
   })
 
   if (isLoading) return <><Topbar /><div className="page-shell no-catrail">Loading…</div></>
@@ -93,6 +104,23 @@ export function ProductDetailPage() {
               <span style={{ fontFamily: 'var(--mono)', fontSize: 16, color: 'var(--ink-soft)', fontWeight: 400 }}>R</span>
               <span className="num">{Number(product.price).toFixed(2)}</span>
             </div>
+
+            {needsSignIn && (
+              <div style={{
+                background: 'var(--flame-tint)', border: '1px solid var(--flame)',
+                borderRadius: 'var(--r-sm)', padding: '12px 14px',
+                fontSize: 13, lineHeight: 1.5, marginBottom: 12,
+              }}>
+                <Link
+                  to="/login"
+                  state={{ from: `/products/${id}` }}
+                  style={{ color: 'var(--flame-deep)', fontWeight: 700 }}
+                >
+                  Sign in
+                </Link>{' '}
+                to add this to your cart. We will bring you straight back here.
+              </div>
+            )}
 
             {cartError && <ErrorSurface error={cartError} onDismiss={() => setCartError(undefined)} />}
 

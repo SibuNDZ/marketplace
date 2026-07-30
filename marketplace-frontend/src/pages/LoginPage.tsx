@@ -20,12 +20,31 @@ export function LoginPage() {
 
   const justReset = (state as { passwordReset?: boolean } | null)?.passwordReset
 
+  /**
+   * Where to land after a successful sign-in.
+   *
+   * Anything that bounces a signed-out visitor here passes the page they
+   * were on. Without it, someone who clicked "Add to cart" on a product,
+   * signed in, and was dumped on the homepage has to find that product
+   * again — which is where people give up rather than re-navigate.
+   *
+   * Only same-origin paths are honoured: `from` arrives via router state,
+   * but treating an arbitrary string as a redirect target is how open
+   * redirects happen, so anything not starting with a single "/" is ignored.
+   */
+  const rawFrom = (state as { from?: string } | null)?.from
+  const from = typeof rawFrom === 'string'
+    && rawFrom.startsWith('/')
+    && !rawFrom.startsWith('//')
+      ? rawFrom
+      : '/'
+
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setLoading(true); setError(undefined); setNeedsVerification(false)
     try {
       await login(email, password)
-      navigate('/')
+      navigate(from, { replace: true })
     } catch (err) {
       if (err instanceof ApiError && err.code === 'EMAIL_NOT_VERIFIED') {
         setNeedsVerification(true)

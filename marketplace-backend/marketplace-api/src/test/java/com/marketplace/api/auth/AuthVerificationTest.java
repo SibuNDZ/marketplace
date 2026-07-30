@@ -2,6 +2,7 @@ package com.marketplace.api.auth;
 
 import com.marketplace.api.auth.AuthDtos.LoginRequest;
 import com.marketplace.api.auth.AuthDtos.RegisterRequest;
+import com.marketplace.api.email.EmailService;
 import com.marketplace.api.auth.AuthDtos.RegisterResponse;
 import com.marketplace.api.auth.AuthService.EmailNotVerifiedException;
 import com.marketplace.api.auth.AuthService.UsernameTakenException;
@@ -9,9 +10,11 @@ import com.marketplace.api.entity.TokenPurpose;
 import com.marketplace.api.entity.User;
 import com.marketplace.api.repository.UserRepository;
 import com.marketplace.api.repository.UserTokenRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -21,6 +24,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -52,10 +57,29 @@ class AuthVerificationTest {
                 () -> "dGhpcy1pcy1hLXRlc3Qtb25seS1zZWNyZXQta2V5LTMyYnl0ZXM=");
     }
 
+    /**
+     * Mocked so these tests control whether the verification email "sent".
+     *
+     * This used to rely on the blank test API key making every send fail. That
+     * was only safe while the auto-verify fail-safe was broken: once it works,
+     * a failed send verifies the account, and every gating test below would be
+     * asserting against an account that is already verified. Controlling the
+     * flag explicitly makes each test say which world it is in.
+     */
+    @MockBean EmailService emailService;
+
     @Autowired AuthService          authService;
     @Autowired UserTokenService     userTokenService;
     @Autowired UserRepository       userRepository;
     @Autowired UserTokenRepository  userTokenRepository;
+
+    @BeforeEach
+    void emailSendingWorksByDefault() {
+        // Default to the healthy provider. Tests that care about the outage
+        // path override this explicitly, so the failure case is never implicit.
+        given(emailService.sendVerification(any(), any(), any())).willReturn(true);
+        given(emailService.sendPasswordReset(any(), any(), any())).willReturn(true);
+    }
 
     private RegisterResponse register(String tag) {
         return authService.register(new RegisterRequest(
@@ -68,12 +92,39 @@ class AuthVerificationTest {
         RegisterResponse r = register("v_basic");
 
         assertThat(r.email()).isEqualTo("v_basic@verify-test.local");
-        // No API key in tests, so the send is reported as failed — and the
-        // account still exists, which is the contract that matters.
-        assertThat(r.emailSent()).isFalse();
+        assertThat(r.emailSent()).isTrue();
 
         User user = userRepository.findByEmail("v_basic@verify-test.local").orElseThrow();
         assertThat(user.getIsVerified()).isFalse();
+    }
+
+    /**
+     * REGRESSION: the fail-safe must actually persist.
+     *
+     * It previously set isVerified(true) on an entity that
+     * UserTokenRepository.consumeAllOutstanding had already detached
+     * (@Modifying(clearAutomatically = true)), so the flag was never written
+     * while the log announced that it had been. Every registration during a
+     * mail outage produced an account that could not log in — the exact
+     * lockout the fail-safe exists to prevent. Asserting on the persisted row
+     * AND on a successful login, because the log cannot be trusted here.
+     */
+    @Test
+    void failedSend_actuallyPersistsAutoVerification_soTheUserCanLogIn() {
+        given(emailService.sendVerification(any(), any(), any())).willReturn(false);
+
+        RegisterResponse r = register("v_failsafe");
+        assertThat(r.emailSent()).isFalse();
+
+        User user = userRepository.findByEmail("v_failsafe@verify-test.local").orElseThrow();
+        assertThat(user.getIsVerified())
+                .as("fail-safe must WRITE the flag, not just log that it did")
+                .isTrue();
+
+        // The behaviour that actually matters to the person registering.
+        assertThat(authService.login(
+                new LoginRequest("v_failsafe@verify-test.local", "password123")))
+                .isNotNull();
     }
 
     @Test

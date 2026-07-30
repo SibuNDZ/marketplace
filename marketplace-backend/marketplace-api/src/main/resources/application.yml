@@ -76,6 +76,18 @@ app:
     verification-expiry-seconds: ${VERIFICATION_TOKEN_EXPIRY_SECONDS:86400}
     # 1h: a reset link is an account-takeover primitive sitting in an inbox.
     reset-expiry-seconds: ${RESET_TOKEN_EXPIRY_SECONDS:3600}
+  ai:
+    # Blank default, NOT fail-fast. Unlike JWT_SECRET, a missing key here must
+    # degrade to "the draft button 500s" rather than a boot failure — see
+    # AnthropicConfig for the fault-isolation rationale.
+    api-key: ${ANTHROPIC_API_KEY:}
+    # Sonnet-class: this is a short image->JSON extraction on a cost-per-call
+    # endpoint, not reasoning work. Verified against the model docs.
+    model: ${ANTHROPIC_MODEL:claude-sonnet-5}
+    max-tokens: ${ANTHROPIC_MAX_TOKENS:1024}
+    rate-limit:
+      # Per authenticated vendor, not per IP. Each call costs real money.
+      per-hour: ${DRAFT_RATE_LIMIT_PER_HOUR:10}
   stripe:
     secret-key: ${STRIPE_SECRET_KEY}
     webhook-secret: ${STRIPE_WEBHOOK_SECRET}

@@ -165,6 +165,16 @@
 			<artifactId>sentry-spring-boot-starter-jakarta</artifactId>
 			<version>8.3.0</version>
 		</dependency>
+		<!--
+		  Anthropic SDK — powers the vendor listing drafter only. Version
+		  verified against the SDK repo at time of writing; the artifact
+		  coordinates are groupId com.anthropic / artifactId anthropic-java.
+		-->
+		<dependency>
+			<groupId>com.anthropic</groupId>
+			<artifactId>anthropic-java</artifactId>
+			<version>2.52.0</version>
+		</dependency>
 	</dependencies>
 
 	<dependencyManagement>

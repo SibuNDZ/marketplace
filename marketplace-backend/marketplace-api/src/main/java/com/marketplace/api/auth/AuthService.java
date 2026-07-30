@@ -119,6 +119,24 @@ public class AuthService {
             // becomes weaker signup checks, not a total signup outage — but it
             // is ONLY safe because it is loud. This log line is the alert.
             saved.setIsVerified(true);
+
+            // The explicit save is LOAD-BEARING — do not delete it as
+            // redundant-looking dirty-check noise.
+            //
+            // `saved` is DETACHED by this point. userTokenService.issue()
+            // above calls UserTokenRepository.consumeAllOutstanding, which is
+            // annotated @Modifying(clearAutomatically = true) — that clears
+            // the persistence context, so `saved` is no longer managed and
+            // setIsVerified() above mutates a detached object that Hibernate
+            // will never write back.
+            //
+            // Without this line the fail-safe silently does nothing while
+            // logging that it worked: the account stays unverified, the vendor
+            // cannot log in, and the log below says they can. That shipped to
+            // production once and was found by a manual clickthrough, because
+            // the log lied convincingly enough that nothing else noticed.
+            userRepository.save(saved);
+
             log.error("VERIFICATION EMAIL FAILED for {} — account auto-verified so the "
                     + "user is not locked out. Email verification is currently NOT being "
                     + "enforced; fix the mail provider.", saved.getEmail());

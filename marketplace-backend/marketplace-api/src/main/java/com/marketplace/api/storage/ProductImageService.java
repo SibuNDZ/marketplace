@@ -43,11 +43,9 @@ import java.util.UUID;
 @Service
 public class ProductImageService {
 
-    private static final Map<String, String> ALLOWED = Map.of(
-            "image/jpeg", "jpg",
-            "image/png", "png",
-            "image/webp", "webp");
-    private static final long MAX_BYTES = 5 * 1024 * 1024;
+    // The whitelist and size cap moved to ImageValidation when the AI listing
+    // drafter became a second entry point for vendor photos. Both paths call
+    // the same validator so the rules cannot drift apart.
 
     private final ProductRepository productRepository;
     private final ObjectStorageService storage;
@@ -72,13 +70,7 @@ public class ProductImageService {
         }
 
         String contentType = file.getContentType();
-        String ext = contentType != null ? ALLOWED.get(contentType) : null;
-        if (ext == null) {
-            throw new UnsupportedImageTypeException(contentType);
-        }
-        if (file.isEmpty() || file.getSize() > MAX_BYTES) {
-            throw new UnsupportedImageTypeException("empty or over 5MB");
-        }
+        String ext = ImageValidation.validateAndGetExtension(file);
 
         String newKey = "products/" + productId + "/" + UUID.randomUUID() + "." + ext;
         try {

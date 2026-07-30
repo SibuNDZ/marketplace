@@ -1,7 +1,7 @@
 import React, { FormEvent, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, ApiError, CategoryOption, ProductRequest, ProductResponse, categories as categoriesApi, fieldErrorsFrom, uploadProductImage } from '../lib/api'
+import { api, ApiError, CategoryOption, ProductRequest, ProductResponse, categories as categoriesApi, draftListingFromPhoto, fieldErrorsFrom, uploadProductImage } from '../lib/api'
 import { Topbar } from '../components/layout/Topbar'
 import { ErrorSurface } from '../components/ui/ErrorSurface'
 
@@ -31,6 +31,14 @@ const inputStyle = (hasError?: boolean): React.CSSProperties => ({
   padding: '9px 12px', border: `1.5px solid ${hasError ? 'var(--clay)' : 'var(--line)'}`,
   borderRadius: 'var(--r-sm)', fontFamily: 'var(--body)', fontSize: 14,
 })
+
+// A field still holding unedited AI text. Tinted rather than outlined so it
+// reads as "provisional", not "invalid" — the clay error border already owns
+// the "something is wrong" signal and the two must not be confused.
+const draftedStyle = (drafted: boolean, hasError?: boolean): React.CSSProperties =>
+  drafted && !hasError
+    ? { ...inputStyle(hasError), borderColor: 'var(--aloe)', background: 'var(--aloe-tint)' }
+    : inputStyle(hasError)
 
 export function ProductFormPage() {
   const { id } = useParams()
@@ -127,7 +135,85 @@ export function ProductFormPage() {
       return
     }
     setImageFile(file)
+    // A new photo invalidates the previous draft: the fields on screen
+    // describe an image the vendor just replaced.
+    setDraftedFields(new Set())
+    setDraftApplied(false)
+    setTouchedDraft(false)
+    setReviewed(false)
+    setDraftError(undefined)
   }
+
+  // ---- AI listing drafter -------------------------------------------------
+  // Which fields currently hold AI-written text. A field leaves this set the
+  // moment the vendor edits it, which is what turns "reviewed" from an
+  // assumption into an observed action.
+  const [draftedFields, setDraftedFields] = useState<Set<string>>(new Set())
+  const [reviewed, setReviewed] = useState(false)
+  const [draftError, setDraftError] = useState<string>()
+  // A draft landed at some point. Distinct from draftedFields, which shrinks
+  // as the vendor edits — this stays true so the banner does not vanish
+  // mid-review.
+  const [draftApplied, setDraftApplied] = useState(false)
+  // The vendor has edited at least one drafted field. That is a review action
+  // in itself, so it satisfies the gate without needing the checkbox too.
+  const [touchedDraft, setTouchedDraft] = useState(false)
+
+  const clearDrafted = (field: string) =>
+    setDraftedFields(prev => {
+      if (!prev.has(field)) return prev
+      const next = new Set(prev)
+      next.delete(field)
+      return next
+    })
+
+  // set() that also marks a drafted field as vendor-touched.
+  const setAndReview = <K extends keyof ProductRequest>(key: K, value: ProductRequest[K]) => {
+    if (draftedFields.has(key as string)) setTouchedDraft(true)
+    clearDrafted(key as string)
+    set(key, value)
+  }
+
+  const draft = useMutation({
+    mutationFn: () => draftListingFromPhoto(imageFile!),
+    onSuccess: (d) => {
+      setForm(f => ({
+        ...f,
+        name: d.name,
+        description: d.description,
+        categorySlug: d.categorySlug,
+        // price, stock, sku, tags and handmade are NEVER drafted — a
+        // hallucinated price is the one that actually costs money, and the
+        // rest are cheap for a vendor to set and expensive to get wrong.
+      }))
+      setDraftedFields(new Set(['name', 'description', 'categorySlug']))
+      setDraftApplied(true)
+      setTouchedDraft(false)
+      setReviewed(false)
+      setDraftError(undefined)
+    },
+    onError: (e) => {
+      // The manual path stays fully usable — drafting is an accelerant, not
+      // a gate — so this is a message, not a blocking error surface.
+      if (e instanceof ApiError && e.status === 429) {
+        setDraftError(e.detail || "You have used this hour's drafting allowance.")
+      } else {
+        setDraftError("Drafting didn't work — fill the form manually or try again.")
+      }
+    },
+  })
+
+  const hasDraft = draftApplied
+  // The review gate: once a draft lands, creating is blocked until the vendor
+  // has either edited AT LEAST ONE drafted field or explicitly ticked the box.
+  // Silently-accepted AI text on a commerce listing is the failure mode worth
+  // engineering against, so review is an action rather than an assumption.
+  //
+  // "At least one", not "all three", on purpose. Requiring every field to be
+  // retyped punishes a vendor whose draft was mostly right and pushes them
+  // toward the checkbox as the faster path — which is the outcome the gate
+  // exists to avoid. Editing one field proves they read the output.
+  const awaitingReview = draftApplied && !touchedDraft && !reviewed
 
   const save = useMutation({
     mutationFn: () => isEdit
@@ -183,15 +269,9 @@ export function ProductFormPage() {
         <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {genericError && <ErrorSurface error={genericError} onDismiss={() => setGenericError(undefined)} />}
 
-          <Field label="Name" error={fieldErrors.name}>
-            <input required value={form.name} onChange={e => set('name', e.target.value)} style={inputStyle(!!fieldErrors.name)} />
-          </Field>
-
-          <Field label="Description" error={fieldErrors.description}>
-            <textarea rows={3} value={form.description} onChange={e => set('description', e.target.value)}
-              style={{ ...inputStyle(!!fieldErrors.description), resize: 'vertical', fontFamily: 'var(--body)' }} />
-          </Field>
-
+          {/* Photo first in create mode: the drafter reads the photo, so
+              asking for it up front is what makes "draft from photo" the
+              natural next action rather than a feature buried mid-form. */}
           <Field label="Photo" error={imageError ? [imageError] : undefined}>
             {(imagePreview ?? existing?.imageUrl) && (
               <img src={imagePreview ?? existing!.imageUrl!} alt="" style={{
@@ -200,6 +280,49 @@ export function ProductFormPage() {
             )}
             <input type="file" accept={ACCEPTED_IMAGE_TYPES} onChange={onImageChange}
               style={{ fontSize: 13 }} />
+          </Field>
+
+          {!isEdit && (
+            <>
+              <button type="button"
+                onClick={() => draft.mutate()}
+                disabled={!imageFile || draft.isPending}
+                style={{
+                  background: 'transparent', color: 'var(--ink)',
+                  border: '1.5px solid var(--line)', borderRadius: 'var(--r-sm)',
+                  padding: '10px', fontWeight: 600, fontSize: 14,
+                  opacity: !imageFile || draft.isPending ? 0.5 : 1,
+                  cursor: !imageFile || draft.isPending ? 'default' : 'pointer',
+                }}>
+                {draft.isPending ? 'Drafting…' : 'Draft listing from photo'}
+              </button>
+
+              {draftError && (
+                <p style={{ fontSize: 13, color: 'var(--clay)', margin: 0 }}>{draftError}</p>
+              )}
+
+              {hasDraft && (
+                <div style={{
+                  background: 'var(--aloe-tint)', border: '1px solid var(--aloe)',
+                  borderRadius: 'var(--r-sm)', padding: '10px 14px', fontSize: 13,
+                  lineHeight: 1.5,
+                }}>
+                  <strong>AI draft — please review.</strong> Written from your photo, so
+                  check it describes what you are actually selling. Edit anything that is
+                  wrong, then confirm below.
+                </div>
+              )}
+            </>
+          )}
+
+          <Field label="Name" error={fieldErrors.name}>
+            <input required value={form.name} onChange={e => setAndReview('name', e.target.value)}
+              style={draftedStyle(draftedFields.has('name'), !!fieldErrors.name)} />
+          </Field>
+
+          <Field label="Description" error={fieldErrors.description}>
+            <textarea rows={3} value={form.description} onChange={e => setAndReview('description', e.target.value)}
+              style={{ ...draftedStyle(draftedFields.has('description'), !!fieldErrors.description), resize: 'vertical', fontFamily: 'var(--body)' }} />
           </Field>
 
           <div style={{ display: 'flex', gap: 12 }}>
@@ -215,8 +338,8 @@ export function ProductFormPage() {
                     not fit any subcategory should not be forced into a wrong
                     one just to satisfy the picker. */}
                 <select required value={form.categorySlug}
-                  onChange={e => set('categorySlug', e.target.value)}
-                  style={inputStyle(!!fieldErrors.categorySlug)}>
+                  onChange={e => setAndReview('categorySlug', e.target.value)}
+                  style={draftedStyle(draftedFields.has('categorySlug'), !!fieldErrors.categorySlug)}>
                   <option value="" disabled>Choose a category…</option>
                   {roots.map(root => (
                     <optgroup key={root.slug} label={root.name}>
@@ -288,10 +411,30 @@ export function ProductFormPage() {
             </div>
           </div>
 
+          {/* The review gate. Shown only while unedited AI text is still on
+              screen; editing any drafted field clears it on its own, so a
+              vendor who actually reviewed never has to tick anything. */}
+          {awaitingReview && (
+            <label style={{
+              display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13,
+              lineHeight: 1.5, background: 'var(--paper)', border: '1px solid var(--line)',
+              borderRadius: 'var(--r-sm)', padding: '10px 12px',
+            }}>
+              <input type="checkbox" checked={reviewed}
+                onChange={e => setReviewed(e.target.checked)}
+                style={{ marginTop: 2 }} />
+              <span>
+                I have reviewed this draft and confirm it describes my product accurately.
+              </span>
+            </label>
+          )}
+
           <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-            <button type="submit" disabled={save.isPending} style={{
+            <button type="submit" disabled={save.isPending || awaitingReview} style={{
               flex: 1, padding: '11px 20px', background: 'var(--flame-gradient)', color: '#fff',
               border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 700, fontSize: 15,
+              opacity: save.isPending || awaitingReview ? 0.5 : 1,
+              cursor: awaitingReview ? 'default' : 'pointer',
             }}>
               {save.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create product'}
             </button>

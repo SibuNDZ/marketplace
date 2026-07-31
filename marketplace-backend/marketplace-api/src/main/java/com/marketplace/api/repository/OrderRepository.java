@@ -12,6 +12,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -50,6 +51,38 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Page<Order> findByStatus(OrderStatus status, Pageable pageable);
 
     Optional<Order> findByIdAndUserId(Long id, Long userId);
+
+    /**
+     * Orders that contain at least one item from this vendor, restricted to
+     * the given statuses (the vendor view passes PAID-and-later: a vendor has
+     * no business seeing carts that may still expire unpaid). DISTINCT because
+     * the item join multiplies rows; the explicit count query keeps Spring
+     * Data from mis-deriving one over the join.
+     */
+    @Query(value = """
+            select distinct o from Order o join o.orderItems i
+            where i.product.vendor.id = :vendorId and o.status in :statuses
+            """,
+            countQuery = """
+            select count(distinct o) from Order o join o.orderItems i
+            where i.product.vendor.id = :vendorId and o.status in :statuses
+            """)
+    Page<Order> findVendorOrders(@Param("vendorId") Long vendorId,
+                                 @Param("statuses") Collection<OrderStatus> statuses,
+                                 Pageable pageable);
+
+    /**
+     * Order ids from the given set that contain any item NOT belonging to this
+     * vendor (a deleted product's item counts: its vendor is unknowable, so
+     * the order is not provably single-vendor). Complement of "canShip".
+     */
+    @Query("""
+            select distinct i.order.id from OrderItem i
+            where i.order.id in :orderIds
+              and (i.product is null or i.product.vendor.id <> :vendorId)
+            """)
+    List<Long> idsWithForeignItems(@Param("orderIds") Collection<Long> orderIds,
+                                   @Param("vendorId") Long vendorId);
 
     /**
      * Pessimistic write lock on the order row. Used by the payment webhook and

@@ -40,12 +40,20 @@ export function VendorDashboardPage() {
       <main className="page-shell no-catrail">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <h1 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 28 }}>Your stall</h1>
-          <Link to="/vendor/products/new" style={{
-            padding: '9px 18px', background: 'var(--flame-gradient)', color: '#fff',
-            borderRadius: 'var(--r-sm)', fontWeight: 700, display: 'inline-block',
-          }}>
-            + New product
-          </Link>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <Link to="/vendor/orders" style={{
+              padding: '9px 18px', border: '1px solid var(--line)', color: 'var(--ink)',
+              borderRadius: 'var(--r-sm)', fontWeight: 700, display: 'inline-block',
+            }}>
+              Orders to fulfil
+            </Link>
+            <Link to="/vendor/products/new" style={{
+              padding: '9px 18px', background: 'var(--flame-gradient)', color: '#fff',
+              borderRadius: 'var(--r-sm)', fontWeight: 700, display: 'inline-block',
+            }}>
+              + New product
+            </Link>
+          </div>
         </div>
 
         {notice && (

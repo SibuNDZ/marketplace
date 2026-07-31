@@ -22,7 +22,7 @@ RUN ./mvnw --no-transfer-progress package -DskipTests -q
 # Your code changes daily; your dependencies change monthly — after this,
 # a code-only change rebuilds a layer of a few hundred KB instead of
 # re-shipping an 80MB fat jar every deploy.
-RUN java -Djarmode=tools -jar target/*.jar extract --destination extracted
+RUN java -Djarmode=tools -jar target/*.jar extract --layers --destination extracted
 
 # ---------- Stage 2: runtime ----------
 FROM eclipse-temurin:25-jre-jammy

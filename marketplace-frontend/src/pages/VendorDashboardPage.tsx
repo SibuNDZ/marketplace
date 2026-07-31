@@ -1,8 +1,72 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api, Page, ProductResponse } from '../lib/api'
+import { api, Page, ProductResponse, VendorSettings } from '../lib/api'
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
+
+/**
+ * Inline editor for the vendor's flat delivery fee (Task 2.3). Charged once
+ * per order containing their items; R0 means free delivery. Kept as a small
+ * self-contained block so the dashboard stays a product table at heart.
+ */
+function DeliveryFeeEditor() {
+  const qc = useQueryClient()
+  const { data } = useQuery<VendorSettings>({
+    queryKey: ['vendor-settings'],
+    queryFn: () => api('/api/v1/vendor/settings'),
+  })
+  const [fee, setFee] = useState('')
+  const [saved, setSaved] = useState(false)
+  useEffect(() => {
+    if (data) setFee(Number(data.deliveryFee).toFixed(2))
+  }, [data])
+
+  const save = useMutation({
+    mutationFn: () => api('/api/v1/vendor/settings', { method: 'PUT', body: { deliveryFee: fee } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['vendor-settings'] })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    },
+  })
+
+  const dirty = data != null && fee !== Number(data.deliveryFee).toFixed(2)
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20,
+      border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', padding: '10px 14px',
+    }}>
+      <label htmlFor="delivery-fee" style={{ fontSize: 13, fontWeight: 600 }}>
+        Delivery fee per order
+      </label>
+      <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>R</span>
+      <input
+        id="delivery-fee"
+        type="number" min="0" step="0.01" inputMode="decimal"
+        value={fee}
+        onChange={e => setFee(e.target.value)}
+        style={{
+          width: 90, padding: '6px 8px', border: '1px solid var(--line)',
+          borderRadius: 4, fontSize: 14, textAlign: 'right',
+        }}
+      />
+      {dirty && (
+        <button onClick={() => save.mutate()} disabled={save.isPending} style={{
+          padding: '6px 14px', background: 'var(--aloe)', color: '#fff', border: 'none',
+          borderRadius: 4, fontWeight: 600, fontSize: 13, cursor: 'pointer',
+        }}>
+          {save.isPending ? 'Saving…' : 'Save'}
+        </button>
+      )}
+      {saved && <span style={{ fontSize: 12, color: 'var(--aloe)' }}>Saved</span>}
+      {save.isError && <span style={{ fontSize: 12, color: 'var(--clay)' }}>Could not save. Check the amount.</span>}
+      <span style={{ fontSize: 12, color: 'var(--ink-soft)', marginLeft: 'auto' }}>
+        Charged once per order containing your items. R0.00 means free delivery.
+      </span>
+    </div>
+  )
+}
 
 export function VendorDashboardPage() {
   const qc = useQueryClient()
@@ -55,6 +119,8 @@ export function VendorDashboardPage() {
             </Link>
           </div>
         </div>
+
+        <DeliveryFeeEditor />
 
         {notice && (
           <div style={{

@@ -9,7 +9,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "orders")
@@ -79,6 +81,12 @@ public class Order {
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<OrderItem> orderItems = new ArrayList<>();
+
+    // Set, not List: this and orderItems are both fetched by the email
+    // listener's entity graph, and two collection *bags* in one fetch is a
+    // MultipleBagFetchException. Delivery fees have no meaningful order.
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private Set<OrderDeliveryFee> deliveryFees = new HashSet<>();
 
     // Constructors
     public Order() {}
@@ -224,6 +232,14 @@ public class Order {
 
     public void setOrderItems(List<OrderItem> orderItems) {
         this.orderItems = orderItems;
+    }
+
+    public Set<OrderDeliveryFee> getDeliveryFees() {
+        return deliveryFees;
+    }
+
+    public void setDeliveryFees(Set<OrderDeliveryFee> deliveryFees) {
+        this.deliveryFees = deliveryFees;
     }
 
     @Override

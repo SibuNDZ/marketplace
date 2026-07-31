@@ -34,7 +34,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
      * send time, not compile time.
      */
     @EntityGraph(attributePaths = {"user", "orderItems", "orderItems.product",
-            "orderItems.product.vendor"})
+            "orderItems.product.vendor", "deliveryFees"})
     Optional<Order> findWithItemsAndVendorsById(Long id);
 
     Page<Order> findByUserId(Long userId, Pageable pageable);

@@ -47,6 +47,12 @@ export function OrderDetailPage() {
               <p className="num" style={{ fontWeight: 700 }}>R{Number(item.lineTotal).toFixed(2)}</p>
             </div>
           ))}
+          {(order.deliveryFees ?? []).map((f, i) => (
+            <div key={`fee-${i}`} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
+              <p style={{ fontSize: 14, color: 'var(--ink-soft)' }}>Delivery: {f.vendorName}</p>
+              <p className="num" style={{ fontSize: 14 }}>R{Number(f.fee).toFixed(2)}</p>
+            </div>
+          ))}
           <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 8 }}>
             <span style={{ fontWeight: 700, fontSize: 18 }}>
               Total: <span className="num">R{Number(order.total).toFixed(2)}</span>

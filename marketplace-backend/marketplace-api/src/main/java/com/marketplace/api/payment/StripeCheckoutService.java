@@ -2,6 +2,7 @@ package com.marketplace.api.payment;
 
 import com.marketplace.api.dto.ShippingDtos.ShippingAddressRequest;
 import com.marketplace.api.entity.Order;
+import com.marketplace.api.entity.OrderDeliveryFee;
 import com.marketplace.api.entity.OrderItem;
 import com.marketplace.api.entity.OrderStatus;
 import com.marketplace.api.exception.OrderExceptions.InvalidOrderStateException;
@@ -99,6 +100,24 @@ public class StripeCheckoutService {
                                     .setProductData(SessionCreateParams.LineItem.PriceData
                                             .ProductData.builder()
                                             .setName(oi.getProductNameAtPurchase())
+                                            .build())
+                                    .build())
+                            .build());
+        }
+
+        // Delivery fees ride as their own line items, from the SAME snapshots
+        // that produced totalAmount — Stripe's sum must equal the order total
+        // the webhook will mark PAID, or reconciliation drifts by the fee.
+        for (OrderDeliveryFee fee : order.getDeliveryFees()) {
+            params.addLineItem(
+                    SessionCreateParams.LineItem.builder()
+                            .setQuantity(1L)
+                            .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
+                                    .setCurrency("zar")
+                                    .setUnitAmount(toCents(fee.getFeeAtPurchase()))
+                                    .setProductData(SessionCreateParams.LineItem.PriceData
+                                            .ProductData.builder()
+                                            .setName("Delivery: " + fee.getVendorNameAtPurchase())
                                             .build())
                                     .build())
                             .build());

@@ -1,6 +1,7 @@
 package com.marketplace.api.email;
 
 import com.marketplace.api.entity.Order;
+import com.marketplace.api.entity.OrderDeliveryFee;
 import com.marketplace.api.entity.OrderItem;
 import com.marketplace.api.entity.User;
 import org.slf4j.Logger;
@@ -10,9 +11,11 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.marketplace.api.email.EmailService.escape;
 
@@ -50,6 +53,7 @@ public class OrderEmailService {
                         "Thank you for your order! Payment was received and the vendors "
                                 + "have been notified. We will email you again when your items ship.",
                         itemsTable(order.getOrderItems())
+                                + deliveryRows(order)
                                 + totalRow("Order total", order.getTotalAmount())
                                 + addressBlock(order, "Delivery address")));
 
@@ -59,15 +63,38 @@ public class OrderEmailService {
             BigDecimal vendorTotal = items.stream()
                     .map(i -> i.getPriceAtPurchase().multiply(BigDecimal.valueOf(i.getQuantity())))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
+            // The vendor's own fee is part of what they collect for this order.
+            BigDecimal myFee = order.getDeliveryFees().stream()
+                    .filter(f -> f.getVendor() != null && f.getVendor().getId().equals(vendor.getId()))
+                    .map(OrderDeliveryFee::getFeeAtPurchase)
+                    .findFirst().orElse(null);
+            String feeLine = myFee == null ? ""
+                    : feeRow("Your delivery fee", myFee);
+            BigDecimal vendorGrandTotal = myFee == null ? vendorTotal : vendorTotal.add(myFee);
             emailService.send(vendor.getEmail(),
                     "New paid order " + order.getOrderNumber() + " on eRestyu",
                     wrap("Hi " + escape(vendor.getFirstName()) + ",",
                             "A customer has paid for the items below. Please prepare them "
                                     + "for dispatch to the address at the bottom of this email.",
                             itemsTable(items)
-                                    + totalRow("Your items total", vendorTotal)
+                                    + feeLine
+                                    + totalRow("Your total for this order", vendorGrandTotal)
                                     + addressBlock(order, "Ship to")));
         }
+    }
+
+    /** Buyer-facing delivery lines, one per vendor charging delivery; empty string when all free. */
+    private static String deliveryRows(Order order) {
+        return order.getDeliveryFees().stream()
+                .sorted(Comparator.comparing(OrderDeliveryFee::getVendorNameAtPurchase))
+                .map(f -> feeRow("Delivery: " + f.getVendorNameAtPurchase(), f.getFeeAtPurchase()))
+                .collect(Collectors.joining());
+    }
+
+    private static String feeRow(String label, BigDecimal amount) {
+        return """
+               <p style="font-size:14px;text-align:right;margin:0 0 4px;color:#444">%s: %s</p>
+               """.formatted(escape(label), rand(amount));
     }
 
     /** SHIPPED: buyer notification. */

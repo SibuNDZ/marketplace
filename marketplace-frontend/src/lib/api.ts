@@ -379,13 +379,20 @@ export interface ShippingAddress {
 export interface OrderResponse {
   id: number
   status: string
-  total: string
+  total: string // items + delivery fees — the amount actually charged
   createdAt: string
   items: OrderItemResponse[]
+  // One per vendor charging delivery, snapshotted at placement; empty = free.
+  deliveryFees: DeliveryFeeLine[]
   // null until submitted at pay-time, and masked entirely by the backend
   // for admin viewers on orders that aren't PAID-or-later — the frontend
   // trusts that masking completely rather than re-deriving it here.
   shippingAddress?: ShippingAddress | null
+}
+
+export interface DeliveryFeeLine {
+  vendorName: string
+  fee: string
 }
 
 /**
@@ -401,8 +408,15 @@ export interface VendorOrderResponse {
   createdAt: string
   items: VendorLineItem[]
   itemsTotal: string
+  // This vendor's delivery fee as snapshotted on the order; null when they charged none.
+  deliveryFee?: string | null
   canShip: boolean
   shipTo?: ShippingAddress | null
+}
+
+/** Vendor self-service settings (GET/PUT /api/v1/vendor/settings). */
+export interface VendorSettings {
+  deliveryFee: string
 }
 
 export interface VendorLineItem {

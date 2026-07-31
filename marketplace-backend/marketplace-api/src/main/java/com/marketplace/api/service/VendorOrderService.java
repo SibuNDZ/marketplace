@@ -4,10 +4,12 @@ import com.marketplace.api.dto.ShippingDtos;
 import com.marketplace.api.dto.VendorOrderDtos.VendorLineItem;
 import com.marketplace.api.dto.VendorOrderDtos.VendorOrderResponse;
 import com.marketplace.api.entity.Order;
+import com.marketplace.api.entity.OrderDeliveryFee;
 import com.marketplace.api.entity.OrderItem;
 import com.marketplace.api.entity.OrderStatus;
 import com.marketplace.api.exception.OrderExceptions.InvalidOrderStateException;
 import com.marketplace.api.exception.OrderExceptions.OrderNotFoundException;
+import com.marketplace.api.repository.OrderDeliveryFeeRepository;
 import com.marketplace.api.repository.OrderItemRepository;
 import com.marketplace.api.repository.OrderRepository;
 import org.slf4j.Logger;
@@ -48,13 +50,16 @@ public class VendorOrderService {
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
+    private final OrderDeliveryFeeRepository deliveryFeeRepository;
     private final OrderStatusRecorder recorder;
 
     public VendorOrderService(OrderRepository orderRepository,
                               OrderItemRepository orderItemRepository,
+                              OrderDeliveryFeeRepository deliveryFeeRepository,
                               OrderStatusRecorder recorder) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
+        this.deliveryFeeRepository = deliveryFeeRepository;
         this.recorder = recorder;
     }
 
@@ -66,15 +71,20 @@ public class VendorOrderService {
             return orders.map(o -> null); // empty page, correct metadata
         }
 
-        // Two set-based queries for the whole page, instead of touching each
+        // Three set-based queries for the whole page, instead of touching each
         // order's items collection (one lazy load per row).
         Map<Long, List<OrderItem>> mineByOrder = orderItemRepository
                 .findByOrderIdInAndProductVendorId(ids, vendorId).stream()
                 .collect(Collectors.groupingBy(i -> i.getOrder().getId()));
         Set<Long> mixed = Set.copyOf(orderRepository.idsWithForeignItems(ids, vendorId));
+        Map<Long, BigDecimal> feeByOrder = deliveryFeeRepository
+                .findByOrderIdInAndVendorId(ids, vendorId).stream()
+                .collect(Collectors.toMap(f -> f.getOrder().getId(),
+                        OrderDeliveryFee::getFeeAtPurchase));
 
         return orders.map(o -> toResponse(o,
                 mineByOrder.getOrDefault(o.getId(), List.of()),
+                feeByOrder.get(o.getId()),
                 !mixed.contains(o.getId())));
     }
 
@@ -89,7 +99,7 @@ public class VendorOrderService {
             throw new OrderNotFoundException(orderId);
         }
         boolean singleVendor = orderRepository.idsWithForeignItems(List.of(orderId), vendorId).isEmpty();
-        return toResponse(order, mine, singleVendor);
+        return toResponse(order, mine, myFee(orderId, vendorId), singleVendor);
     }
 
     /**
@@ -126,10 +136,16 @@ public class VendorOrderService {
         order.setStatus(OrderStatus.SHIPPED);
         recorder.record(order, current, OrderStatus.SHIPPED, vendorId, "Shipped by vendor");
         log.info("Order {} PAID -> SHIPPED by vendor {}", orderId, vendorId);
-        return toResponse(order, mine, true);
+        return toResponse(order, mine, myFee(orderId, vendorId), true);
     }
 
-    private VendorOrderResponse toResponse(Order order, List<OrderItem> myItems, boolean singleVendor) {
+    private BigDecimal myFee(Long orderId, Long vendorId) {
+        return deliveryFeeRepository.findByOrderIdInAndVendorId(List.of(orderId), vendorId)
+                .stream().map(OrderDeliveryFee::getFeeAtPurchase).findFirst().orElse(null);
+    }
+
+    private VendorOrderResponse toResponse(Order order, List<OrderItem> myItems,
+                                           BigDecimal myDeliveryFee, boolean singleVendor) {
         List<VendorLineItem> lines = myItems.stream()
                 .map(i -> new VendorLineItem(
                         i.getProductNameAtPurchase(),
@@ -147,6 +163,7 @@ public class VendorOrderService {
                 order.getCreatedAt(),
                 lines,
                 itemsTotal,
+                myDeliveryFee,
                 singleVendor && order.getStatus() == OrderStatus.PAID,
                 shipTo(order));
     }

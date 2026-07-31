@@ -82,6 +82,16 @@ export function VendorOrdersPage() {
                         R{Number(o.itemsTotal).toFixed(2)}
                       </td>
                     </tr>
+                    {o.deliveryFee != null && (
+                      <tr>
+                        <td colSpan={3} style={{ padding: '4px 12px 8px 0', fontSize: 13, color: 'var(--ink-soft)', textAlign: 'right' }}>
+                          Your delivery fee
+                        </td>
+                        <td className="num" style={{ padding: '4px 12px 8px 0' }}>
+                          R{Number(o.deliveryFee).toFixed(2)}
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
 

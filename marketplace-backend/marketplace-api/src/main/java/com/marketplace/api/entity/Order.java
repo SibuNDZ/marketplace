@@ -65,6 +65,14 @@ public class Order {
     @Column(name = "postal_code")
     private String postalCode;
 
+    /**
+     * Free-text waybill/tracking reference, set (optionally) at the SHIPPED
+     * transition by vendor or admin (V17). Interim until a courier API
+     * integration exists; null simply means "no tracking provided".
+     */
+    @Column(name = "tracking_number", length = 100)
+    private String trackingNumber;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -200,6 +208,14 @@ public class Order {
 
     public void setPostalCode(String postalCode) {
         this.postalCode = postalCode;
+    }
+
+    public String getTrackingNumber() {
+        return trackingNumber;
+    }
+
+    public void setTrackingNumber(String trackingNumber) {
+        this.trackingNumber = trackingNumber;
     }
 
     public LocalDateTime getCreatedAt() {

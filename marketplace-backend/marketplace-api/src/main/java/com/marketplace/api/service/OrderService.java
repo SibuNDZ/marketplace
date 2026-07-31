@@ -305,7 +305,8 @@ public class OrderService {
                 order.getCreatedAt(),
                 items,
                 fees,
-                shippingFor(order, viewerIsPrivileged));
+                shippingFor(order, viewerIsPrivileged),
+                order.getTrackingNumber());
     }
 
     /**

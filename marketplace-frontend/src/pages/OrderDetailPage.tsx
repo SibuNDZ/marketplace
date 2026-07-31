@@ -60,6 +60,17 @@ export function OrderDetailPage() {
           </div>
         </div>
 
+        {order.trackingNumber && (
+          <div style={{
+            marginTop: 24, display: 'flex', alignItems: 'baseline', gap: 8,
+            background: 'var(--sun-tint)', border: '1px solid var(--sun)',
+            borderRadius: 'var(--r-sm)', padding: '10px 14px',
+          }}>
+            <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>Tracking number</span>
+            <strong className="num" style={{ fontSize: 15 }}>{order.trackingNumber}</strong>
+          </div>
+        )}
+
         {order.shippingAddress && (
           <div style={{ marginTop: 28 }}>
             <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>Shipping to</h2>

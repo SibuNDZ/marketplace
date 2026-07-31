@@ -44,7 +44,9 @@ public class AdminOrderController {
 
     public record TransitionRequest(
             @NotNull OrderStatus status,
-            @Size(max = 500) String note
+            @Size(max = 500) String note,
+            /** Only meaningful with status=SHIPPED; ignored otherwise. */
+            @Size(max = 100) String trackingNumber
     ) {}
 
     /**
@@ -115,7 +117,8 @@ public class AdminOrderController {
             @PathVariable Long id,
             @Valid @RequestBody TransitionRequest request,
             @AuthenticationPrincipal UserPrincipal admin) {
-        orderAdminService.transition(id, request.status(), admin.getId(), request.note());
+        orderAdminService.transition(id, request.status(), admin.getId(),
+                request.note(), request.trackingNumber());
         return ResponseEntity.noContent().build();
     }
 

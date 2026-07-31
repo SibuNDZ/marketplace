@@ -97,14 +97,21 @@ public class OrderEmailService {
                """.formatted(escape(label), rand(amount));
     }
 
-    /** SHIPPED: buyer notification. */
+    /** SHIPPED: buyer notification, with the waybill number when one was captured. */
     public void sendOrderShippedEmail(Order order) {
         User buyer = order.getUser();
+        String tracking = order.getTrackingNumber() == null ? "" : """
+                <div style="background:#f7f7f5;border-radius:8px;padding:12px 16px;margin:0 0 16px">
+                  <span style="font-size:13px;color:#666">Tracking number:</span>
+                  <strong style="font-size:15px;margin-left:6px">%s</strong>
+                </div>
+                """.formatted(escape(order.getTrackingNumber()));
         emailService.send(buyer.getEmail(),
                 "Your eRestyu order " + order.getOrderNumber() + " has shipped",
                 wrap("Hi " + escape(buyer.getFirstName()) + ",",
                         "Good news: your order is on its way to the address below.",
-                        itemsTable(order.getOrderItems())
+                        tracking
+                                + itemsTable(order.getOrderItems())
                                 + addressBlock(order, "Delivery address")));
     }
 

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, Page, VendorOrderResponse } from '../lib/api'
@@ -14,6 +14,10 @@ import { StatusChip } from '../components/ui/StatusChip'
  */
 export function VendorOrdersPage() {
   const qc = useQueryClient()
+  // Per-order tracking number drafts, keyed by orderId. Optional on purpose:
+  // shipping without tracking stays a one-click action (courier APIs are
+  // deferred until manual tracking proves insufficient).
+  const [tracking, setTracking] = useState<Record<number, string>>({})
 
   const { data, isLoading } = useQuery<Page<VendorOrderResponse>>({
     queryKey: ['vendor-orders'],
@@ -21,8 +25,11 @@ export function VendorOrdersPage() {
   })
 
   const markShipped = useMutation({
-    mutationFn: (orderId: number) =>
-      api(`/api/v1/vendor/orders/${orderId}/ship`, { method: 'POST' }),
+    mutationFn: ({ orderId, trackingNumber }: { orderId: number; trackingNumber?: string }) =>
+      api(`/api/v1/vendor/orders/${orderId}/ship`, {
+        method: 'POST',
+        body: trackingNumber?.trim() ? { trackingNumber: trackingNumber.trim() } : {},
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['vendor-orders'] }),
   })
 
@@ -115,19 +122,36 @@ export function VendorOrdersPage() {
                   )}
 
                   {o.canShip ? (
-                    <button
-                      onClick={() => markShipped.mutate(o.orderId)}
-                      disabled={markShipped.isPending}
-                      style={{
-                        padding: '9px 18px', background: 'var(--flame-gradient)', color: '#fff',
-                        border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 700, cursor: 'pointer',
-                        opacity: markShipped.isPending ? 0.6 : 1,
-                      }}>
-                      {markShipped.isPending ? 'Marking…' : 'Mark as shipped'}
-                    </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+                      <input
+                        type="text"
+                        placeholder="Tracking number (optional)"
+                        value={tracking[o.orderId] ?? ''}
+                        onChange={e => setTracking(t => ({ ...t, [o.orderId]: e.target.value }))}
+                        maxLength={100}
+                        style={{
+                          width: 210, padding: '7px 10px', border: '1px solid var(--line)',
+                          borderRadius: 'var(--r-sm)', fontSize: 13,
+                        }}
+                      />
+                      <button
+                        onClick={() => markShipped.mutate({ orderId: o.orderId, trackingNumber: tracking[o.orderId] })}
+                        disabled={markShipped.isPending}
+                        style={{
+                          padding: '9px 18px', background: 'var(--flame-gradient)', color: '#fff',
+                          border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 700, cursor: 'pointer',
+                          opacity: markShipped.isPending ? 0.6 : 1,
+                        }}>
+                        {markShipped.isPending ? 'Marking…' : 'Mark as shipped'}
+                      </button>
+                    </div>
                   ) : o.status === 'PAID' ? (
                     <span style={{ fontSize: 12, color: 'var(--ink-soft)', maxWidth: 220, textAlign: 'right' }}>
                       This order also contains other vendors' items; eRestyu will arrange shipping.
+                    </span>
+                  ) : o.trackingNumber ? (
+                    <span style={{ fontSize: 12, color: 'var(--ink-soft)', textAlign: 'right' }}>
+                      Tracking: <strong className="num">{o.trackingNumber}</strong>
                     </span>
                   ) : null}
                 </div>

@@ -1,6 +1,7 @@
 package com.marketplace.api.service;
 
 import com.marketplace.api.dto.VendorOrderDtos.VendorOrderResponse;
+import com.marketplace.api.entity.Order;
 import com.marketplace.api.entity.OrderStatus;
 import com.marketplace.api.entity.Product;
 import com.marketplace.api.entity.User;
@@ -106,7 +107,7 @@ class VendorOrderVisibilityTest {
         // Both vendors see it; neither may ship it.
         assertThat(aView.canShip()).isFalse();
         assertThat(vendorOrderService.get(vendorB.getId(), orderId).canShip()).isFalse();
-        assertThatThrownBy(() -> vendorOrderService.markShipped(vendorA.getId(), orderId))
+        assertThatThrownBy(() -> vendorOrderService.markShipped(vendorA.getId(), orderId, null))
                 .isInstanceOf(InvalidOrderStateException.class)
                 .hasMessageContaining("administrator");
         assertThat(orderRepository.findById(orderId).orElseThrow().getStatus())
@@ -128,23 +129,27 @@ class VendorOrderVisibilityTest {
         // failure is indistinguishable from a nonexistent order.
         assertThatThrownBy(() -> vendorOrderService.get(stranger.getId(), orderId))
                 .isInstanceOf(OrderNotFoundException.class);
-        assertThatThrownBy(() -> vendorOrderService.markShipped(stranger.getId(), orderId))
+        assertThatThrownBy(() -> vendorOrderService.markShipped(stranger.getId(), orderId, null))
                 .isInstanceOf(OrderNotFoundException.class);
 
-        VendorOrderResponse shipped = vendorOrderService.markShipped(vendor.getId(), orderId);
+        VendorOrderResponse shipped =
+                vendorOrderService.markShipped(vendor.getId(), orderId, "  TRK-VOV-123  ");
         assertThat(shipped.status()).isEqualTo("SHIPPED");
         assertThat(shipped.canShip()).isFalse();
+        assertThat(shipped.trackingNumber()).isEqualTo("TRK-VOV-123"); // stripped
 
-        assertThat(orderRepository.findById(orderId).orElseThrow().getStatus())
-                .isEqualTo(OrderStatus.SHIPPED);
+        Order persisted = orderRepository.findById(orderId).orElseThrow();
+        assertThat(persisted.getStatus()).isEqualTo(OrderStatus.SHIPPED);
+        assertThat(persisted.getTrackingNumber()).isEqualTo("TRK-VOV-123");
         assertThat(historyRepository.findByOrderIdOrderByCreatedAtAscIdAsc(orderId))
                 .anySatisfy(h -> {
                     assertThat(h.getToStatus()).isEqualTo(OrderStatus.SHIPPED);
-                    assertThat(h.getNote()).isEqualTo("Shipped by vendor");
+                    assertThat(h.getNote()).contains("Shipped by vendor")
+                                           .contains("TRK-VOV-123");
                 });
 
         // Second click: the transition is spent.
-        assertThatThrownBy(() -> vendorOrderService.markShipped(vendor.getId(), orderId))
+        assertThatThrownBy(() -> vendorOrderService.markShipped(vendor.getId(), orderId, null))
                 .isInstanceOf(InvalidOrderStateException.class);
     }
 

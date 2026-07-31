@@ -1,5 +1,5 @@
 import React from 'react'
-import { Topbar } from '../../components/layout/Topbar'
+import { SiteHeader as Topbar } from '../../components/layout/SiteHeader'
 
 // Shared shell for legal/policy pages: display-face title, prose column,
 // last-updated in mono. A future Returns Policy is a content file rendered

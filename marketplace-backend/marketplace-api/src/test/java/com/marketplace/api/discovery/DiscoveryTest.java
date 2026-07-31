@@ -93,6 +93,7 @@ class DiscoveryTest {
     @Autowired JdbcTemplate          jdbc;
     @Autowired TestFixtures          fixtures;
     @Autowired MockMvc               mockMvc;
+    @Autowired org.springframework.transaction.PlatformTransactionManager tm;
 
     // ── helpers ─────────────────────────────────────────────────────────
 
@@ -266,7 +267,15 @@ class DiscoveryTest {
 
         // Backdate using Java LocalDateTime so it matches the sweep's cutoff math
         var backdated = java.time.LocalDateTime.now().minusDays(91);
-        jdbc.update("UPDATE product_views SET viewed_at = ? WHERE id = ?", backdated, oldId);
+        // JdbcTemplate.update() runs outside any Spring transaction context;
+        // with auto-commit=false (required for cart pessimistic-lock correctness)
+        // it must be wrapped in an explicit transaction or the UPDATE is not
+        // committed before sweepOldViews() runs.
+        new org.springframework.transaction.support.TransactionTemplate(tm)
+                .execute(status -> {
+                    jdbc.update("UPDATE product_views SET viewed_at = ? WHERE id = ?", backdated, oldId);
+                    return null;
+                });
 
         popularityJob.sweepOldViews();
 

@@ -3,7 +3,7 @@
 # CI's test job is the gate; the image build assumes green.
 
 # ---------- Stage 1: build ----------
-FROM eclipse-temurin:21-jdk-jammy AS build
+FROM eclipse-temurin:25-jdk-jammy AS build
 WORKDIR /workspace
 
 # Dependency layer first: as long as pom.xml is unchanged, Docker reuses
@@ -22,10 +22,10 @@ RUN ./mvnw --no-transfer-progress package -DskipTests -q
 # Your code changes daily; your dependencies change monthly — after this,
 # a code-only change rebuilds a layer of a few hundred KB instead of
 # re-shipping an 80MB fat jar every deploy.
-RUN java -Djarmode=layertools -jar target/*.jar extract --destination extracted
+RUN java -Djarmode=tools -jar target/*.jar extract --layers --destination extracted
 
 # ---------- Stage 2: runtime ----------
-FROM eclipse-temurin:21-jre-jammy
+FROM eclipse-temurin:25-jre-jammy
 
 # Non-root: a container compromise shouldn't hand out root, and platforms
 # increasingly refuse root containers outright.
@@ -57,7 +57,7 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=45s --retries=3 \
 # That requires apt-get install curl in the runtime stage — see integration
 # notes for the trade-off vs Railway's own HTTP healthcheck.
 
-# Boot 3.2+ loader class: org.springframework.boot.loader.launch.JarLauncher
-# The pre-3.2 path (org.springframework.boot.loader.JarLauncher) is gone —
-# using the old one produces ClassNotFoundException at container start.
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS org.springframework.boot.loader.launch.JarLauncher"]
+# Boot 3.5 tools extraction leaves the executable jar beside lib/. Launching
+# with -jar preserves that relative classpath; spring-boot-loader is no longer
+# exploded onto the runtime classpath by this extraction mode.
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar marketplace-api-0.0.1-SNAPSHOT.jar"]

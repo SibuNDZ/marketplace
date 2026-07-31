@@ -2,7 +2,7 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, Page, AdminOrderSummary } from '../lib/api'
-import { Topbar } from '../components/layout/Topbar'
+import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { StatusChip } from '../components/ui/StatusChip'
 
 // Legal next transitions — the UI never offers what the state machine rejects.

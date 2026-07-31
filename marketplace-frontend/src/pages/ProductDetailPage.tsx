@@ -2,11 +2,11 @@ import React, { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, ProductResponse, ReviewSummary, ApiError } from '../lib/api'
-import { Topbar } from '../components/layout/Topbar'
+import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { StockBadge } from '../components/ui/StockBadge'
 import { vendorHue } from '../lib/vendorHue'
 import { ErrorSurface } from '../components/ui/ErrorSurface'
-import { getImageSeed } from '../lib/marketplaceSignals'
+import { productImageUrl } from '../lib/productImage'
 
 export function ProductDetailPage() {
   const { id } = useParams()
@@ -54,7 +54,6 @@ export function ProductDetailPage() {
 
   const stripe = vendorHue(product.vendorId ?? 1)
   const canAdd = product.stock > 0
-  const imageSeed = getImageSeed(product.id)
 
   return (
     <>
@@ -69,7 +68,7 @@ export function ProductDetailPage() {
           {/* Media */}
           <div style={{ borderRadius: 'var(--r)', aspectRatio: '4/3', overflow: 'hidden', background: '#EAEEED' }}>
             <img
-              src={product.imageUrl ?? `https://picsum.photos/seed/${imageSeed}/800/600`}
+              src={productImageUrl(product, 800, 600)}
               alt={product.name}
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />

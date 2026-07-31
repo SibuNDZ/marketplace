@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api, OrderResponse } from '../lib/api'
-import { Topbar } from '../components/layout/Topbar'
+import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { StatusChip } from '../components/ui/StatusChip'
 
 export function CheckoutSuccessPage() {

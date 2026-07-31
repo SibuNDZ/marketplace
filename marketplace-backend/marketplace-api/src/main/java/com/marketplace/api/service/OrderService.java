@@ -9,6 +9,7 @@ import com.marketplace.api.repository.OrderRepository;
 import com.marketplace.api.repository.ProductRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.hibernate.Session;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -65,15 +66,27 @@ public class OrderService {
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrderResponse placeOrder(Long userId) {
-        // Lock the cart row (native FOR UPDATE in CartRepository) before any
-        // item reads, so concurrent same-user checkout calls block here.
-        // After Thread A commits (cart cleared), Thread B unblocks, then the
-        // EntityGraph load below sees 0 items and throws EmptyCartException.
-        cartRepository.findByUserIdForUpdate(userId)
-                .orElseThrow(() -> new CartNotFoundException(userId));
-        // Load cart with items+products (EntityGraph) in the same locked
-        // transaction. READ_COMMITTED sees committed DB state.
-        Cart cart = cartRepository.findWithItemsByUserId(userId)
+        // Acquire an exclusive row lock on the cart by running a native
+        // SELECT ... FOR UPDATE via Session.doReturningWork, which executes
+        // on Hibernate's own JDBC connection for the current transaction.
+        // This is the only form that reliably holds a transaction-scoped lock
+        // in Hibernate 6.6 — neither @Query(nativeQuery=true) nor
+        // entityManager.find(PESSIMISTIC_WRITE) issues the lock through the
+        // same connection in all Hibernate 6.6 execution paths.
+        // Thread B blocks here while Thread A holds the lock. When Thread A
+        // commits (cart items deleted), Thread B unblocks and findById reads
+        // the empty state → EmptyCartException.
+        Long cartId = entityManager.unwrap(Session.class).doReturningWork(conn -> {
+            try (var ps = conn.prepareStatement(
+                    "SELECT id FROM carts WHERE user_id = ? FOR UPDATE")) {
+                ps.setLong(1, userId);
+                try (var rs = ps.executeQuery()) {
+                    return rs.next() ? rs.getLong(1) : null;
+                }
+            }
+        });
+        if (cartId == null) throw new CartNotFoundException(userId);
+        Cart cart = cartRepository.findById(cartId)
                 .orElseThrow(() -> new CartNotFoundException(userId));
 
         if (cart.getItems().isEmpty()) {
@@ -138,7 +151,7 @@ public class OrderService {
 
         Order saved = orderRepository.save(order);
         recorder.record(saved, null, OrderStatus.PENDING, userId, "Order placed");
-        cart.getItems().clear();
+        cart.getItems().clear(); // orphanRemoval deletes cart_items on flush
 
         return toResponse(saved);
     }

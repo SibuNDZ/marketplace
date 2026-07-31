@@ -25,6 +25,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -154,6 +155,21 @@ class ProductCategoryTest {
         assertThat(ids).doesNotContain(plainNecklace.id(), handmadeBowl.id());
     }
 
+        @Test
+        void nameSearch_matchesProductOrVendor_caseInsensitively() {
+        User vendor = fixtures.vendor("searchable-vendor");
+        ProductResponse lantern = createProduct(
+            "Copper-Garden-Lantern", "decor", false, List.of(), vendor);
+
+        var byProduct = productService.list(
+            null, null, "GARDEN-LANTERN", PageRequest.of(0, 20));
+        var byVendor = productService.list(
+            null, null, vendor.getUsername().toUpperCase(), PageRequest.of(0, 20));
+
+        assertThat(byProduct.getContent()).extracting(ProductResponse::id).contains(lantern.id());
+        assertThat(byVendor.getContent()).extracting(ProductResponse::id).contains(lantern.id());
+        }
+
     @Test
     void tags_areNormalisedAndDeduplicated() {
         User vendor = fixtures.vendor("cat-vendor7");
@@ -183,10 +199,12 @@ class ProductCategoryTest {
     }
 
     @Test
-    void tree_hasEightTopLevelCategories() {
+    void tree_hasThirteenTopLevelCategories() {
         assertThat(categoryService.tree(true))
                 .extracting(CategoryNode::slug)
-                .containsExactly("produce", "pantry", "fashion", "beauty-and-personal-care",
+                .containsExactly("produce", "pantry", "fashion",
+                        "clothing", "footwear", "accessories", "jewellery-collections", "sport",
+                        "beauty-and-personal-care",
                         "home-and-living", "art-and-crafts", "kids-and-baby", "other");
     }
 
@@ -200,8 +218,15 @@ class ProductCategoryTest {
     }
 
     @Test
-    void categoryTreeEndpoint_isPublic() throws Exception {
-        mockMvc.perform(get("/api/v1/categories")).andExpect(status().isOk());
+    void categoryTreeEndpoint_isPublicAndHidesEmptyCategoriesByDefault() throws Exception {
+        mockMvc.perform(get("/api/v1/categories"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.productCount == 0)]").isEmpty());
+
+        mockMvc.perform(get("/api/v1/categories").param("includeEmpty", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.productCount == 0)]").isNotEmpty());
+
         mockMvc.perform(get("/api/v1/categories/options")).andExpect(status().isOk());
     }
 }

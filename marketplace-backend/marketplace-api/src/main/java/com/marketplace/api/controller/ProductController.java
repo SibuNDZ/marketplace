@@ -67,9 +67,10 @@ public class ProductController {
     public Page<ProductResponse> list(
             @RequestParam(required = false) String category,
             @RequestParam(required = false) Boolean handmade,
+            @RequestParam(required = false) String name,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
             Pageable pageable) {
-        return productService.list(category, handmade, pageable);
+        return productService.list(category, handmade, name, pageable);
     }
 
     @GetMapping("/{id}")

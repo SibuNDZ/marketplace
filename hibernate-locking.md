@@ -2,7 +2,8 @@
 
 ## The Recurring Shape
 
-This project has hit the same bug twice. Both instances have identical structure:
+This project has hit this class of bug repeatedly. The first two instances have
+identical structure:
 a correctly-acquired database lock paired with Hibernate serving cached entity
 state that predates it. The lock was real; the entity read after it was not.
 
@@ -82,3 +83,56 @@ pattern in `cancelExpired` (uses `findByIdForUpdate` + entity state check) —
 there it is correct because `findByIdForUpdate` is the *first* load, so the cache
 is cold. If an earlier load is ever added before `findByIdForUpdate`, the refresh
 step must be added too.
+
+## Fourth Occurrence: Cascade Resurrects an Orphan
+
+The Java 25 / Spring Boot 3.5 upgrade exposed a different session-state failure in
+`sameUser_doubleSubmit_createsExactlyOneOrder`. Instrumentation proved the cart
+lock was healthy: the competing thread blocked for 108–138 ms on the same
+transaction-scoped `SELECT ... FOR UPDATE`. It still saw a non-empty cart after
+the first transaction committed.
+
+The decisive probe was a JDBC count immediately after `cart.getItems().clear()`
+and `entityManager.flush()`: the count remained 1 and SQL tracing showed no
+`DELETE FROM cart_items`. `Cart.cartItems` was a managed `PersistentBag`, so dirty
+tracking itself was not the problem.
+
+The cause was an inverse collection elsewhere in the graph:
+
+```java
+@OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
+private List<CartItem> cartItems;
+```
+
+`lockAndRefresh` refreshes each locked Product. Hibernate 6.6's refresh SQL
+initialized `Product.cartItems` through a LEFT JOIN. Later, clearing
+`Cart.cartItems` correctly marked the CartItem as an orphan, but flush also
+traversed the Product-side `CascadeType.PERSIST` and re-attached that same item.
+The cascade silently cancelled the orphan delete. Removing cascade from the
+unused inverse collection made the post-flush count 0 and the second checkout
+observe the empty cart.
+
+> A `cascade=ALL` inverse collection anywhere in the managed object graph can
+> resurrect an entity being deleted elsewhere. A refresh that initializes the
+> collection is enough to trigger it.
+
+The mapping was semantically wrong regardless of Hibernate version: Product does
+not own CartItems and must not control their lifecycle. Hibernate 6.6 merely made
+the mistake observable under this execution path.
+
+## Auto-Commit and Raw SQL Audit
+
+Spring Boot 3.5 detects Hikari `autoCommit=false` and configures Hibernate to
+trust the pool. This is required for the native cart lock to remain held through
+transaction commit. It also means every production write issued through raw JDBC
+must have an explicit Spring transaction boundary.
+
+The post-upgrade audit found three production native/JDBC paths:
+
+- `OrderService.placeOrder`: native `FOR UPDATE`, covered by `@Transactional`.
+- `PopularityJob.rebuild`: native upsert, covered by `@Transactional`.
+- `DiscoveryController.popular`: native read-only SELECT; no commit required.
+
+The only broken write was in `DiscoveryTest`: a bare `JdbcTemplate.update` used to
+backdate fixture data. It is now wrapped in `TransactionTemplate`. Production code
+was not changed to accommodate a test-harness transaction mistake.

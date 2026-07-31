@@ -17,9 +17,10 @@ import java.util.List;
 public record OrderResponse(
         Long id,
         String status,
-        BigDecimal total,
+        BigDecimal total,     // items + delivery fees — the amount actually charged
         LocalDateTime createdAt,
         List<OrderItemResponse> items,
+        List<DeliveryFeeResponse> deliveryFees, // one per vendor charging delivery; empty = free
         ShippingDtos.ShippingAddressResponse shippingAddress
 ) {
     public record OrderItemResponse(
@@ -28,5 +29,11 @@ public record OrderResponse(
             BigDecimal unitPrice, // snapshot at purchase time
             int quantity,
             BigDecimal lineTotal
+    ) {}
+
+    /** Fee snapshot at placement time — vendor fee edits never reprice this. */
+    public record DeliveryFeeResponse(
+            String vendorName,
+            BigDecimal fee
     ) {}
 }

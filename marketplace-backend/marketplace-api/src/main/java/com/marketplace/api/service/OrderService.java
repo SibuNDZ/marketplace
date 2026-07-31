@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -147,6 +148,27 @@ public class OrderService {
             total = total.add(product.getPrice()
                     .multiply(BigDecimal.valueOf(cartItem.getQuantity())));
         }
+
+        // One flat delivery fee per unique vendor in the cart, snapshotted
+        // like item prices (Task 2.3). Vendors at R0 contribute no line —
+        // free delivery is silence, not a zero row. Iteration follows the
+        // sorted product order so fee rows are deterministic across runs.
+        Map<Long, User> feeVendorsById = new LinkedHashMap<>();
+        for (Long productId : productIds) {
+            User vendor = productsById.get(productId).getVendor();
+            if (vendor != null && vendor.getDeliveryFee().signum() > 0) {
+                feeVendorsById.putIfAbsent(vendor.getId(), vendor);
+            }
+        }
+        for (User vendor : feeVendorsById.values()) {
+            OrderDeliveryFee fee = new OrderDeliveryFee();
+            fee.setOrder(order);
+            fee.setVendor(vendor);
+            fee.setVendorNameAtPurchase(vendor.getFullName());
+            fee.setFeeAtPurchase(vendor.getDeliveryFee());
+            order.getDeliveryFees().add(fee);
+            total = total.add(vendor.getDeliveryFee());
+        }
         order.setTotalAmount(total);
 
         Order saved = orderRepository.save(order);
@@ -269,12 +291,20 @@ public class OrderService {
                         oi.getPriceAtPurchase()
                                 .multiply(BigDecimal.valueOf(oi.getQuantity()))))
                 .toList();
+        // Sorted by vendor name: deliveryFees is a Set (see Order), and an
+        // API list whose order changes between reads looks like a bug.
+        List<OrderResponse.DeliveryFeeResponse> fees = order.getDeliveryFees().stream()
+                .sorted(Comparator.comparing(OrderDeliveryFee::getVendorNameAtPurchase))
+                .map(f -> new OrderResponse.DeliveryFeeResponse(
+                        f.getVendorNameAtPurchase(), f.getFeeAtPurchase()))
+                .toList();
         return new OrderResponse(
                 order.getId(),
                 order.getStatus().name(),
                 order.getTotalAmount(),
                 order.getCreatedAt(),
                 items,
+                fees,
                 shippingFor(order, viewerIsPrivileged));
     }
 

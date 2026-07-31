@@ -19,6 +19,8 @@ public class VendorOrderDtos {
             LocalDateTime createdAt,
             List<VendorLineItem> items,      // ONLY this vendor's items
             BigDecimal itemsTotal,           // sum over their items, not the order total
+            /** This vendor's delivery fee as snapshotted on the order; null when they charged none. */
+            BigDecimal deliveryFee,
             /**
              * True only when the order is PAID and every item in it belongs to
              * this vendor. Mixed-vendor orders ship via admin for now, and the

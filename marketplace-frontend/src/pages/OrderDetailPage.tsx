@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, OrderResponse, ApiError } from '../lib/api'
-import { Topbar } from '../components/layout/Topbar'
+import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { StatusChip } from '../components/ui/StatusChip'
 
 export function OrderDetailPage() {

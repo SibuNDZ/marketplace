@@ -2,7 +2,7 @@ import React, { FormEvent, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, CartResponse, ApiError, ShippingAddress, fieldErrorsFrom } from '../lib/api'
-import { Topbar } from '../components/layout/Topbar'
+import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { ErrorSurface } from '../components/ui/ErrorSurface'
 
 const EMPTY_SHIPPING: ShippingAddress = {

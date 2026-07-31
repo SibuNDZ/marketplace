@@ -1,10 +1,10 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import { api, Page, ProductResponse } from '../lib/api'
-import { Topbar } from '../components/layout/Topbar'
-import { CategoryPills } from '../components/layout/CategoryPills'
-import { CategorySidebar } from '../components/layout/CategorySidebar'
+import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { ProductCard } from '../components/product/ProductCard'
+import { CategoryPane } from '../components/product/CategoryPane'
 import { PromoCarousel } from '../components/promo/PromoCarousel'
 import { ALL_SLUG } from '../data/categories'
 import { useCategoryTree, findBySlug } from '../hooks/useCategoryTree'
@@ -36,29 +36,42 @@ function SectionDivider({ icon, label }: { icon: string; label: string }) {
 }
 
 export function CatalogPage() {
-  const [category, setCategory] = useState(ALL_SLUG)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const category = searchParams.get('category') ?? ALL_SLUG
+  const name = searchParams.get('name')?.trim() ?? ''
   const [activeFilters, setActiveFilters] = useState<Set<QuickFilterKey>>(new Set())
   const [page, setPage] = useState(0)
   const PAGE_SIZE = 20
 
   // Counts arrive on the tree itself, so there is no second request and no
   // way for a category and the number beside it to disagree.
-  // includeEmpty=true: show all eight departments, not just the ones with
-  // stock today. CategoryPills and CategorySidebar render the empty ones
-  // inert, so breadth is visible without any chip leading to a dead end.
+  // includeEmpty=true keeps zero-stock departments available to the
+  // header's More panel without making them primary navigation targets.
   const { data: tree } = useCategoryTree(true)
   const categoryTree = tree ?? []
 
+  const selectCategory = (slug: string) => {
+    const next = new URLSearchParams(searchParams)
+    if (slug === ALL_SLUG) next.delete('category')
+    else next.set('category', slug)
+    setSearchParams(next)
+  }
+
   const handmadeOnly = activeFilters.has('handmade')
+
+  useEffect(() => {
+    setPage(0)
+  }, [category, name])
 
   // Category AND handmade are both server-side. Category is a slug now, and
   // a top-level slug also matches its subcategories on the backend, so
   // selecting Fashion returns the jewellery filed one level down.
   const { data, isLoading } = useQuery<Page<ProductResponse>>({
-    queryKey: ['products', category, handmadeOnly, page, PAGE_SIZE],
+    queryKey: ['products', category, name, handmadeOnly, page, PAGE_SIZE],
     queryFn: () => api(
       `/api/v1/products?page=${page}&size=${PAGE_SIZE}&sort=createdAt,desc`
       + (category === ALL_SLUG ? '' : `&category=${category}`)
+      + (name ? `&name=${encodeURIComponent(name)}` : '')
       + (handmadeOnly ? '&handmade=true' : ''),
     ),
   })
@@ -81,8 +94,6 @@ export function CatalogPage() {
     if (key === 'handmade') setPage(0)
   }
 
-  const selectCategory = (key: string) => { setCategory(key); setPage(0) }
-
   let mainList = products
   if (activeFilters.has('fiveStar')) mainList = mainList.filter(p => p.reviewCount > 0 && Number(p.avgRating) >= 4.5)
   if (activeFilters.has('bestSelling')) mainList = [...mainList].filter(p => p.soldCount > 0).sort((a, b) => b.soldCount - a.soldCount)
@@ -100,14 +111,13 @@ export function CatalogPage() {
   return (
     <>
       <Topbar />
-      <CategoryPills tree={categoryTree} active={category} onSelect={selectCategory} />
       <main className="page-shell">
         <PromoCarousel />
 
-        <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
-          <CategorySidebar tree={categoryTree} active={category} onSelect={selectCategory} />
+        <div className="catalog-layout">
+          <CategoryPane tree={categoryTree} active={category} onSelect={selectCategory} />
 
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="catalog-results">
             {/* Quick filter chips */}
             <div className="scroll-rail" style={{ display: 'flex', gap: 8, whiteSpace: 'nowrap' }}>
               {QUICK_FILTERS.map(f => {
@@ -143,7 +153,7 @@ export function CatalogPage() {
                   </>
                 )}
 
-                <SectionDivider icon="🛍️" label={categoryLabel} />
+                <SectionDivider icon="🛍️" label={name ? `Results for “${name}”` : categoryLabel} />
                 {mainList.length === 0 ? (
                   <p style={{ color: 'var(--ink-soft)', fontSize: 14, padding: '20px 0' }}>No products match right now — try a different category or filter.</p>
                 ) : (

@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ApiError, api, ProductResponse } from '../../lib/api'
 import { StockBadge } from '../ui/StockBadge'
-import { getImageSeed } from '../../lib/marketplaceSignals'
+import { productImageUrl } from '../../lib/productImage'
 
 interface Props {
   product: ProductResponse
@@ -42,7 +42,6 @@ export function ProductCard({ product }: Props) {
   const navigate = useNavigate()
   const location = useLocation()
   const [added, setAdded] = useState(false)
-  const imageSeed = getImageSeed(product.id)
 
   const addToCart = useMutation({
     mutationFn: () => api('/api/v1/cart/items', {
@@ -85,7 +84,7 @@ export function ProductCard({ product }: Props) {
       {/* Product image */}
       <Link to={`/products/${product.id}`} style={{ position: 'relative', display: 'block', height: 180, flexShrink: 0, background: '#EAEEED' }}>
         <img
-          src={product.imageUrl ?? `https://picsum.photos/seed/${imageSeed}/400/300`}
+          src={productImageUrl(product, 400, 300)}
           alt={product.name}
           loading="lazy"
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}

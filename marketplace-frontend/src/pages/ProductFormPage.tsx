@@ -2,7 +2,7 @@ import React, { FormEvent, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError, CategoryOption, ProductRequest, ProductResponse, categories as categoriesApi, draftListingFromPhoto, fieldErrorsFrom, uploadProductImage } from '../lib/api'
-import { Topbar } from '../components/layout/Topbar'
+import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { ErrorSurface } from '../components/ui/ErrorSurface'
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024

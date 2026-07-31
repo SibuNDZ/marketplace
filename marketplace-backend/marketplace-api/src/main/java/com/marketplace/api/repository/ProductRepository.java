@@ -36,9 +36,14 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
            WHERE p.deletedAt IS NULL
              AND (:categoryIds IS NULL OR p.category.id IN :categoryIds)
              AND (:handmade IS NULL OR p.handmade = :handmade)
+                   AND (:searchDisabled = TRUE
+                        OR LOWER(p.name) LIKE LOWER(CONCAT('%', :searchText, '%'))
+                        OR LOWER(p.vendor.username) LIKE LOWER(CONCAT('%', :searchText, '%')))
            """)
     Page<Product> findFiltered(@Param("categoryIds") List<Long> categoryIds,
                                @Param("handmade") Boolean handmade,
+                               @Param("searchDisabled") boolean searchDisabled,
+                               @Param("searchText") String searchText,
                                Pageable pageable);
 
     /** Live product by id. Returns empty for soft-deleted products (public 404). */

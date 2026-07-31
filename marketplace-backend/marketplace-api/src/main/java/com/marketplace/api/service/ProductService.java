@@ -82,14 +82,26 @@ public class ProductService {
     public Page<ProductResponse> list(@Nullable String categorySlug,
                                       @Nullable Boolean handmade,
                                       Pageable pageable) {
+        return list(categorySlug, handmade, null, pageable);
+        }
+
+        @Transactional(readOnly = true)
+        public Page<ProductResponse> list(@Nullable String categorySlug,
+                          @Nullable Boolean handmade,
+                          @Nullable String name,
+                          Pageable pageable) {
         List<Long> categoryIds = categorySlug == null || categorySlug.isBlank()
                 ? null
                 : categoryService.resolveToIds(categorySlug);
+        boolean searchDisabled = name == null || name.isBlank();
+        String searchText = searchDisabled
+            ? ""
+            : name.strip();
 
-        if (categoryIds == null && handmade == null) return list(pageable);
+        if (categoryIds == null && handmade == null && searchDisabled) return list(pageable);
 
         return toResponses(
-                productRepository.findFiltered(categoryIds, handmade, pageable));
+            productRepository.findFiltered(categoryIds, handmade, searchDisabled, searchText, pageable));
     }
 
     @Transactional(readOnly = true)

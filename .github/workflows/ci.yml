@@ -41,13 +41,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Java 21 matches the pom's java.version target. Building on the exact
+      # Java 25 matches the pom's java.version target. Building on the exact
       # target version catches javadoc and tooling issues that --release alone
       # can miss, and keeps the CI/local gap minimal.
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "25"
           cache: maven   # caches ~/.m2 keyed on pom.xml hash
 
       - name: Run tests

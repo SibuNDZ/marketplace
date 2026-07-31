@@ -154,6 +154,21 @@ class ProductCategoryTest {
         assertThat(ids).doesNotContain(plainNecklace.id(), handmadeBowl.id());
     }
 
+        @Test
+        void nameSearch_matchesProductOrVendor_caseInsensitively() {
+        User vendor = fixtures.vendor("searchable-vendor");
+        ProductResponse lantern = createProduct(
+            "Copper-Garden-Lantern", "decor", false, List.of(), vendor);
+
+        var byProduct = productService.list(
+            null, null, "GARDEN-LANTERN", PageRequest.of(0, 20));
+        var byVendor = productService.list(
+            null, null, vendor.getUsername().toUpperCase(), PageRequest.of(0, 20));
+
+        assertThat(byProduct.getContent()).extracting(ProductResponse::id).contains(lantern.id());
+        assertThat(byVendor.getContent()).extracting(ProductResponse::id).contains(lantern.id());
+        }
+
     @Test
     void tags_areNormalisedAndDeduplicated() {
         User vendor = fixtures.vendor("cat-vendor7");

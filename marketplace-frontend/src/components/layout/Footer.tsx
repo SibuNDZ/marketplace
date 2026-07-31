@@ -1,15 +1,11 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
+import { PaymentMarks } from './PaymentMarks'
 
-// Most items below (About, Careers, Returns Policy, Safety Center, Sitemap...)
-// have no corresponding page in this app yet. Rendering them as real <a>/<Link>
-// would be a dead click, so they're plain text. The few with a real
-// destination (Start Selling, Check Order Status) are wired as links —
-// swap more to Link as their pages get built.
-function StaticItem({ children }: { children: React.ReactNode }) {
-  return <span style={{ fontSize: 13, color: 'var(--footer-text)' }}>{children}</span>
-}
-
+// Footer rule: every item is a real destination. Topics we want but haven't
+// written yet exist as pages that say "under construction" (Careers, Contact)
+// rather than dead text; topics we don't need yet (Press, Support Local
+// Farmers, app download, ...) are simply gone until they earn a page.
 function LinkItem({ to, children }: { to: string; children: React.ReactNode }) {
   return <Link to={to} style={{ fontSize: 13, color: 'var(--footer-text)' }}>{children}</Link>
 }
@@ -35,33 +31,6 @@ const SOCIALS = [
   { label: 'LinkedIn', glyph: 'IN' },
 ]
 
-const PAYMENT_METHODS = ['Visa', 'Mastercard', 'EFT', 'PayFlex', 'Ozow', 'Apple Pay', 'Google Pay', 'PayPal', 'Capitec Pay']
-
-const APP_STORE_BENEFITS = [
-  'Price-drop alerts',
-  'Track orders any time',
-  'Faster & more secure checkout',
-  'Low stock item alerts',
-  'Exclusive offers',
-  'Coupons & offers alerts',
-]
-
-function StoreButton({ label, sub, icon }: { label: string; sub: string; icon: string }) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 8,
-      background: '#000', border: '1px solid var(--footer-line)', borderRadius: 8,
-      padding: '7px 12px', flex: 1,
-    }}>
-      <span style={{ fontSize: 18, color: '#fff' }} aria-hidden>{icon}</span>
-      <div style={{ lineHeight: 1.1 }}>
-        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)' }}>{sub}</div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{label}</div>
-      </div>
-    </div>
-  )
-}
-
 export function Footer() {
   return (
     <footer aria-label="Site footer" style={{ background: 'var(--footer-bg)', marginTop: 48, color: 'var(--footer-text)' }}>
@@ -76,68 +45,38 @@ export function Footer() {
           borderBottom: '1px solid var(--footer-line)',
         }}>
           <Column title="About eRestyu">
-            <StaticItem>About eRestyu</StaticItem>
-            <StaticItem>Careers</StaticItem>
-            <StaticItem>Press</StaticItem>
-            <StaticItem>Corporate Responsibility</StaticItem>
-            <StaticItem>Affiliate & Influencer Program</StaticItem>
-            <StaticItem>Support Local Farmers</StaticItem>
+            <LinkItem to="/about">About eRestyu</LinkItem>
+            <LinkItem to="/careers">Careers</LinkItem>
+            <LinkItem to="/contact">Contact Us</LinkItem>
           </Column>
 
           <Column title="Customer Service">
-            <StaticItem>Return & Refund Policy</StaticItem>
-            <StaticItem>Shipping Info</StaticItem>
-            <StaticItem>Price Adjustment Policy (30 days)</StaticItem>
-            <StaticItem>Report Suspicious Activity</StaticItem>
-            <StaticItem>Intellectual Property Policy</StaticItem>
-            <StaticItem>Contact Us</StaticItem>
-          </Column>
-
-          <Column title="Help Center">
-            <StaticItem>Support Center & FAQ</StaticItem>
-            <StaticItem>Safety Center</StaticItem>
-            <StaticItem>Purchase Protection</StaticItem>
-            <StaticItem>How to Buy / How to Sell</StaticItem>
-            <StaticItem>Sitemap</StaticItem>
-            <StaticItem>Partner with Us</StaticItem>
-          </Column>
-
-          <Column title="Download the eRestyu App">
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 5 }}>
-              {APP_STORE_BENEFITS.map(b => (
-                <li key={b} style={{ fontSize: 12.5, color: 'var(--footer-text)', display: 'flex', gap: 6 }}>
-                  <span style={{ color: 'var(--aloe)' }}>✔</span>{b}
-                </li>
-              ))}
-            </ul>
-            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-              <StoreButton label="App Store" sub="Download on the" icon="📱" />
-              <StoreButton label="Google Play" sub="GET IT ON" icon="▶" />
-            </div>
+            <LinkItem to="/shipping">Shipping & Delivery</LinkItem>
+            <LinkItem to="/returns">Returns & Cancellations</LinkItem>
+            <LinkItem to="/help">Help Center & FAQ</LinkItem>
           </Column>
 
           <Column title="Sell on eRestyu">
+            <LinkItem to="/how-it-works">How to Buy / How to Sell</LinkItem>
             <LinkItem to="/register">Start Selling</LinkItem>
-            <StaticItem>Become a Verified Supplier</StaticItem>
             <LinkItem to="/orders">Check Order Status</LinkItem>
-            <StaticItem>Partnerships</StaticItem>
-            <div style={{ marginTop: 8 }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--footer-heading)', marginBottom: 8 }}>Stay Connected</p>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {SOCIALS.map(s => (
-                  <button key={s.label} aria-label={s.label} title={s.label} tabIndex={0} style={{
-                    width: 28, height: 28, borderRadius: '50%',
-                    border: '1px solid var(--footer-line)', background: 'transparent',
-                    color: 'var(--footer-text)', fontSize: 10, fontWeight: 700,
-                    transition: 'background 0.15s, color 0.15s',
-                  }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--flame)'; (e.currentTarget as HTMLButtonElement).style.color = '#fff' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--footer-text)' }}
-                  >
-                    {s.glyph}
-                  </button>
-                ))}
-              </div>
+          </Column>
+
+          <Column title="Stay Connected">
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {SOCIALS.map(s => (
+                <button key={s.label} aria-label={s.label} title={s.label} tabIndex={0} style={{
+                  width: 28, height: 28, borderRadius: '50%',
+                  border: '1px solid var(--footer-line)', background: 'transparent',
+                  color: 'var(--footer-text)', fontSize: 10, fontWeight: 700,
+                  transition: 'background 0.15s, color 0.15s',
+                }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--flame)'; (e.currentTarget as HTMLButtonElement).style.color = '#fff' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--footer-text)' }}
+                >
+                  {s.glyph}
+                </button>
+              ))}
             </div>
           </Column>
         </div>
@@ -165,17 +104,7 @@ export function Footer() {
             <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--footer-heading)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
               We Accept
             </p>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {PAYMENT_METHODS.map(p => (
-                <span key={p} style={{
-                  fontSize: 11, fontWeight: 600, color: 'var(--footer-text)',
-                  border: '1px solid var(--footer-line)', borderRadius: 4, padding: '4px 9px',
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                }}>
-                  💳 {p}
-                </span>
-              ))}
-            </div>
+            <PaymentMarks />
           </div>
         </div>
 
@@ -204,8 +133,7 @@ export function Footer() {
           </label>
         </div>
 
-        {/* Legal bottom bar — Terms and Privacy are real pages now; the rest
-            stay static text until they exist (footer's own no-dead-links rule) */}
+        {/* Legal bottom bar */}
         <div style={{
           borderTop: '1px solid var(--footer-line)', paddingTop: 20, marginTop: 4,
           display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 16, textAlign: 'center',
@@ -213,9 +141,6 @@ export function Footer() {
           <span style={{ fontSize: 12, color: 'var(--footer-text-dim)' }}>© 2026 eRestyu. All rights reserved.</span>
           <Link to="/terms" style={{ fontSize: 12, color: 'var(--footer-text)' }}>Terms of Service</Link>
           <Link to="/privacy" style={{ fontSize: 12, color: 'var(--footer-text)' }}>Privacy Policy</Link>
-          {['Cookie Policy', 'Accessibility'].map(t => (
-            <span key={t} style={{ fontSize: 12, color: 'var(--footer-text-dim)' }}>{t}</span>
-          ))}
         </div>
       </div>
     </footer>

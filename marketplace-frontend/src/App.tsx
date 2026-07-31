@@ -23,6 +23,7 @@ import { AdminPage } from './pages/AdminPage'
 import { AdminOrderDetailPage } from './pages/AdminOrderDetailPage'
 import { PrivacyPolicyPage } from './pages/legal/PrivacyPolicyPage'
 import { TermsPage } from './pages/legal/TermsPage'
+import { AboutPage, CareersPage, ContactPage, ReturnsPage, ShippingInfoPage, HelpPage, HowItWorksPage } from './pages/InfoPages'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -70,6 +71,13 @@ export default function App() {
           <Route path="/admin/orders/:id" element={<RequireAuth><AdminOrderDetailPage /></RequireAuth>} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/careers" element={<CareersPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/returns" element={<ReturnsPage />} />
+          <Route path="/shipping" element={<ShippingInfoPage />} />
+          <Route path="/help" element={<HelpPage />} />
+          <Route path="/how-it-works" element={<HowItWorksPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <ChromeFooter />

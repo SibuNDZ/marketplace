@@ -57,7 +57,7 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=45s --retries=3 \
 # That requires apt-get install curl in the runtime stage — see integration
 # notes for the trade-off vs Railway's own HTTP healthcheck.
 
-# Boot 3.2+ loader class: org.springframework.boot.loader.launch.JarLauncher
-# The pre-3.2 path (org.springframework.boot.loader.JarLauncher) is gone —
-# using the old one produces ClassNotFoundException at container start.
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS org.springframework.boot.loader.launch.JarLauncher"]
+# Boot 3.5 tools extraction leaves the executable jar beside lib/. Launching
+# with -jar preserves that relative classpath; spring-boot-loader is no longer
+# exploded onto the runtime classpath by this extraction mode.
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar marketplace-api-0.0.1-SNAPSHOT.jar"]

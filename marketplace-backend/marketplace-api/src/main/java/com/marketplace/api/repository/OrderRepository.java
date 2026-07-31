@@ -25,6 +25,17 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @EntityGraph(attributePaths = {"orderItems", "orderItems.product"})
     Optional<Order> findWithItemsById(Long id);
 
+    /**
+     * Full graph for the order-email listener: buyer, items, and each item's
+     * vendor in one round trip. The listener reads the graph after its
+     * transaction closes (entities detached), so everything it touches must
+     * be fetched here — a missing path is a LazyInitializationException at
+     * send time, not compile time.
+     */
+    @EntityGraph(attributePaths = {"user", "orderItems", "orderItems.product",
+            "orderItems.product.vendor"})
+    Optional<Order> findWithItemsAndVendorsById(Long id);
+
     Page<Order> findByUserId(Long userId, Pageable pageable);
 
     /**

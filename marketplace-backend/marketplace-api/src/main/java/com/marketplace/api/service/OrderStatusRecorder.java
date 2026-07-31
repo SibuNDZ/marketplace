@@ -5,6 +5,7 @@ import com.marketplace.api.entity.OrderStatus;
 import com.marketplace.api.entity.OrderStatusHistory;
 import com.marketplace.api.repository.OrderStatusHistoryRepository;
 import com.marketplace.api.repository.UserRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,11 +25,14 @@ public class OrderStatusRecorder {
 
     private final OrderStatusHistoryRepository historyRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     OrderStatusRecorder(OrderStatusHistoryRepository historyRepository,
-                        UserRepository userRepository) {
+                        UserRepository userRepository,
+                        ApplicationEventPublisher eventPublisher) {
         this.historyRepository = historyRepository;
         this.userRepository = userRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
@@ -41,5 +45,10 @@ public class OrderStatusRecorder {
         entry.setChangedBy(userRepository.getReferenceById(changedByUserId));
         entry.setNote(note);
         historyRepository.save(entry);
+
+        // Published inside the MANDATORY transaction, so AFTER_COMMIT listeners
+        // (order emails) fire exactly when the transition they describe is
+        // durable, and never for a rolled-back transition.
+        eventPublisher.publishEvent(new OrderStatusChangedEvent(order.getId(), from, to));
     }
 }

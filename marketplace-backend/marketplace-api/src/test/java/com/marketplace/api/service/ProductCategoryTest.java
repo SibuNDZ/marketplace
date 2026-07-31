@@ -25,6 +25,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -217,8 +218,15 @@ class ProductCategoryTest {
     }
 
     @Test
-    void categoryTreeEndpoint_isPublic() throws Exception {
-        mockMvc.perform(get("/api/v1/categories")).andExpect(status().isOk());
+    void categoryTreeEndpoint_isPublicAndHidesEmptyCategoriesByDefault() throws Exception {
+        mockMvc.perform(get("/api/v1/categories"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.productCount == 0)]").isEmpty());
+
+        mockMvc.perform(get("/api/v1/categories").param("includeEmpty", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.productCount == 0)]").isNotEmpty());
+
         mockMvc.perform(get("/api/v1/categories/options")).andExpect(status().isOk());
     }
 }

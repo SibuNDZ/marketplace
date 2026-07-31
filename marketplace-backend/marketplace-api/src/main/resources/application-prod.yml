@@ -6,6 +6,8 @@ spring:
 
   flyway:
     validate-on-migrate: true
+    # TODO: Upgrade Flyway when its supported PostgreSQL range includes 18;
+    # Railway currently runs PostgreSQL 18 and Flyway reports a compatibility notice.
     # If prod already has a schema WITH DATA when Flyway first runs (Railway etc.),
     # set these for the first deployment only, then remove them:
     #   baseline-on-migrate: true

@@ -22,6 +22,14 @@ spring:
       hibernate:
         format_sql: true
 
+  # HikariCP — return connections with autoCommit=false so that
+  # @Transactional + native FOR UPDATE locks are transaction-scoped
+  # (auto_commit=true causes FOR UPDATE to release the lock after the
+  # single statement, defeating pessimistic locking between threads).
+  datasource:
+    hikari:
+      auto-commit: false
+
   # Flyway — migrations live in db/migration, executed before Hibernate validates
   flyway:
     enabled: true

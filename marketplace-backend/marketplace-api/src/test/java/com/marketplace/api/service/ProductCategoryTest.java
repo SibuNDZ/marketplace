@@ -183,10 +183,12 @@ class ProductCategoryTest {
     }
 
     @Test
-    void tree_hasEightTopLevelCategories() {
+    void tree_hasThirteenTopLevelCategories() {
         assertThat(categoryService.tree(true))
                 .extracting(CategoryNode::slug)
-                .containsExactly("produce", "pantry", "fashion", "beauty-and-personal-care",
+                .containsExactly("produce", "pantry", "fashion",
+                        "clothing", "footwear", "accessories", "jewellery-collections", "sport",
+                        "beauty-and-personal-care",
                         "home-and-living", "art-and-crafts", "kids-and-baby", "other");
     }
 

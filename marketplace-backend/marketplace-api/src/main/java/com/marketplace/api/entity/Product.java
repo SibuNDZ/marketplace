@@ -66,7 +66,11 @@ public class Product {
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Review> reviews = new ArrayList<>();
 
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    // Read-only inverse mapping — never cascade from Product side.
+    // CartItems are owned (and orphan-deleted) by Cart; adding cascade here
+    // causes Hibernate to re-persist cart items on product flush, which
+    // silently cancels the orphanRemoval delete on Cart.cartItems.clear().
+    @OneToMany(mappedBy = "product", fetch = FetchType.LAZY)
     private List<CartItem> cartItems = new ArrayList<>();
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

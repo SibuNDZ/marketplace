@@ -32,10 +32,9 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
      * as two concurrent same-user checkouts both succeeding.
      * <p>
      * <b>Why return Long, not Cart:</b> returning a Cart entity would place it
-     * in the Hibernate first-level cache. A subsequent {@link #findWithItemsByUserId}
-     * call then risks serving the cached (pre-commit) entity to Thread B instead
-     * of reading the current DB state — defeating the double-submit guard.
-     * A scalar result leaves the cache clean so the EntityGraph reload is fresh.
+     * in the Hibernate first-level cache. A subsequent {@link JpaRepository#findById}
+     * call then reads from the DB (Cart is absent from Thread B’s fresh session)
+     * and sees the committed state after Thread A releases the lock.
      * <p>
      * <b>Lock order:</b> cart first, then products ({@code lockAndRefresh} in
      * {@code OrderService}). Both concurrent checkout calls take locks in the

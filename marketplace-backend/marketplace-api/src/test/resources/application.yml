@@ -1,6 +1,16 @@
 # Test-environment overrides for properties that have no application.yml default
 # (fail-fast properties that require real env vars in production).
 # These placeholder values are safe for test runs — no real Stripe account is hit.
+
+# HikariCP: return connections with autoCommit=false so that @Transactional
+# + SELECT ... FOR UPDATE locks are transaction-scoped (not auto-released after
+# each statement). This is correct for any JPA application and is critical for
+# the cart pessimistic-locking mechanism in OrderService.
+spring:
+  datasource:
+    hikari:
+      auto-commit: false
+
 app:
   ai:
     # api-key is deliberately blank here and set per-test:

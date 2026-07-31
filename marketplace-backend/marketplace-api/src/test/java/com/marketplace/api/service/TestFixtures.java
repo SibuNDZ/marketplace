@@ -82,6 +82,38 @@ public class TestFixtures {
                 });
     }
 
+    /** Like {@link #product} but for a caller-chosen vendor (multi-vendor scenarios). */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Product productForVendor(String name, String sku, BigDecimal price, int stock, User vendor) {
+        Product p = new Product();
+        p.setName(name);
+        p.setSku(sku);
+        p.setPrice(price);
+        p.setStock(stock);
+        p.setVendor(userRepository.getReferenceById(vendor.getId()));
+        p.setCategory(categoryRepository.findBySlug("other").orElseThrow(
+                () -> new IllegalStateException("V14 seed missing: no 'other' category")));
+        return productRepository.save(p);
+    }
+
+    /** Cart holding one unit of each given product — multi-vendor order fixtures. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public User customerWithCartOf(String username, Product... products) {
+        User user = persistUser(username, UserRole.CUSTOMER);
+
+        Cart cart = new Cart();
+        cart.setUser(user);
+        for (Product product : products) {
+            CartItem item = new CartItem();
+            item.setCart(cart);
+            item.setProduct(productRepository.getReferenceById(product.getId()));
+            item.setQuantity(1);
+            cart.getItems().add(item);
+        }
+        cartRepository.save(cart);
+        return user;
+    }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public User customerWithCart(String username, Product product, int quantity) {
         User user = persistUser(username, UserRole.CUSTOMER);

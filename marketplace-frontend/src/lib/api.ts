@@ -388,6 +388,30 @@ export interface OrderResponse {
   shippingAddress?: ShippingAddress | null
 }
 
+/**
+ * Vendor's view of an order — deliberately narrower than OrderResponse:
+ * only their own line items, their subtotal, and the dispatch address.
+ * canShip is computed server-side (PAID + single-vendor); the UI renders
+ * the button from it rather than re-deriving the rule.
+ */
+export interface VendorOrderResponse {
+  orderId: number
+  orderNumber: string
+  status: string
+  createdAt: string
+  items: VendorLineItem[]
+  itemsTotal: string
+  canShip: boolean
+  shipTo?: ShippingAddress | null
+}
+
+export interface VendorLineItem {
+  productName: string
+  quantity: number
+  unitPrice: string
+  lineTotal: string
+}
+
 /** Admin list projection — no items by design (paged-fetch trap); drill into detail/history. */
 export interface AdminOrderSummary {
   id: number

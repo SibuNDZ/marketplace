@@ -181,9 +181,14 @@ body {
   position: absolute;
   top: calc(100% - 5px);
   right: 0;
+  /* Above the category bar: that third tier is position:relative with an
+     opaque background and sits LATER in the DOM, so with z-index auto it
+     painted over the top rows of this menu (invisible-text bug). */
+  z-index: 20;
   display: flex;
   flex-direction: column;
   min-width: 210px;
+  max-width: 300px;
   padding: 7px;
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
@@ -191,7 +196,7 @@ body {
   box-shadow: var(--shadow-lift);
 }
 .account-menu > * { padding: 9px 10px; border: 0; border-radius: 4px; background: transparent; color: var(--ink); font-size: 13px; text-align: left; }
-.account-menu > span { overflow: hidden; color: var(--ink-soft); font-size: 11px; text-overflow: ellipsis; }
+.account-menu > span { overflow: hidden; color: var(--ink-soft); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .account-menu a:hover, .account-menu button:hover { background: var(--aloe-tint); }
 .cart-action__icon { position: relative; display: inline-flex; }
 .main-action.cart-action {

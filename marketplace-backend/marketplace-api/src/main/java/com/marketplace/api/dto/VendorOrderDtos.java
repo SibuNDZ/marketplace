@@ -12,6 +12,15 @@ import java.util.List;
  */
 public class VendorOrderDtos {
 
+    /**
+     * Optional body for the ship action. Free text on purpose: waybill
+     * formats differ per courier and the courier APIs are deliberately
+     * deferred until manual tracking proves insufficient.
+     */
+    public record ShipRequest(
+            @jakarta.validation.constraints.Size(max = 100) String trackingNumber
+    ) {}
+
     public record VendorOrderResponse(
             Long orderId,
             String orderNumber,
@@ -27,7 +36,9 @@ public class VendorOrderDtos {
              * UI should say so instead of offering a button that 409s.
              */
             boolean canShip,
-            ShippingDtos.ShippingAddressResponse shipTo
+            ShippingDtos.ShippingAddressResponse shipTo,
+            /** Waybill reference captured at ship time; null until provided. */
+            String trackingNumber
     ) {}
 
     public record VendorLineItem(

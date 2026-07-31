@@ -21,7 +21,8 @@ public record OrderResponse(
         LocalDateTime createdAt,
         List<OrderItemResponse> items,
         List<DeliveryFeeResponse> deliveryFees, // one per vendor charging delivery; empty = free
-        ShippingDtos.ShippingAddressResponse shippingAddress
+        ShippingDtos.ShippingAddressResponse shippingAddress,
+        String trackingNumber // set at SHIPPED (when provided); manual interim, no courier API yet
 ) {
     public record OrderItemResponse(
             Long productId,

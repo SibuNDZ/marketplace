@@ -112,7 +112,7 @@ public class VendorOrderService {
      * vendor racing an admin, serialize on the row instead of double-recording.
      */
     @Transactional
-    public VendorOrderResponse markShipped(Long vendorId, Long orderId) {
+    public VendorOrderResponse markShipped(Long vendorId, Long orderId, String trackingNumber) {
         Order order = orderRepository.findByIdForUpdate(orderId)
                 .filter(o -> VENDOR_VISIBLE.contains(o.getStatus()))
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
@@ -134,7 +134,13 @@ public class VendorOrderService {
         }
 
         order.setStatus(OrderStatus.SHIPPED);
-        recorder.record(order, current, OrderStatus.SHIPPED, vendorId, "Shipped by vendor");
+        // Blank normalises to null: "no tracking" is one state, not two.
+        String tracking = trackingNumber == null || trackingNumber.isBlank()
+                ? null : trackingNumber.strip();
+        order.setTrackingNumber(tracking);
+        recorder.record(order, current, OrderStatus.SHIPPED, vendorId,
+                tracking == null ? "Shipped by vendor"
+                                 : "Shipped by vendor (tracking " + tracking + ")");
         log.info("Order {} PAID -> SHIPPED by vendor {}", orderId, vendorId);
         return toResponse(order, mine, myFee(orderId, vendorId), true);
     }
@@ -165,7 +171,8 @@ public class VendorOrderService {
                 itemsTotal,
                 myDeliveryFee,
                 singleVendor && order.getStatus() == OrderStatus.PAID,
-                shipTo(order));
+                shipTo(order),
+                order.getTrackingNumber());
     }
 
     /**

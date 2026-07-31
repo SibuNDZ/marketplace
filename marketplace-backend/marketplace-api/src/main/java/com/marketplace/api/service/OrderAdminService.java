@@ -45,6 +45,18 @@ public class OrderAdminService {
 
     @Transactional
     public void transition(Long orderId, OrderStatus target, Long adminUserId, String note) {
+        transition(orderId, target, adminUserId, note, null);
+    }
+
+    /**
+     * Tracking number is meaningful only when target is SHIPPED (V17, manual
+     * interim until a courier API integration); it is ignored otherwise
+     * rather than rejected, so a client resending a stale field cannot fail
+     * an unrelated transition.
+     */
+    @Transactional
+    public void transition(Long orderId, OrderStatus target, Long adminUserId,
+                           String note, String trackingNumber) {
         if (target == OrderStatus.CANCELLED) {
             throw new InvalidOrderStateException(
                     "Cancellation must go through the cancel endpoint (it restores stock)");
@@ -68,6 +80,10 @@ public class OrderAdminService {
                     + "; allowed from " + current + ": " + OrderTransitions.allowedFrom(current));
         }
 
+        if (target == OrderStatus.SHIPPED
+                && trackingNumber != null && !trackingNumber.isBlank()) {
+            order.setTrackingNumber(trackingNumber.strip());
+        }
         order.setStatus(target);
         recorder.record(order, current, target, adminUserId, note);
     }

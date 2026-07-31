@@ -118,17 +118,20 @@ class OrderEmailFlowTest {
     }
 
     @Test
-    void shippedTransition_emailsBuyer() {
+    void shippedTransition_emailsBuyer_withTrackingNumber() {
         Product product = fixtures.product("Mail-Ship 1", "SKU-MAIL-S1", new BigDecimal("50.00"), 5);
         User buyer = fixtures.customerWithCart("mail-buyer2", product, 1);
         User admin = fixtures.admin("mail-admin1");
 
         Long orderId = orderService.placeOrder(buyer.getId()).id();
         paymentEventService.handleCheckoutCompleted(orderId);
-        orderAdminService.transition(orderId, OrderStatus.SHIPPED, admin.getId(), "Shipped");
+        orderAdminService.transition(orderId, OrderStatus.SHIPPED, admin.getId(),
+                "Shipped", "TRK-MAIL-777");
 
+        ArgumentCaptor<String> html = ArgumentCaptor.forClass(String.class);
         verify(emailService, timeout(5000)).send(
-                eq(buyer.getEmail()), contains("has shipped"), anyString());
+                eq(buyer.getEmail()), contains("has shipped"), html.capture());
+        assertThat(html.getValue()).contains("Tracking number").contains("TRK-MAIL-777");
     }
 
     @Test

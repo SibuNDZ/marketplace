@@ -1,8 +1,10 @@
 package com.marketplace.api.controller;
 
+import com.marketplace.api.dto.VendorOrderDtos.ShipRequest;
 import com.marketplace.api.dto.VendorOrderDtos.VendorOrderResponse;
 import com.marketplace.api.security.UserPrincipal;
 import com.marketplace.api.service.VendorOrderService;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -45,10 +47,13 @@ public class VendorOrderController {
         return vendorOrderService.get(me.getId(), id);
     }
 
+    /** Body optional: shipping without a tracking number stays a one-click action. */
     @PostMapping("/{id}/ship")
     public VendorOrderResponse ship(
             @PathVariable Long id,
+            @Valid @RequestBody(required = false) ShipRequest request,
             @AuthenticationPrincipal UserPrincipal me) {
-        return vendorOrderService.markShipped(me.getId(), id);
+        return vendorOrderService.markShipped(me.getId(), id,
+                request == null ? null : request.trackingNumber());
     }
 }

@@ -388,6 +388,8 @@ export interface OrderResponse {
   // for admin viewers on orders that aren't PAID-or-later — the frontend
   // trusts that masking completely rather than re-deriving it here.
   shippingAddress?: ShippingAddress | null
+  // Waybill reference captured at the SHIPPED transition; null until provided.
+  trackingNumber?: string | null
 }
 
 export interface DeliveryFeeLine {
@@ -412,6 +414,8 @@ export interface VendorOrderResponse {
   deliveryFee?: string | null
   canShip: boolean
   shipTo?: ShippingAddress | null
+  // Waybill reference captured at ship time; null until provided.
+  trackingNumber?: string | null
 }
 
 /** Vendor self-service settings (GET/PUT /api/v1/vendor/settings). */

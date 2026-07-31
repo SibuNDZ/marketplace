@@ -21,10 +21,26 @@ export function AdminPage() {
   })
 
   const transition = useMutation({
-    mutationFn: ({ orderId, status }: { orderId: number; status: string }) =>
-      api(`/api/v1/admin/orders/${orderId}/status`, { method: 'POST', body: { status } }),
+    mutationFn: ({ orderId, status, trackingNumber }: { orderId: number; status: string; trackingNumber?: string }) =>
+      api(`/api/v1/admin/orders/${orderId}/status`, {
+        method: 'POST',
+        body: trackingNumber ? { status, trackingNumber } : { status },
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-orders'] }),
   })
+
+  // SHIPPED is the one transition that can carry a waybill number (manual
+  // interim; courier APIs deferred). prompt() matches the page's existing
+  // native-dialog style; cancelling the dialog aborts the transition.
+  const runTransition = (orderId: number, status: string) => {
+    if (status === 'SHIPPED') {
+      const trackingNumber = prompt('Tracking number (optional, leave blank for none):')
+      if (trackingNumber === null) return
+      transition.mutate({ orderId, status, trackingNumber: trackingNumber.trim() || undefined })
+    } else {
+      transition.mutate({ orderId, status })
+    }
+  }
 
   const orders = data?.content ?? []
 
@@ -53,7 +69,7 @@ export function AdminPage() {
                   <td style={{ padding: '14px 12px' }}><StatusChip status={o.status} /></td>
                   <td style={{ padding: '14px 12px', display: 'flex', gap: 8 }}>
                     {(LEGAL[o.status] ?? []).map(next => (
-                      <button key={next} onClick={() => transition.mutate({ orderId: o.id, status: next })}
+                      <button key={next} onClick={() => runTransition(o.id, next)}
                         style={{
                           padding: '6px 14px', background: 'var(--aloe-tint)', color: 'var(--aloe-deep)',
                           border: '1px solid var(--aloe)', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: 12,

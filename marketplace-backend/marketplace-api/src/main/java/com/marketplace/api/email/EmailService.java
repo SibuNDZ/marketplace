@@ -86,7 +86,13 @@ public class EmailService {
                                 + "request this, ignore this email — your password will not change."));
     }
 
-    private boolean send(String to, String subject, String html) {
+    /**
+     * Package-private so OrderEmailService shares this transport (one client,
+     * one key, one swallow-and-log policy) instead of duplicating it.
+     *
+     * @return true if Resend accepted the message.
+     */
+    boolean send(String to, String subject, String html) {
         if (apiKey.isBlank()) {
             // Not an error: this is the configured dev/test behaviour.
             log.warn("RESEND_API_KEY not set — email to {} not sent. Subject: {}", to, subject);
@@ -161,7 +167,7 @@ public class EmailService {
      * HTML document, so they are escaped here. An unescaped name is stored
      * XSS aimed at whoever opens the mail.
      */
-    private static String escape(String value) {
+    static String escape(String value) {
         if (value == null) {
             return "";
         }

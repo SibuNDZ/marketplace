@@ -92,7 +92,7 @@ export function Footer() {
               Trust & Security
             </p>
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-              {['🔒 Secure checkout via Stripe', '🔐 Encrypted in transit', '📄 Your data under POPIA', '⚖️ Your rights under the CPA'].map(t => (
+              {['🔒 Secure encrypted checkout', '🔐 Encrypted in transit', '📄 Your data under POPIA', '⚖️ Your rights under the CPA'].map(t => (
                 <span key={t} style={{ fontSize: 12, color: 'var(--footer-text)' }}>{t}</span>
               ))}
             </div>

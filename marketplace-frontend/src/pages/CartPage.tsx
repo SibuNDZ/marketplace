@@ -173,7 +173,7 @@ export function CartPage() {
               {pay.isPending ? 'Continuing…' : 'Continue to payment'}
             </button>
             <p style={{ fontSize: 12, color: 'var(--ink-soft)', textAlign: 'center' }}>
-              You'll complete payment securely on Stripe
+              You'll complete payment on our secure payment provider
             </p>
           </form>
         </main>
@@ -246,7 +246,7 @@ export function CartPage() {
                 {placeOrder.isPending ? 'Placing order…' : 'Continue to payment'}
               </button>
               <p style={{ fontSize: 12, color: 'var(--ink-soft)', textAlign: 'center', marginTop: 10 }}>
-                You'll complete payment securely on Stripe
+                You'll complete payment on our secure payment provider
               </p>
             </div>
           </div>

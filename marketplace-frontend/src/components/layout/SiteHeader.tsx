@@ -122,7 +122,7 @@ export function SiteHeader() {
         <div className="utility-bar">
           <div className="utility-bar__inner">
             <div className="utility-bar__claims">
-              <span>Secure Stripe checkout</span><span aria-hidden>·</span><span>Unpaid orders cancel free</span>
+              <span>Secure checkout</span><span aria-hidden>·</span><span>Unpaid orders cancel free</span>
             </div>
             <nav aria-label="Utility navigation">{user && <Link to="/orders">Orders</Link>}</nav>
           </div>
@@ -253,7 +253,7 @@ export function SiteHeader() {
                 </>
               )}
             </nav>
-            <div className="mobile-drawer__trust"><span>Secure Stripe checkout</span><span>Unpaid orders cancel free</span></div>
+            <div className="mobile-drawer__trust"><span>Secure checkout</span><span>Unpaid orders cancel free</span></div>
           </div>
         </div>
       )}

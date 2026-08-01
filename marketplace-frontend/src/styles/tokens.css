@@ -119,6 +119,7 @@ body {
 .main-bar__inner { height: 100%; align-items: center; }
 .main-bar__desktop { display: flex; gap: 28px; }
 .main-bar__mobile { display: none; }
+.seller-strip { display: none; } /* mobile-only; shown in the max-width block */
 
 .wordmark {
   flex: 0 0 auto;
@@ -306,10 +307,22 @@ body {
   :root { --header-height: 58px; --gutter: 16px; }
   .utility-bar, .main-bar__desktop, .category-bar { display: none; }
   .main-bar { height: var(--header-height); border: 0; }
-  .main-bar__mobile { display: flex; justify-content: space-between; }
+  .main-bar__mobile { display: flex; justify-content: space-between; position: relative; }
   .main-bar__mobile .wordmark { position: absolute; left: 50%; transform: translateX(-50%); font-size: 22px; }
-  .mobile-actions { display: flex; align-items: center; gap: 4px; }
-  .mobile-icon { display: grid; place-items: center; width: 40px; height: 40px; border: 0; background: transparent; color: var(--ink); }
+  .mobile-actions { display: flex; align-items: center; gap: 0; }
+  /* 44px: minimum comfortable touch target (field-tested on real vendors'
+     phones); gap dropped to 0 because the targets themselves grew. */
+  .mobile-icon { display: grid; place-items: center; width: 44px; height: 44px; border: 0; background: transparent; color: var(--ink); }
+  /* The signed-in account menu on mobile: same items as desktop, rendered
+     full-width under the bar instead of as a right-anchored popover. */
+  .account-menu--mobile {
+    top: calc(100% + 4px);
+    left: 8px;
+    right: 8px;
+    max-width: none;
+    min-width: 0;
+  }
+  .account-menu--mobile > * { min-height: 44px; display: flex; align-items: center; }
   .mobile-drawer-layer { position: fixed; inset: 0; z-index: 300; display: block; }
   .mobile-drawer-backdrop { position: absolute; inset: 0; width: 100%; border: 0; background: rgba(14, 21, 18, .52); }
   .mobile-drawer {
@@ -350,7 +363,38 @@ body {
   .mobile-category-tree li button { min-height: 40px; color: var(--ink-soft); font-size: 13px; }
   .mobile-category-tree .num { color: var(--ink-soft); font-size: 10px; }
   .mobile-account-links { display: flex; flex-direction: column; padding: 10px 20px; border-top: 1px solid var(--line); }
-  .mobile-account-links > * { padding: 9px 0; border: 0; background: transparent; color: var(--ink); text-align: left; }
+  .mobile-account-links > * { padding: 9px 0; border: 0; background: transparent; color: var(--ink); text-align: left; min-height: 44px; display: flex; align-items: center; }
+  /* The seller door: deliberately the one visually distinct item in the
+     drawer. Vendors are recruited face-to-face at markets; this is the tap
+     the founder points at. */
+  .mobile-drawer__sell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 48px;
+    margin: 12px 20px 2px;
+    padding: 0 14px;
+    background: var(--aloe-tint);
+    border: 1px solid var(--aloe);
+    border-radius: var(--r-sm);
+    color: var(--aloe-deep);
+    font-weight: 700;
+  }
+  /* One-line seller strip under the home hero, mobile only. */
+  .seller-strip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+    margin: 10px 0 2px;
+    background: var(--aloe-tint);
+    border: 1px solid var(--aloe);
+    border-radius: var(--r-sm);
+    color: var(--aloe-deep);
+    font-weight: 700;
+    font-size: 14px;
+  }
   .mobile-drawer__trust { display: grid; gap: 4px; margin-top: auto; padding: 18px 20px; background: var(--footer-bg); color: var(--footer-text); font-size: 11px; }
 }
 

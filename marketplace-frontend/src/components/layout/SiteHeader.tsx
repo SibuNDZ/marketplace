@@ -174,11 +174,30 @@ export function SiteHeader() {
             <Link to="/" className="wordmark">eRestyu</Link>
             <div className="mobile-actions">
               <button className="mobile-icon" aria-label="Notifications" title="Notifications"><Bell size={21} strokeWidth={1.75} /></button>
+              {/* Persistent account entry: field-tested gap. A vendor at a
+                  market stall could not find where to register because
+                  account access only existed inside the hamburger drawer.
+                  Signed out this goes straight to sign-in; signed in it
+                  opens the same menu as desktop, full-width under the bar. */}
+              <button className="mobile-icon" aria-label="Account"
+                onClick={() => user ? setAccountOpen(open => !open) : navigate('/login')}
+                aria-expanded={user ? accountOpen : undefined}>
+                <UserRound size={22} strokeWidth={1.75} />
+              </button>
               <button className="mobile-icon" onClick={() => setDrawerOpen(true)} aria-label="Open search"><Search size={22} strokeWidth={1.75} /></button>
               <button className="mobile-icon cart-action__icon" onClick={cartDrawer.open} aria-label="Open cart">
                 <ShoppingCart size={22} strokeWidth={1.75} />{itemCount > 0 && <span className="cart-count num">{itemCount}</span>}
               </button>
             </div>
+            {accountOpen && user && (
+              <div className="account-menu account-menu--mobile">
+                <span>{user.email}</span>
+                <Link to="/orders" onClick={() => setAccountOpen(false)}>Orders</Link>
+                {user.role !== 'CUSTOMER' && <Link to={roleDestination} onClick={() => setAccountOpen(false)}>{roleLabel}</Link>}
+                <Link to="/account" onClick={() => setAccountOpen(false)}>Account settings</Link>
+                <button onClick={handleLogout}>Sign out</button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -214,6 +233,11 @@ export function SiteHeader() {
                 </div>
               ))}
             </nav>
+            {/* Vendor acquisition happens in person at markets; the seller
+                door must be one obvious tap, not a scavenger hunt. */}
+            <Link to="/register?role=vendor" className="mobile-drawer__sell" onClick={() => setDrawerOpen(false)}>
+              🏪 Sell on eRestyu <span aria-hidden>→</span>
+            </Link>
             <nav className="mobile-account-links" aria-label="Account links">
               {user ? (
                 <>

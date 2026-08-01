@@ -69,7 +69,7 @@ export function AboutPage() {
           delivered on your <Link to="/orders">orders page</Link>.
         </p>
         <p>
-          Payments run through Stripe. eRestyu never sees or stores your card
+          Payments run through our secure payment provider. eRestyu never sees or stores your card
           details.
         </p>
       </Section>
@@ -169,7 +169,7 @@ export function ShippingInfoPage() {
 
 export function HelpPage() {
   const faqs: Array<[string, React.ReactNode]> = [
-    ['How do I pay?', 'Checkout runs through Stripe. Cards are processed by Stripe directly; eRestyu never sees or stores your card details. All prices are in South African rand.'],
+    ['How do I pay?', 'Checkout runs through our secure payment provider. Your card details are processed by the payment provider directly; eRestyu never sees or stores them. All prices are in South African rand.'],
     ['Where is my order?', <>Your <Link to="/orders">orders page</Link> shows every order and its status: pending, paid, shipped, delivered. Shipped orders show a tracking number when the vendor provided one, and you get an email at each step.</>],
     ['Can I cancel an order?', 'Unpaid orders: yes, instantly, from the order page. Paid orders: reply to your confirmation email and we handle it case by case.'],
     ['Why did my order expire?', 'Unpaid orders hold stock. If payment does not arrive within 30 minutes, the order cancels itself and the stock goes back on sale.'],
@@ -194,7 +194,7 @@ export function HowItWorksPage() {
         <p>
           Browse the catalog, add items to your cart from any number of
           vendors, and check out once. You will enter a delivery address and
-          pay by card through Stripe. After payment, every vendor involved
+          pay securely at checkout. After payment, every vendor involved
           gets your delivery details and ships their items; you get an email
           when your order is confirmed and again when it ships.
         </p>
@@ -212,7 +212,7 @@ export function HowItWorksPage() {
       </Section>
       <Section heading="Fees">
         <p>
-          Listing is free. Payment processing runs through Stripe at checkout.
+          Listing is free. Payment processing happens at checkout through our secure payment provider.
         </p>
       </Section>
     </InfoPage>

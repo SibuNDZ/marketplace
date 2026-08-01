@@ -41,7 +41,7 @@ export function ErrorSurface({ error, onDismiss }: Props) {
         }}>
           {error.shortages.map((s) => (
             <p key={s.productId} className="num" style={{ fontSize: 12, color: 'var(--clay)', margin: '2px 0' }}>
-              {s.productName} — wanted {s.requested}, only {s.available} available
+              {s.productName}: wanted {s.requested}, only {s.available} available
             </p>
           ))}
         </div>

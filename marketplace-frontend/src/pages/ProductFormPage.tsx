@@ -130,7 +130,7 @@ export function ProductFormPage() {
       return
     }
     if (file.size > MAX_IMAGE_BYTES) {
-      setImageError('Image too large — 5MB max')
+      setImageError('Image too large: 5MB max')
       e.target.value = ''
       return
     }
@@ -198,7 +198,7 @@ export function ProductFormPage() {
       if (e instanceof ApiError && e.status === 429) {
         setDraftError(e.detail || "You have used this hour's drafting allowance.")
       } else {
-        setDraftError("Drafting didn't work — fill the form manually or try again.")
+        setDraftError("Drafting didn't work. Fill the form manually or try again.")
       }
     },
   })
@@ -233,7 +233,7 @@ export function ProductFormPage() {
           await uploadProductImage(saved.id, imageFile)
           qc.invalidateQueries({ queryKey: ['product', String(saved.id)] })
         } catch {
-          navigate('/vendor', { state: { notice: 'Product saved, but the image failed to upload — retry from Edit.' } })
+          navigate('/vendor', { state: { notice: 'Product saved, but the image failed to upload. Retry from Edit.' } })
           return
         }
       }
@@ -307,7 +307,7 @@ export function ProductFormPage() {
                   borderRadius: 'var(--r-sm)', padding: '10px 14px', fontSize: 13,
                   lineHeight: 1.5,
                 }}>
-                  <strong>AI draft — please review.</strong> Written from your photo, so
+                  <strong>AI draft: please review.</strong> Written from your photo, so
                   check it describes what you are actually selling. Edit anything that is
                   wrong, then confirm below.
                 </div>
@@ -366,7 +366,7 @@ export function ProductFormPage() {
               disabled={form.tags.length >= MAX_TAGS}
               style={inputStyle(!!fieldErrors.tags)} />
             <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--ink-soft)' }}>
-              For anything the categories do not cover — “vegan”, “gluten-free”, “gift”.
+              For anything the categories do not cover: “vegan”, “gluten-free”, “gift”.
             </span>
             {form.tags.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
@@ -391,7 +391,7 @@ export function ProductFormPage() {
             <span>
               Handmade
               <span style={{ display: 'block', fontWeight: 400, fontSize: 12, color: 'var(--ink-soft)' }}>
-                Independent of category — a handmade necklace still files under Fashion / Jewellery.
+                Independent of category: a handmade necklace still files under Fashion / Jewellery.
               </span>
             </span>
           </label>

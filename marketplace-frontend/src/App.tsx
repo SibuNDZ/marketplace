@@ -18,6 +18,7 @@ import { OrdersPage } from './pages/OrdersPage'
 import { OrderDetailPage } from './pages/OrderDetailPage'
 import { VendorDashboardPage } from './pages/VendorDashboardPage'
 import { VendorOrdersPage } from './pages/VendorOrdersPage'
+import { AccountSettingsPage } from './pages/AccountSettingsPage'
 import { ProductFormPage } from './pages/ProductFormPage'
 import { AdminPage } from './pages/AdminPage'
 import { AdminOrderDetailPage } from './pages/AdminOrderDetailPage'
@@ -65,6 +66,7 @@ export default function App() {
           <Route path="/orders/:id" element={<RequireAuth><OrderDetailPage /></RequireAuth>} />
           <Route path="/vendor" element={<RequireAuth><VendorDashboardPage /></RequireAuth>} />
           <Route path="/vendor/orders" element={<RequireAuth><VendorOrdersPage /></RequireAuth>} />
+          <Route path="/account" element={<RequireAuth><AccountSettingsPage /></RequireAuth>} />
           <Route path="/vendor/products/new" element={<RequireAuth><ProductFormPage /></RequireAuth>} />
           <Route path="/vendor/products/:id/edit" element={<RequireAuth><ProductFormPage /></RequireAuth>} />
           <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />

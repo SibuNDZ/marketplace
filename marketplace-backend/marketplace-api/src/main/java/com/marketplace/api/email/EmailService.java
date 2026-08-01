@@ -83,7 +83,7 @@ public class EmailService {
                         "We received a request to reset your eRestyu password.",
                         "Reset my password", link,
                         "This link expires in 1 hour and can only be used once. If you did not "
-                                + "request this, ignore this email — your password will not change."));
+                                + "request this, ignore this email; your password will not change."));
     }
 
     /**

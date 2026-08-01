@@ -46,6 +46,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                @Param("searchText") String searchText,
                                Pageable pageable);
 
+    /**
+     * ALL of one vendor's products, soft-deleted included — the vendor
+     * dashboard shows archived items alongside live ones. Never expose this
+     * on a public path.
+     */
+    Page<Product> findByVendorId(Long vendorId, Pageable pageable);
+
     /** Live product by id. Returns empty for soft-deleted products (public 404). */
     Optional<Product> findByIdAndDeletedAtIsNull(Long id);
 

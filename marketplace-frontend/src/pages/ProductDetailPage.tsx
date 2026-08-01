@@ -137,7 +137,7 @@ export function ProductDetailPage() {
                 {addToCart.isPending ? 'Adding…' : addToCart.isSuccess ? '✓ Added' : 'Add to cart'}
               </button>
             </div>
-            <p style={{ fontSize: 12, color: 'var(--ink-soft)' }}>SKU: <span className="num">{product.sku ?? '—'}</span></p>
+            <p style={{ fontSize: 12, color: 'var(--ink-soft)' }}>SKU: <span className="num">{product.sku ?? '-'}</span></p>
           </div>
         </div>
       </main>

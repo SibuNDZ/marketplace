@@ -148,7 +148,7 @@ public class GlobalExceptionHandler {
     // upload is an ugly 500 instead of a clean 400.
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ProblemDetail uploadTooLarge(MaxUploadSizeExceededException ex) {
-        return problem(HttpStatus.BAD_REQUEST, "Image too large", "Image too large — 5MB max");
+        return problem(HttpStatus.BAD_REQUEST, "Image too large", "Image too large: 5MB max");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -193,7 +193,7 @@ public class GlobalExceptionHandler {
     public ProblemDetail draftProviderError(DraftProviderException ex) {
         log.error("Listing draft provider error", ex);
         return problem(HttpStatus.BAD_GATEWAY, "Drafting unavailable",
-                "Drafting service returned an unusable response — try again");
+                "Drafting service returned an unusable response. Try again");
     }
 
     /**

@@ -20,7 +20,7 @@ public class VendorSettingsDtos {
     public record VendorSettingsRequest(
             @NotNull
             @DecimalMin(value = "0.00", message = "Delivery fee cannot be negative")
-            @DecimalMax(value = "10000.00", message = "Delivery fee looks too large — is this a typo?")
+            @DecimalMax(value = "10000.00", message = "Delivery fee looks too large. Is this a typo?")
             @Digits(integer = 8, fraction = 2, message = "Delivery fee must have at most 2 decimal places")
             BigDecimal deliveryFee
     ) {}

@@ -198,7 +198,7 @@ public class OrderService {
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
         if (order.getStatus() != OrderStatus.PENDING) return; // paid meanwhile — job loses cleanly
         cancelInternal(order, order.getUser().getId(),
-                "Expired — payment not completed within window");
+                "Expired: payment not completed within window");
     }
 
     /**

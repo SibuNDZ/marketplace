@@ -147,9 +147,17 @@ export function SiteHeader() {
                         <span>{user.email}</span>
                         <Link to="/orders" onClick={() => setAccountOpen(false)}>Orders</Link>
                         {user.role !== 'CUSTOMER' && <Link to={roleDestination} onClick={() => setAccountOpen(false)}>{roleLabel}</Link>}
+                        <Link to="/account" onClick={() => setAccountOpen(false)}>Account settings</Link>
                         <button onClick={handleLogout}>Sign out</button>
                       </>
-                    ) : <Link to="/login" onClick={() => setAccountOpen(false)}>Sign in</Link>}
+                    ) : (
+                      <>
+                        {/* Both doors visible: a new visitor should not have
+                            to know that registration hides behind Sign in. */}
+                        <Link to="/login" onClick={() => setAccountOpen(false)}>Sign in</Link>
+                        <Link to="/register" onClick={() => setAccountOpen(false)}>Create account</Link>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -211,9 +219,15 @@ export function SiteHeader() {
                 <>
                   <Link to="/orders" onClick={() => setDrawerOpen(false)}>Orders</Link>
                   {user.role !== 'CUSTOMER' && <Link to={roleDestination} onClick={() => setDrawerOpen(false)}>{roleLabel}</Link>}
+                  <Link to="/account" onClick={() => setDrawerOpen(false)}>Account settings</Link>
                   <button onClick={handleLogout}>Sign out</button>
                 </>
-              ) : <Link to="/login" onClick={() => setDrawerOpen(false)}>Sign in</Link>}
+              ) : (
+                <>
+                  <Link to="/login" onClick={() => setDrawerOpen(false)}>Sign in</Link>
+                  <Link to="/register" onClick={() => setDrawerOpen(false)}>Create account</Link>
+                </>
+              )}
             </nav>
             <div className="mobile-drawer__trust"><span>Secure Stripe checkout</span><span>Unpaid orders cancel free</span></div>
           </div>

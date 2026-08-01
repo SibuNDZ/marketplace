@@ -78,9 +78,11 @@ export function VendorDashboardPage() {
     (location.state as { notice?: string } | null)?.notice,
   )
 
+  // /mine, not the public catalog list: the dashboard must show ONLY this
+  // vendor's products (including archived ones), not the whole marketplace.
   const { data, isLoading } = useQuery<Page<ProductResponse>>({
     queryKey: ['vendor-products'],
-    queryFn: () => api('/api/v1/products?size=100'),
+    queryFn: () => api('/api/v1/products/mine?size=100'),
   })
 
   const adjustStock = useMutation({
@@ -160,7 +162,7 @@ export function VendorDashboardPage() {
               {products.map(p => (
                 <tr key={p.id} style={{ borderBottom: '1px solid var(--line)', opacity: p.deletedAt ? 0.5 : 1 }}>
                   <td style={{ padding: '12px 12px', fontWeight: 600 }}>{p.name}</td>
-                  <td className="num" style={{ padding: '12px 12px', fontSize: 13, color: 'var(--ink-soft)' }}>{p.sku ?? '—'}</td>
+                  <td className="num" style={{ padding: '12px 12px', fontSize: 13, color: 'var(--ink-soft)' }}>{p.sku ?? '-'}</td>
                   <td style={{ padding: '12px 12px', fontSize: 13, color: 'var(--ink-soft)' }}>
                     {/* The response carries the resolved name, so the
                         client-side key-to-label lookup table is gone. */}

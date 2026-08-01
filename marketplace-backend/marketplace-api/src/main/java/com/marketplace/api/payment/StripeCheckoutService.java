@@ -154,7 +154,7 @@ public class StripeCheckoutService {
 
         if (order.getStatus() != OrderStatus.PENDING) {
             throw new InvalidOrderStateException(
-                    "Order " + orderId + " is " + order.getStatus() + " — only PENDING orders can be paid");
+                    "Order " + orderId + " is " + order.getStatus() + "; only PENDING orders can be paid");
         }
 
         order.setRecipientName(shipping.recipientName());

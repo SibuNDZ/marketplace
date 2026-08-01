@@ -98,7 +98,7 @@ export function CartPage() {
             Shipping details
           </h1>
           <p style={{ color: 'var(--ink-soft)', fontSize: 13, marginBottom: 24 }}>
-            Order <span className="num">#{pendingOrderId}</span> — where should it be delivered?
+            Order <span className="num">#{pendingOrderId}</span>. Where should it be delivered?
           </p>
 
           <form onSubmit={submitShipping} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

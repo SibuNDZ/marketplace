@@ -155,7 +155,7 @@ export function CatalogPage() {
 
                 <SectionDivider icon="🛍️" label={name ? `Results for “${name}”` : categoryLabel} />
                 {mainList.length === 0 ? (
-                  <p style={{ color: 'var(--ink-soft)', fontSize: 14, padding: '20px 0' }}>No products match right now — try a different category or filter.</p>
+                  <p style={{ color: 'var(--ink-soft)', fontSize: 14, padding: '20px 0' }}>No products match right now. Try a different category or filter.</p>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
                     {mainList.map(p => <ProductCard key={p.id} product={p} />)}

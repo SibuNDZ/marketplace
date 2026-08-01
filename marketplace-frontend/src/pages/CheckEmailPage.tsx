@@ -56,12 +56,14 @@ export function CheckEmailPage() {
           Open it to finish setting up your account. It expires in 24 hours.
         </p>
       ) : (
-        <p style={{
-          fontSize: 14, lineHeight: 1.6, background: 'var(--clay-tint)',
-          color: 'var(--clay)', padding: '12px 14px', borderRadius: 'var(--r-sm)',
-        }}>
-          Your account was created, but we could not send the confirmation email
-          to <strong>{email}</strong> just now. Try again below.
+        /* The email failing is OUR problem, not the user's: the backend
+           auto-verifies the account in exactly this case, so the truthful
+           message is "you're in", not an error banner. Sign-in is the
+           primary action; resending is the afterthought. */
+        <p style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--ink-soft)' }}>
+          Your account for <strong style={{ color: 'var(--ink)' }}>{email}</strong> is
+          ready. We could not send a confirmation email right now, but you do not
+          need one: you can sign in straight away.
         </p>
       )}
 
@@ -72,18 +74,38 @@ export function CheckEmailPage() {
       )}
       {error && <p style={{ fontSize: 13, color: 'var(--clay)' }}>{error}</p>}
 
-      <button onClick={resend} disabled={sending || resent}
-        style={{
-          background: 'var(--ink)', color: '#fff', border: 'none',
-          borderRadius: 'var(--r-sm)', padding: '11px', fontWeight: 600,
-          fontSize: 15, opacity: sending || resent ? 0.6 : 1,
-        }}>
-        {sending ? 'Sending…' : resent ? 'Email sent' : 'Resend confirmation email'}
-      </button>
-
-      <Link to="/login" style={{ color: 'var(--aloe)', fontWeight: 600, fontSize: 14, textAlign: 'center' }}>
-        Back to sign in
-      </Link>
+      {emailSent ? (
+        <>
+          <button onClick={resend} disabled={sending || resent}
+            style={{
+              background: 'var(--ink)', color: '#fff', border: 'none',
+              borderRadius: 'var(--r-sm)', padding: '11px', fontWeight: 600,
+              fontSize: 15, opacity: sending || resent ? 0.6 : 1,
+            }}>
+            {sending ? 'Sending…' : resent ? 'Email sent' : 'Resend confirmation email'}
+          </button>
+          <Link to="/login" style={{ color: 'var(--aloe)', fontWeight: 600, fontSize: 14, textAlign: 'center' }}>
+            Back to sign in
+          </Link>
+        </>
+      ) : (
+        <>
+          <Link to="/login" style={{
+            background: 'var(--ink)', color: '#fff', borderRadius: 'var(--r-sm)',
+            padding: '11px', fontWeight: 600, fontSize: 15, textAlign: 'center',
+          }}>
+            Continue to sign in
+          </Link>
+          <button onClick={resend} disabled={sending || resent}
+            style={{
+              background: 'none', border: 'none', color: 'var(--aloe)',
+              fontWeight: 600, fontSize: 14, cursor: 'pointer',
+              opacity: sending || resent ? 0.6 : 1,
+            }}>
+            {sending ? 'Sending…' : resent ? 'Confirmation email sent' : 'Try sending the confirmation email again'}
+          </button>
+        </>
+      )}
     </AuthShell>
   )
 }

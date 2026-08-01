@@ -170,10 +170,12 @@ export function RegisterPage() {
             </label>
             <label style={halfField}>
               {/* Not required: mononyms are common, and the API accepts an
-                  absent surname. */}
-              Last name <span style={{ fontWeight: 400, color: 'var(--ink-soft)' }}>(optional)</span>
+                  absent surname. "Optional" lives in the placeholder, not the
+                  label: a wrapping label pushed this input out of line with
+                  First name at narrow widths. */}
+              Last name
               <input value={form.lastName} onChange={e => set('lastName', e.target.value)}
-                style={inputStyle} />
+                placeholder="Optional" style={inputStyle} />
             </label>
           </div>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 500 }}>

@@ -124,7 +124,7 @@ public class VendorOrderService {
         }
         if (!orderRepository.idsWithForeignItems(List.of(orderId), vendorId).isEmpty()) {
             throw new InvalidOrderStateException(
-                    "Order " + orderId + " contains other vendors' items — "
+                    "Order " + orderId + " contains other vendors' items; "
                     + "mixed-vendor orders are shipped by an administrator");
         }
         OrderStatus current = order.getStatus();

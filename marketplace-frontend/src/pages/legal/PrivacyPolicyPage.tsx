@@ -20,23 +20,23 @@ export function PrivacyPolicyPage() {
     <LegalPage title="Privacy Policy" lastUpdated="2026-07-13">
       <LegalSection heading="What we collect">
         <p>
-          <strong>Account details</strong> — your email address, name, and a hash
+          <strong>Account details</strong>: your email address, name, and a hash
           of your password (never the password itself, which is bcrypt-hashed
           before storage).
         </p>
         <p>
-          <strong>Order history</strong> — the products, quantities, and prices of
+          <strong>Order history</strong>: the products, quantities, and prices of
           orders you place, kept as a permanent record of the transaction.
         </p>
         <p>
-          <strong>Shipping and contact details</strong> — the recipient name,
+          <strong>Shipping and contact details</strong>: the recipient name,
           phone number, and delivery address you submit at checkout. This is
           shared with the fulfilling admin once your payment is confirmed (today
           the marketplace has a single admin fulfiller; this will be scoped to
           the specific vendor if a dedicated vendor fulfilment view ships later).
         </p>
         <p>
-          <strong>Product views</strong> — which product pages you visit, used for
+          <strong>Product views</strong>: which product pages you visit, used for
           your "recently viewed" list and the popularity rankings. Anonymous
           visits are counted for rankings but are not linked to any account.
         </p>
@@ -45,7 +45,7 @@ export function PrivacyPolicyPage() {
       <LegalSection heading="Why we collect it">
         <p>
           Order fulfilment (we cannot deliver what we cannot record or ship what
-          we don't know the address of), account access, and product discovery —
+          we don't know the address of), account access, and product discovery;
           view history feeds the recently-viewed shelf and the hourly popularity
           model that ranks the catalog.
         </p>
@@ -54,7 +54,7 @@ export function PrivacyPolicyPage() {
       <LegalSection heading="How long we keep it">
         <p>
           <strong>Product views: 90 days.</strong> A nightly job deletes view
-          records older than 90 days — this is enforced in code, not just policy.
+          records older than 90 days; this is enforced in code, not just policy.
         </p>
         <p>
           <strong>Login sessions:</strong> refresh tokens expire after 7 days of
@@ -79,7 +79,7 @@ export function PrivacyPolicyPage() {
           If a vendor uses the "Draft listing from photo" button, that product
           photo is sent to Anthropic, our AI provider, to generate a draft name,
           description, and category suggestion. It is used for that draft and
-          nothing else — not for training, not for any other feature, and the
+          nothing else: not for training, not for any other feature, and the
           photo is not stored by us for this purpose. Drafting is optional; the
           product form works exactly the same without it.
         </p>

@@ -151,7 +151,7 @@ class ListingDraftTest {
                 // The raw model text is untrusted third-party output — it goes
                 // to the log, never to the browser.
                 .andExpect(jsonPath("$.detail").value(
-                        "Drafting service returned an unusable response — try again"));
+                        "Drafting service returned an unusable response. Try again"));
     }
 
     /** Fenced JSON is still usable — the prompt forbids fences, models add them anyway. */

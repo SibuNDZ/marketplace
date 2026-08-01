@@ -13,7 +13,7 @@ export function TermsPage() {
       <LegalSection heading="Orders">
         <p>
           An order is defined by your cart at the moment you place it. Prices are
-          snapshotted at that moment — you pay what checkout showed you, even if
+          snapshotted at that moment: you pay what checkout showed you, even if
           the vendor reprices afterwards.
         </p>
       </LegalSection>
@@ -32,7 +32,7 @@ export function TermsPage() {
           You can cancel an order yourself at any time while it is still awaiting
           payment. Cancellation releases the stock immediately. Orders that have
           been paid move through shipping and delivery and can no longer be
-          cancelled from your side — refunds on delivered orders are handled by
+          cancelled from your side; refunds on delivered orders are handled by
           the marketplace.
         </p>
       </LegalSection>
@@ -50,7 +50,7 @@ export function TermsPage() {
           Vendors manage only their own products and stock. Product listings are
           removed from the catalog when a vendor deletes them, but records of past
           orders for those products are preserved. By uploading a product photo,
-          a vendor confirms they hold the rights to it — uploaded photos are
+          a vendor confirms they hold the rights to it; uploaded photos are
           served publicly and are visible to anyone browsing the catalog.
         </p>
       </LegalSection>

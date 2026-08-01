@@ -85,7 +85,7 @@ export function AdminOrderDetailPage() {
             </div>
           ) : (
             <p style={{ color: 'var(--ink-soft)', fontSize: 13 }}>
-              Not available yet — visible once the order is paid.
+              Not available yet; visible once the order is paid.
             </p>
           )}
         </div>

@@ -74,6 +74,12 @@ public class ProductDtos {
             String parentCategorySlug, // null when the product sits on a top-level category
             boolean handmade,
             List<String> tags,
-            String imageUrl          // null until a vendor uploads one — frontend falls back to a placeholder
+            String imageUrl,         // null until a vendor uploads one — frontend falls back to a placeholder
+            /**
+             * Soft-delete timestamp. Always null on public catalog responses
+             * (those queries filter deleted rows out); non-null only on the
+             * vendor's own /mine listing, where it drives the Archived tab.
+             */
+            LocalDateTime deletedAt
     ) {}
 }

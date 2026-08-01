@@ -26,7 +26,7 @@ export function LegalPage({ title, lastUpdated, children }: Props) {
           padding: '10px 14px', borderRadius: 'var(--r-sm)', marginBottom: 28,
         }}>
           This is a portfolio project, not a trading business. This page describes
-          how the software actually behaves — every statement below is backed by
+          how the software actually behaves; every statement below is backed by
           the running system.
         </p>
         <div className="legal-prose">

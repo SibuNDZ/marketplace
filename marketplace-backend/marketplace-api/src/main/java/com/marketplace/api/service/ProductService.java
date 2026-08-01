@@ -70,6 +70,17 @@ public class ProductService {
     }
 
     /**
+     * The vendor dashboard's listing: ONLY the caller's products, and unlike
+     * every catalog query it INCLUDES soft-deleted rows — the dashboard's
+     * Archived tab is exactly those. Scoping by the token's user id is the
+     * fix for the dashboard showing the whole marketplace to every vendor.
+     */
+    @Transactional(readOnly = true)
+    public Page<ProductResponse> listMine(Long vendorId, Pageable pageable) {
+        return toResponses(productRepository.findByVendorId(vendorId, pageable));
+    }
+
+    /**
      * ?category= and ?handmade= catalogue filters. Both null means "all".
      *
      * A top-level slug matches the root AND its children (CategoryService
@@ -252,6 +263,7 @@ public class ProductService {
                 category.isTopLevel() ? null : category.getParent().getSlug(),
                 Boolean.TRUE.equals(p.getHandmade()),
                 List.copyOf(p.getTags()),
-                p.getImageKey() != null ? storage.publicUrl(p.getImageKey()) : null);
+                p.getImageKey() != null ? storage.publicUrl(p.getImageKey()) : null,
+                p.getDeletedAt());
     }
 }

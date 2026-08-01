@@ -73,6 +73,20 @@ public class ProductController {
         return productService.list(category, handmade, name, pageable);
     }
 
+    /**
+     * The vendor dashboard's own-products listing: scoped to the caller,
+     * includes archived (soft-deleted) items. Declared before /{id} in
+     * reading order but unambiguous to route: "mine" is a literal segment.
+     */
+    @GetMapping("/mine")
+    @PreAuthorize("hasAnyRole('VENDOR', 'ADMIN')")
+    public Page<ProductResponse> mine(
+            @PageableDefault(size = 100, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable,
+            @AuthenticationPrincipal UserPrincipal me) {
+        return productService.listMine(me.getId(), pageable);
+    }
+
     @GetMapping("/{id}")
     public ProductResponse get(@PathVariable Long id,
                                @AuthenticationPrincipal UserPrincipal me) {

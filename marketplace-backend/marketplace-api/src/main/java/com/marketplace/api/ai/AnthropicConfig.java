@@ -51,7 +51,7 @@ class AnthropicConfig {
             // Thrown lazily, at first draft request, NOT at boot. The
             // ObjectProvider at the injection site is what makes that true.
             throw new IllegalStateException(
-                    "ANTHROPIC_API_KEY is not set — the listing drafter is unavailable. "
+                    "ANTHROPIC_API_KEY is not set, so the listing drafter is unavailable. "
                             + "Every other feature is unaffected.");
         }
 

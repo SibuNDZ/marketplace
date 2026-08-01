@@ -1,7 +1,7 @@
 import React, { FormEvent, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api, CartResponse, ApiError, ShippingAddress, fieldErrorsFrom } from '../lib/api'
+import { api, CartResponse, ApiError, PayResponse, ShippingAddress, fieldErrorsFrom } from '../lib/api'
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { ErrorSurface } from '../components/ui/ErrorSurface'
 
@@ -65,8 +65,30 @@ export function CartPage() {
 
   const pay = useMutation({
     mutationFn: () =>
-      api<{ checkoutUrl: string }>(`/api/v1/orders/${pendingOrderId}/pay`, { method: 'POST', body: shipping }),
-    onSuccess: (session) => { window.location.href = session.checkoutUrl },
+      api<PayResponse>(`/api/v1/orders/${pendingOrderId}/pay`, { method: 'POST', body: shipping }),
+    // The response SHAPE says which provider answered: {checkoutUrl} is a
+    // Stripe redirect; {processUrl, fields} is PayFast, which wants a form
+    // POST of the signed fields in the exact order the backend built them.
+    onSuccess: (session) => {
+      if ('checkoutUrl' in session && session.checkoutUrl) {
+        window.location.href = session.checkoutUrl
+        return
+      }
+      if ('processUrl' in session && session.processUrl && session.fields) {
+        const form = document.createElement('form')
+        form.method = 'POST'
+        form.action = session.processUrl
+        for (const [name, value] of Object.entries(session.fields)) {
+          const input = document.createElement('input')
+          input.type = 'hidden'
+          input.name = name
+          input.value = value
+          form.appendChild(input)
+        }
+        document.body.appendChild(form)
+        form.submit()
+      }
+    },
     onError: (e) => {
       if (e instanceof ApiError) {
         const fe = fieldErrorsFrom(e)

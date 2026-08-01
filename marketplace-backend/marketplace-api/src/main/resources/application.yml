@@ -101,6 +101,25 @@ app:
     webhook-secret: ${STRIPE_WEBHOOK_SECRET}
     success-url: ${APP_FRONTEND_URL:http://localhost:5173}/checkout/success
     cancel-url: ${APP_FRONTEND_URL:http://localhost:5173}/checkout/cancelled
+  payments:
+    # Cutover switch: stripe | payfast. Stripe remains the default until the
+    # first real PayFast rand clears end to end (payfast-port.md).
+    provider: ${PAYMENTS_PROVIDER:stripe}
+  payfast:
+    # Defaults are PayFast's PUBLIC sandbox demo pair, safe to ship: they can
+    # only ever create sandbox transactions. Production overrides all of
+    # these via Railway env vars once the merchant account is approved.
+    merchant-id: ${PAYFAST_MERCHANT_ID:10000100}
+    merchant-key: ${PAYFAST_MERCHANT_KEY:46f0cd694581a}
+    passphrase: ${PAYFAST_PASSPHRASE:}
+    process-url: ${PAYFAST_PROCESS_URL:https://sandbox.payfast.co.za/eng/process}
+    validate-url: ${PAYFAST_VALIDATE_URL:https://sandbox.payfast.co.za/eng/query/validate}
+    return-url: ${APP_FRONTEND_URL:http://localhost:5173}/checkout/success
+    cancel-url: ${APP_FRONTEND_URL:http://localhost:5173}/checkout/cancelled
+    notify-url: ${PAYFAST_NOTIFY_URL:http://localhost:8080/api/v1/payments/payfast/itn}
+    # Source-IP gate for the ITN. On in production; off locally, where
+    # notifications arrive through tunnels with rewritten hops.
+    verify-source: ${PAYFAST_VERIFY_SOURCE:false}
   orders:
     expiry-sweep-ms: 60000
   cors:

@@ -53,24 +53,40 @@ public class PaymentController {
     private static final Logger log = LoggerFactory.getLogger(PaymentController.class);
 
     private final StripeCheckoutService checkoutService;
+    private final PayfastCheckoutService payfastCheckoutService;
     private final PaymentEventService eventService;
     private final ObjectMapper objectMapper;
     private final String webhookSecret;
+    private final String provider;
 
     public PaymentController(StripeCheckoutService checkoutService,
+                             PayfastCheckoutService payfastCheckoutService,
                              PaymentEventService eventService,
                              ObjectMapper objectMapper,
-                             @Value("${app.stripe.webhook-secret}") String webhookSecret) {
+                             @Value("${app.stripe.webhook-secret}") String webhookSecret,
+                             @Value("${app.payments.provider:stripe}") String provider) {
         this.checkoutService = checkoutService;
+        this.payfastCheckoutService = payfastCheckoutService;
         this.eventService = eventService;
         this.objectMapper = objectMapper;
         this.webhookSecret = webhookSecret;
+        this.provider = provider;
     }
 
+    /**
+     * Provider cutover switch (app.payments.provider). Response SHAPE tells
+     * the frontend what to do: {checkoutUrl} means redirect (Stripe),
+     * {processUrl, fields} means render and auto-submit a form (PayFast).
+     * Stripe stays selectable until the first real PayFast rand clears end
+     * to end in production — see payfast-port.md for the decommission plan.
+     */
     @PostMapping("/api/v1/orders/{id}/pay")
-    public Map<String, String> pay(@PathVariable Long id,
-                                   @Valid @RequestBody ShippingAddressRequest shipping,
-                                   @AuthenticationPrincipal UserPrincipal me) {
+    public Object pay(@PathVariable Long id,
+                      @Valid @RequestBody ShippingAddressRequest shipping,
+                      @AuthenticationPrincipal UserPrincipal me) {
+        if ("payfast".equalsIgnoreCase(provider)) {
+            return payfastCheckoutService.createCheckout(id, me.getId(), shipping);
+        }
         return Map.of("checkoutUrl", checkoutService.createCheckoutSession(id, me.getId(), shipping));
     }
 

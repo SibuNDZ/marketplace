@@ -31,6 +31,20 @@ app:
     webhook-secret: whsec_placeholder_for_tests
     success-url: http://localhost:4200/checkout/success
     cancel-url: http://localhost:4200/checkout/cancelled
+  payments:
+    provider: stripe
+  payfast:
+    # Deterministic values so PayfastItnTest can pre-compute signatures.
+    # No outbound calls happen in tests: the validator seam is stubbed.
+    merchant-id: "10000100"
+    merchant-key: 46f0cd694581a
+    passphrase: test-passphrase
+    process-url: https://sandbox.payfast.co.za/eng/process
+    validate-url: https://sandbox.payfast.co.za/eng/query/validate
+    return-url: http://localhost:4200/checkout/success
+    cancel-url: http://localhost:4200/checkout/cancelled
+    notify-url: http://localhost:8080/api/v1/payments/payfast/itn
+    verify-source: false
   orders:
     expiry-sweep-ms: 60000
   bootstrap:

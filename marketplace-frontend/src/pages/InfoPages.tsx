@@ -94,7 +94,20 @@ export function CareersPage() {
 export function ContactPage() {
   return (
     <InfoPage title="Contact us">
-      <UnderConstruction note="A proper contact channel is on its way. In the meantime, replies to any eRestyu order email reach us." />
+      <Section heading="Email">
+        <p>
+          Write to <a href="mailto:hello@erestyu.com">hello@erestyu.com</a> for
+          anything: order questions, vendor onboarding, partnerships, or
+          problems with the site. Replies to any eRestyu order email reach the
+          same inbox.
+        </p>
+      </Section>
+      <Section heading="Response times">
+        <p>
+          eRestyu is a small team, so there is no formal response-time
+          guarantee yet; mail is read daily on weekdays.
+        </p>
+      </Section>
     </InfoPage>
   )
 }
@@ -114,7 +127,9 @@ export function ReturnsPage() {
         <p>
           Once an order is paid, cancellations and refunds are handled case by
           case while we build out self-service refunds. Reply to your order
-          confirmation email and we will sort it out with the vendor.
+          confirmation email or write to{' '}
+          <a href="mailto:hello@erestyu.com">hello@erestyu.com</a> and we will
+          sort it out with the vendor.
         </p>
       </Section>
       <Section heading="Returns policy">

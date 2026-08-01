@@ -423,6 +423,15 @@ export interface VendorSettings {
   deliveryFee: string
 }
 
+/**
+ * POST /api/v1/orders/{id}/pay — the shape says which provider answered.
+ * Stripe: {checkoutUrl} redirect. PayFast: {processUrl, fields} rendered as
+ * an auto-submitting form (field order matters; iterate as given).
+ */
+export type PayResponse =
+  | { checkoutUrl: string }
+  | { processUrl: string; fields: Record<string, string> }
+
 export interface VendorLineItem {
   productName: string
   quantity: number

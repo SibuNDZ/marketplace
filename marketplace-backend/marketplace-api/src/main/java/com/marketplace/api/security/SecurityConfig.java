@@ -64,6 +64,9 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/reviews/**").permitAll()
                     .requestMatchers("/api/v1/payments/stripe/webhook").permitAll()
+                    // PayFast ITN: unauthenticated like the Stripe webhook;
+                    // authenticity comes from the signed-payload gauntlet.
+                    .requestMatchers("/api/v1/payments/payfast/itn").permitAll()
                     .requestMatchers("/actuator/health/**").permitAll()  // probe-reachable without JWT
                     .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                     .anyRequest().authenticated())

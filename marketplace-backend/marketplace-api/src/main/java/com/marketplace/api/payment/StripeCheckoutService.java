@@ -45,15 +45,18 @@ public class StripeCheckoutService {
     public static final int PAYMENT_WINDOW_MINUTES = 30;
 
     private final OrderRepository orderRepository;
+    private final CheckoutPreparation checkoutPreparation;
     private final String secretKey;
     private final String successUrl;
     private final String cancelUrl;
 
     public StripeCheckoutService(OrderRepository orderRepository,
+                                 CheckoutPreparation checkoutPreparation,
                                  @Value("${app.stripe.secret-key}") String secretKey,
                                  @Value("${app.stripe.success-url}") String successUrl,
                                  @Value("${app.stripe.cancel-url}") String cancelUrl) {
         this.orderRepository = orderRepository;
+        this.checkoutPreparation = checkoutPreparation;
         this.secretKey = secretKey;
         this.successUrl = successUrl;
         this.cancelUrl = cancelUrl;
@@ -136,34 +139,13 @@ public class StripeCheckoutService {
     }
 
     /**
-     * Loads, validates ownership + PENDING status, and writes the shipping
-     * address onto the order — the exact piece createCheckoutSession needs
-     * committed before it calls out to Stripe. Package-private so this is
-     * unit-testable on its own: Session.create() is a real network call to
-     * Stripe with no sandbox in this test suite (test/resources/
-     * application.yml deliberately stubs app.stripe.secret-key with a
-     * placeholder, same reasoning as the R2 storage stubs), so tests can't
-     * drive the full createCheckoutSession path — this is the piece of it
-     * that matters for the "address saved before session exists" guarantee,
-     * and it's fully exercisable without Stripe.
+     * Delegates to the shared, provider-independent preparation (see
+     * CheckoutPreparation — extracted when PayFast arrived). Kept as a
+     * package-private pass-through so ShippingAddressTest keeps exercising
+     * the exact entry point this service uses.
      */
     @Transactional
     Order attachShipping(Long orderId, Long userId, ShippingAddressRequest shipping) {
-        Order order = orderRepository.findByIdAndUserId(orderId, userId)
-                .orElseThrow(() -> new OrderNotFoundException(orderId));
-
-        if (order.getStatus() != OrderStatus.PENDING) {
-            throw new InvalidOrderStateException(
-                    "Order " + orderId + " is " + order.getStatus() + "; only PENDING orders can be paid");
-        }
-
-        order.setRecipientName(shipping.recipientName());
-        order.setPhone(shipping.phone());
-        order.setAddressLine1(shipping.addressLine1());
-        order.setAddressLine2(shipping.addressLine2());
-        order.setCity(shipping.city());
-        order.setProvince(shipping.province());
-        order.setPostalCode(shipping.postalCode());
-        return order;
+        return checkoutPreparation.attachShipping(orderId, userId, shipping);
     }
 }

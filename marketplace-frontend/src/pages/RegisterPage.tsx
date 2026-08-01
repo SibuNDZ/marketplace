@@ -1,5 +1,5 @@
 import React, { FormEvent, useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { ApiError, auth as authApi, fieldErrorsFrom } from '../lib/api'
 
@@ -15,7 +15,11 @@ type UsernameState =
 export function RegisterPage() {
   const { register } = useAuth()
   const navigate = useNavigate()
-  const [role, setRole] = useState<'CUSTOMER' | 'VENDOR'>('CUSTOMER')
+  // ?role=vendor preselects the seller card: the "Sell on eRestyu" entry
+  // points land here with intent already declared, so don't ask twice.
+  const [searchParams] = useSearchParams()
+  const [role, setRole] = useState<'CUSTOMER' | 'VENDOR'>(
+    searchParams.get('role')?.toLowerCase() === 'vendor' ? 'VENDOR' : 'CUSTOMER')
   const [form, setForm] = useState({
     email: '', password: '', confirmPassword: '', firstName: '', lastName: '', username: '',
   })

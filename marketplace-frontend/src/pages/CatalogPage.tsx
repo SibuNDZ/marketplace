@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api, Page, ProductResponse } from '../lib/api'
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { ProductCard } from '../components/product/ProductCard'
@@ -113,6 +113,13 @@ export function CatalogPage() {
       <Topbar />
       <main className="page-shell">
         <PromoCarousel />
+
+        {/* Mobile-only seller strip (hidden on desktop via .seller-strip).
+            One line, below the hero, nothing louder: vendor acquisition is
+            in-person, and this is the tap a market vendor gets pointed at. */}
+        <Link to="/register?role=vendor" className="seller-strip">
+          🏪 Sell on eRestyu <span aria-hidden>→</span>
+        </Link>
 
         <div className="catalog-layout">
           <CategoryPane tree={categoryTree} active={category} onSelect={selectCategory} />

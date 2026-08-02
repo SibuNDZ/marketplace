@@ -48,7 +48,13 @@ export function AdminPage() {
     <>
       <Topbar />
       <main className="page-shell no-catrail">
-        <h1 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 28, marginBottom: 28 }}>Orders</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
+          <h1 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 28 }}>Admin</h1>
+          <nav style={{ display: 'flex', gap: 2 }} aria-label="Admin sections">
+            <span style={{ padding: '6px 14px', fontSize: 13, fontWeight: 700, color: 'var(--aloe)', borderBottom: '2px solid var(--aloe)' }}>Orders</span>
+            <Link to="/admin/feedback" style={{ padding: '6px 14px', fontSize: 13, fontWeight: 600, color: 'var(--ink-soft)' }}>Feedback</Link>
+          </nav>
+        </div>
         {isLoading ? <p>Loading…</p> : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>

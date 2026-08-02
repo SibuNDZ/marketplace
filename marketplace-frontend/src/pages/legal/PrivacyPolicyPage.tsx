@@ -40,6 +40,11 @@ export function PrivacyPolicyPage() {
           your "recently viewed" list and the popularity rankings. Anonymous
           visits are counted for rankings but are not linked to any account.
         </p>
+        <p>
+          <strong>Platform feedback</strong>: feedback you submit through the
+          in-app feedback form is stored with your account and used to improve
+          eRestyu.
+        </p>
       </LegalSection>
 
       <LegalSection heading="Why we collect it">

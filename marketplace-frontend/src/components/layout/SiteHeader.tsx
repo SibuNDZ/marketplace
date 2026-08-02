@@ -148,6 +148,7 @@ export function SiteHeader() {
                         <Link to="/orders" onClick={() => setAccountOpen(false)}>Orders</Link>
                         {user.role !== 'CUSTOMER' && <Link to={roleDestination} onClick={() => setAccountOpen(false)}>{roleLabel}</Link>}
                         <Link to="/account" onClick={() => setAccountOpen(false)}>Account settings</Link>
+                        <Link to="/feedback" onClick={() => setAccountOpen(false)}>Give feedback</Link>
                         <button onClick={handleLogout}>Sign out</button>
                       </>
                     ) : (
@@ -195,6 +196,7 @@ export function SiteHeader() {
                 <Link to="/orders" onClick={() => setAccountOpen(false)}>Orders</Link>
                 {user.role !== 'CUSTOMER' && <Link to={roleDestination} onClick={() => setAccountOpen(false)}>{roleLabel}</Link>}
                 <Link to="/account" onClick={() => setAccountOpen(false)}>Account settings</Link>
+                <Link to="/feedback" onClick={() => setAccountOpen(false)}>Give feedback</Link>
                 <button onClick={handleLogout}>Sign out</button>
               </div>
             )}
@@ -244,6 +246,7 @@ export function SiteHeader() {
                   <Link to="/orders" onClick={() => setDrawerOpen(false)}>Orders</Link>
                   {user.role !== 'CUSTOMER' && <Link to={roleDestination} onClick={() => setDrawerOpen(false)}>{roleLabel}</Link>}
                   <Link to="/account" onClick={() => setDrawerOpen(false)}>Account settings</Link>
+                  <Link to="/feedback" onClick={() => setDrawerOpen(false)}>Give feedback</Link>
                   <button onClick={handleLogout}>Sign out</button>
                 </>
               ) : (

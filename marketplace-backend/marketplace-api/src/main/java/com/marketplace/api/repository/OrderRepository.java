@@ -40,6 +40,18 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Page<Order> findByUserId(Long userId, Pageable pageable);
 
     /**
+     * A buyer's orders narrowed to a set of statuses. A SET, not a single
+     * status, because one tab legitimately covers two: "Returns & cancelled"
+     * is CANCELLED plus REFUNDED, and collapsing them into separate tabs
+     * would show buyers a distinction they do not think in.
+     */
+    Page<Order> findByUserIdAndStatusIn(Long userId, Collection<OrderStatus> statuses, Pageable pageable);
+
+    /** Per-status counts for one buyer, so tab badges need no extra fetch. */
+    @Query("select o.status, count(o) from Order o where o.user.id = :userId group by o.status")
+    List<Object[]> countByStatusForUser(@Param("userId") Long userId);
+
+    /**
      * Admin list views. EntityGraph on user (a to-one) keeps customerEmail out
      * of N+1 territory and is pagination-safe — unlike fetching the orderItems
      * collection, which would force Hibernate into in-memory paging.

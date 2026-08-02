@@ -339,6 +339,10 @@ export interface ReviewSummary {
   productId: number
   averageRating: number
   reviewCount: number
+  /** Caller has a delivered purchase and has not reviewed yet. False when signed out. */
+  canReview: boolean
+  /** Set when the caller already reviewed this product, so the UI offers edit. */
+  myReviewId?: number | null
 }
 
 export interface CartLine {
@@ -453,6 +457,7 @@ export interface ReviewResponse {
   id: number
   productId: number
   reviewerId: number
+  reviewerName: string
   rating: number
   comment?: string
   createdAt: string

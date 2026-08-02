@@ -50,9 +50,14 @@ public class ReviewController {
         return reviewService.listForProduct(productId, pageable);
     }
 
+    /**
+     * Public, but principal-aware: an anonymous visitor gets the aggregate,
+     * a signed-in caller additionally learns whether they may review.
+     */
     @GetMapping("/api/v1/products/{productId}/reviews/summary")
-    public ReviewSummary summary(@PathVariable Long productId) {
-        return reviewService.summary(productId);
+    public ReviewSummary summary(@PathVariable Long productId,
+                                 @AuthenticationPrincipal UserPrincipal me) {
+        return reviewService.summary(productId, me == null ? null : me.getId());
     }
 
     @PostMapping("/api/v1/products/{productId}/reviews")

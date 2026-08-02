@@ -106,8 +106,13 @@ public class ReviewService {
         return reviewRepository.findByProductId(productId, pageable).map(this::toResponse);
     }
 
+    /**
+     * @param userId the caller, or null for an anonymous visitor. Drives the
+     *               canReview / myReviewId fields; the aggregate itself is
+     *               identical either way.
+     */
     @Transactional(readOnly = true)
-    public ReviewSummary summary(Long productId) {
+    public ReviewSummary summary(Long productId, Long userId) {
         if (!productRepository.existsByIdAndDeletedAtIsNull(productId)) {
             throw new ProductNotFoundException(productId);
         }
@@ -116,7 +121,19 @@ public class ReviewService {
         Object[] row = (agg.length > 0 && agg[0] instanceof Object[]) ? (Object[]) agg[0] : agg;
         double avg = ((Number) row[0]).doubleValue();
         long count = ((Number) row[1]).longValue();
-        return new ReviewSummary(productId, Math.round(avg * 10.0) / 10.0, count);
+
+        Long myReviewId = null;
+        boolean canReview = false;
+        if (userId != null) {
+            myReviewId = reviewRepository.findByUserIdAndProductId(userId, productId)
+                    .map(Review::getId).orElse(null);
+            // Exactly the two conditions create() enforces, so the button
+            // appears if and only if the POST would succeed.
+            canReview = myReviewId == null
+                    && reviewRepository.hasDeliveredPurchase(userId, productId);
+        }
+        return new ReviewSummary(productId, Math.round(avg * 10.0) / 10.0, count,
+                canReview, myReviewId);
     }
 
     private ReviewResponse toResponse(Review r) {

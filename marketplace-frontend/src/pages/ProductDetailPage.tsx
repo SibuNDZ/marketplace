@@ -7,6 +7,7 @@ import { StockBadge } from '../components/ui/StockBadge'
 import { vendorHue } from '../lib/vendorHue'
 import { ErrorSurface } from '../components/ui/ErrorSurface'
 import { productImageUrl } from '../lib/productImage'
+import { ProductReviews } from '../components/product/ProductReviews'
 
 export function ProductDetailPage() {
   const { id } = useParams()
@@ -82,15 +83,16 @@ export function ProductDetailPage() {
             </div>
             <h1 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 26, lineHeight: 1.2, color: 'var(--ink)' }}>{product.name}</h1>
 
-            {/* Live review summary — renders only once reviews exist */}
+            {/* Live review summary — renders only once reviews exist.
+                Clicking jumps to the section rather than opening a modal. */}
             {summary && summary.reviewCount > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <span style={{ color: 'var(--marigold)', fontSize: 14 }}>
                   {'★'.repeat(Math.round(summary.averageRating))}{'☆'.repeat(5 - Math.round(summary.averageRating))}
                 </span>
-                <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+                <a href="#reviews" style={{ fontSize: 13, color: 'var(--trust-blue)' }}>
                   <span className="num">{summary.averageRating.toFixed(1)}</span> (<span className="num">{summary.reviewCount.toLocaleString()}</span> review{summary.reviewCount !== 1 ? 's' : ''})
-                </span>
+                </a>
                 {product.soldCount > 0 && (
                   <span className="num" style={{ fontSize: 13, color: 'var(--ink-soft)' }}>· {product.soldCount} sold</span>
                 )}
@@ -138,7 +140,37 @@ export function ProductDetailPage() {
               </button>
             </div>
             <p style={{ fontSize: 12, color: 'var(--ink-soft)' }}>SKU: <span className="num">{product.sku ?? '-'}</span></p>
+
+            {/* Who you are buying from. Vendors trade under a business name
+                (V19), so this is a storefront, not a person. */}
+            <div style={{
+              marginTop: 4, padding: 14, borderRadius: 'var(--r-sm)',
+              border: '1px solid var(--line)', display: 'flex', gap: 12, alignItems: 'center',
+            }}>
+              <div aria-hidden style={{
+                width: 38, height: 38, borderRadius: '50%', background: stripe,
+                display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 15,
+                flexShrink: 0,
+              }}>
+                {(product.vendorName ?? '?').trim().charAt(0).toUpperCase()}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 11, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Sold by
+                </div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{product.vendorName ?? 'Vendor'}</div>
+                {product.categoryName && (
+                  <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>
+                    Listed in {product.categoryName}{product.handmade ? ' · Handmade' : ''}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
+        </div>
+
+        <div id="reviews">
+          <ProductReviews productId={String(id)} summary={summary} />
         </div>
       </main>
     </>

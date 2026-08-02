@@ -17,7 +17,10 @@ export function RetailCategoryNav({ tree, active, onSelect }: Props) {
   const stocked = [...tree].filter(root => root.productCount > 0)
     .sort((a, b) => b.productCount - a.productCount || a.name.localeCompare(b.name))
   const primary = stocked.slice(0, PRIMARY_LIMIT)
-  const overflow = [...stocked.slice(PRIMARY_LIMIT), ...tree.filter(root => root.productCount === 0)]
+  // Zero-count departments used to ride along here as disabled "Awaiting
+  // listings" rows. That is still a zero-count category rendering in the
+  // UI, just dressed up — the fix applies to the More menu too.
+  const overflow = stocked.slice(PRIMARY_LIMIT)
   const openRoot = tree.find(root => root.slug === openSlug)
 
   const close = (returnFocus = false) => {
@@ -109,8 +112,8 @@ export function RetailCategoryNav({ tree, active, onSelect }: Props) {
                 <ul className="subcategory-panel__more">
                   {overflow.map(root => (
                     <li key={root.slug}>
-                      <button disabled={root.productCount === 0} onClick={() => select(root.slug)} onKeyDown={movePanelFocus}>
-                        <span>{root.name}</span><span className="num">{root.productCount > 0 ? root.productCount : 'Awaiting listings'}</span>
+                      <button onClick={() => select(root.slug)} onKeyDown={movePanelFocus}>
+                        <span>{root.name}</span><span className="num">{root.productCount}</span>
                       </button>
                     </li>
                   ))}

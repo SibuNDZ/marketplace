@@ -122,6 +122,9 @@ app:
     verify-source: ${PAYFAST_VERIFY_SOURCE:false}
   orders:
     expiry-sweep-ms: 60000
+  feedback:
+    rate-limit:
+      per-hour: ${FEEDBACK_RATE_LIMIT_PER_HOUR:5}
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
   bootstrap:

@@ -106,7 +106,12 @@ export function VendorDashboardPage() {
       <main className="page-shell no-catrail">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <h1 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 28 }}>Your stall</h1>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Link to="/feedback" style={{
+              padding: '9px 14px', color: 'var(--trust-blue)', fontWeight: 600, fontSize: 13,
+            }}>
+              Give feedback on eRestyu
+            </Link>
             <Link to="/vendor/orders" style={{
               padding: '9px 18px', border: '1px solid var(--line)', color: 'var(--ink)',
               borderRadius: 'var(--r-sm)', fontWeight: 700, display: 'inline-block',

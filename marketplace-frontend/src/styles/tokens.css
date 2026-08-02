@@ -121,8 +121,16 @@ body {
 .main-bar__mobile { display: none; }
 .seller-strip { display: none; } /* mobile-only; shown in the max-width block */
 
-.wordmark {
+/* Outer: the clickable/labelled group (mark + text). Inner .wordmark stays
+   the gradient text-clip element on its own — clipping requires the text
+   to be the styled element, so the mark cannot share it. */
+.wordmark-group {
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.wordmark {
   color: var(--flame);
   font-family: var(--display);
   font-size: 25px;
@@ -307,8 +315,26 @@ body {
   :root { --header-height: 58px; --gutter: 16px; }
   .utility-bar, .main-bar__desktop, .category-bar { display: none; }
   .main-bar { height: var(--header-height); border: 0; }
-  .main-bar__mobile { display: flex; justify-content: space-between; position: relative; }
-  .main-bar__mobile .wordmark { position: absolute; left: 50%; transform: translateX(-50%); font-size: 22px; }
+  /* The wordmark used to be position:absolute + translateX(-50%) to sit
+     dead-center regardless of its siblings. That silently breaks the moment
+     either flank's width changes — exactly what happened when the account
+     icon and the logo mark were added, and the mark started painting over
+     the icon row. Self-healing fix: the wordmark is a flex-1 zone that
+     centers its OWN content, so it can never overlap a sibling no matter
+     how wide the icon row grows later — it just recenters within whatever
+     space remains. */
+  .main-bar__mobile { display: flex; align-items: center; position: relative; }
+  .main-bar__mobile > .mobile-icon:first-child,
+  .main-bar__mobile .mobile-actions { flex: 0 0 auto; }
+  .main-bar__mobile .wordmark-group {
+    flex: 1 1 auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .main-bar__mobile .wordmark { font-size: 22px; white-space: nowrap; }
   .mobile-actions { display: flex; align-items: center; gap: 0; }
   /* 44px: minimum comfortable touch target (field-tested on real vendors'
      phones); gap dropped to 0 because the targets themselves grew. */

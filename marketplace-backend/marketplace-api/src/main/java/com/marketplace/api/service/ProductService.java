@@ -1,16 +1,19 @@
 package com.marketplace.api.service;
 
 import com.marketplace.api.dto.ProductDtos.ProductRequest;
+import com.marketplace.api.dto.ProductDtos;
 import com.marketplace.api.dto.ProductDtos.ProductResponse;
 import com.marketplace.api.discovery.ProductPopularity;
 import com.marketplace.api.discovery.ProductPopularityRepository;
 import com.marketplace.api.discovery.ProductViewRecorder;
 import com.marketplace.api.entity.Product;
+import com.marketplace.api.entity.ProductVariant;
 import com.marketplace.api.entity.Category;
 import com.marketplace.api.entity.User;
 import com.marketplace.api.exception.ProductExceptions.DuplicateSkuException;
 import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
 import com.marketplace.api.repository.ProductRepository;
+import com.marketplace.api.repository.ProductVariantRepository;
 import com.marketplace.api.repository.UserRepository;
 import com.marketplace.api.security.UserPrincipal;
 import com.marketplace.api.storage.ObjectStorageService;
@@ -49,19 +52,22 @@ public class ProductService {
     private final ProductPopularityRepository popularityRepository;
     private final ObjectStorageService storage;
     private final CategoryService categoryService;
+    private final ProductVariantRepository variantRepository;
 
     public ProductService(ProductRepository productRepository,
                           UserRepository userRepository,
                           ProductViewRecorder viewRecorder,
                           ProductPopularityRepository popularityRepository,
                           ObjectStorageService storage,
-                          CategoryService categoryService) {
+                          CategoryService categoryService,
+                          ProductVariantRepository variantRepository) {
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.viewRecorder = viewRecorder;
         this.popularityRepository = popularityRepository;
         this.storage = storage;
         this.categoryService = categoryService;
+        this.variantRepository = variantRepository;
     }
 
     @Transactional(readOnly = true)
@@ -219,21 +225,36 @@ public class ProductService {
     /** Single product — one popularity lookup. */
     @Transactional(readOnly = true)
     public ProductResponse toResponse(Product p) {
-        return toResponse(p, popularityRepository.findById(p.getId()).orElse(null));
+        return toResponse(p, popularityRepository.findById(p.getId()).orElse(null),
+                variantRepository.findByProductIdOrderByPositionAscIdAsc(p.getId()));
     }
 
     /** Batch — one findAllById covers the whole list. Preserves input order. */
     @Transactional(readOnly = true)
     public List<ProductResponse> toResponses(List<Product> products) {
         Map<Long, ProductPopularity> pop = popularityMap(products);
-        return products.stream().map(p -> toResponse(p, pop.get(p.getId()))).toList();
+        Map<Long, List<ProductVariant>> variants = variantMap(products);
+        return products.stream()
+                .map(p -> toResponse(p, pop.get(p.getId()),
+                        variants.getOrDefault(p.getId(), List.of())))
+                .toList();
     }
 
     /** Batch over a page — same single query, pagination metadata preserved. */
     @Transactional(readOnly = true)
     public Page<ProductResponse> toResponses(Page<Product> page) {
         Map<Long, ProductPopularity> pop = popularityMap(page.getContent());
-        return page.map(p -> toResponse(p, pop.get(p.getId())));
+        Map<Long, List<ProductVariant>> variants = variantMap(page.getContent());
+        return page.map(p -> toResponse(p, pop.get(p.getId()),
+                variants.getOrDefault(p.getId(), List.of())));
+    }
+
+    /** One query for a whole page of products, so a grid is not N+1. */
+    private Map<Long, List<ProductVariant>> variantMap(List<Product> products) {
+        List<Long> ids = products.stream().map(Product::getId).toList();
+        if (ids.isEmpty()) return Map.of();
+        return variantRepository.findByProductIdInOrderByPositionAscIdAsc(ids).stream()
+                .collect(Collectors.groupingBy(v -> v.getProduct().getId()));
     }
 
     private Map<Long, ProductPopularity> popularityMap(List<Product> products) {
@@ -246,12 +267,36 @@ public class ProductService {
      * Null popularity is NORMAL, not exceptional — a product created since
      * the last hourly rebuild has no row yet. Zeros are the truthful answer.
      */
-    private ProductResponse toResponse(Product p, @Nullable ProductPopularity pop) {
+    private ProductResponse toResponse(Product p, @Nullable ProductPopularity pop,
+                                       List<ProductVariant> variants) {
         User vendor = p.getVendor();
         Category category = p.getCategory();
+
+        // A product with variants delegates BOTH stock and price to them
+        // (V20). Stock is the sum, so "in stock" means "some option is
+        // buyable"; price is the minimum, so a card reads as "from R120"
+        // rather than quoting an option the shopper might not pick. Neither
+        // is stored — a maintained total would be a dual write, and dual
+        // writes drift.
+        boolean hasVariants = !variants.isEmpty();
+        int effectiveStock = hasVariants
+                ? variants.stream().mapToInt(ProductVariant::getStockQuantity).sum()
+                : p.getStock();
+        BigDecimal effectivePrice = hasVariants
+                ? variants.stream().map(ProductVariant::getPrice)
+                        .min(BigDecimal::compareTo).orElse(p.getPrice())
+                : p.getPrice();
+
+        List<ProductDtos.VariantResponse> variantResponses = variants.stream()
+                .map(v -> new ProductDtos.VariantResponse(
+                        v.getId(), v.getLabel(), v.getSku(), v.getPrice(),
+                        v.getStockQuantity(),
+                        v.getImageKey() != null ? storage.publicUrl(v.getImageKey()) : null))
+                .toList();
+
         return new ProductResponse(
                 p.getId(), p.getName(), p.getDescription(), p.getSku(),
-                p.getPrice(), p.getStock(),
+                effectivePrice, effectiveStock,
                 vendor != null ? vendor.getId() : null,
                 // Storefront name, NOT the person's name: a listing is
                 // attributed to the business that sells it (V19).
@@ -266,6 +311,7 @@ public class ProductService {
                 Boolean.TRUE.equals(p.getHandmade()),
                 List.copyOf(p.getTags()),
                 p.getImageKey() != null ? storage.publicUrl(p.getImageKey()) : null,
-                p.getDeletedAt());
+                p.getDeletedAt(),
+                variantResponses);
     }
 }

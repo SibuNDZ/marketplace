@@ -106,6 +106,22 @@ public class GlobalExceptionHandler {
         return pd;
     }
 
+    @ExceptionHandler(com.marketplace.api.service.ProductVariantService.DuplicateVariantLabelException.class)
+    public ProblemDetail duplicateVariantLabel(
+            com.marketplace.api.service.ProductVariantService.DuplicateVariantLabelException ex) {
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "Duplicate option", ex.getMessage());
+        // Field-keyed so the variant editor marks the label input, matching
+        // how the duplicate-SKU and username-taken conflicts already render.
+        pd.setProperty("errors", Map.of("label", List.of(ex.getMessage())));
+        return pd;
+    }
+
+    @ExceptionHandler(com.marketplace.api.service.ProductVariantService.VariantNotFoundException.class)
+    public ProblemDetail variantNotFound(
+            com.marketplace.api.service.ProductVariantService.VariantNotFoundException ex) {
+        return problem(HttpStatus.NOT_FOUND, "Option not found", ex.getMessage());
+    }
+
     @ExceptionHandler(UsernameTakenException.class)
     public ProblemDetail usernameTaken(UsernameTakenException ex) {
         ProblemDetail pd = problem(HttpStatus.CONFLICT, "Username taken",

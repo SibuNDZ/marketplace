@@ -80,6 +80,34 @@ public class ProductDtos {
              * (those queries filter deleted rows out); non-null only on the
              * vendor's own /mine listing, where it drives the Archived tab.
              */
-            LocalDateTime deletedAt
+            LocalDateTime deletedAt,
+            /**
+             * Purchasable options (V20). EMPTY for most products, and empty
+             * means "buy the product itself" — today's behaviour.
+             *
+             * When NON-empty the variants are the only place stock and price
+             * live: `stock` above is their summed stock and `price` is the
+             * cheapest variant, so a card can honestly say "from R120".
+             */
+            List<VariantResponse> variants
+    ) {}
+
+    /** One purchasable option. Price is absolute, never a delta. */
+    public record VariantResponse(
+            Long id,
+            String label,
+            String sku,
+            BigDecimal price,
+            int stock,
+            String imageUrl
+    ) {}
+
+    public record VariantRequest(
+            @NotBlank @Size(max = 100) String label,
+            @Size(max = 100) String sku,
+            @NotNull @DecimalMin(value = "0.01", message = "Price must be greater than 0")
+            @Digits(integer = 8, fraction = 2) BigDecimal price,
+            @NotNull @Min(0) @Max(1_000_000) Integer stock,
+            Integer position
     ) {}
 }

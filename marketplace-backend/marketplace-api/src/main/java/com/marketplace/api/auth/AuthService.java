@@ -17,6 +17,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 /**
  * Registration, login, and the email-driven flows around them.
  *
@@ -88,6 +92,26 @@ public class AuthService {
             throw new UsernameTakenException(username);
         }
 
+        // Vendors carry obligations buyers do not: they trade under a name
+        // shown publicly on every listing, and there is a real person behind
+        // the account who takes money. So surname and business name are
+        // required for VENDOR and stay optional for CUSTOMER — tightening
+        // both for everyone would add signup friction at the exact moment
+        // buyers drop off, and mononyms are common here.
+        if (request.isVendor()) {
+            Map<String, List<String>> missing = new LinkedHashMap<>();
+            if (request.lastNameOrEmpty().isBlank()) {
+                missing.put("lastName", List.of("Last name is required for seller accounts"));
+            }
+            if (request.businessNameOrNull() == null) {
+                missing.put("businessName",
+                        List.of("Business name is required — this is what buyers see on your listings"));
+            }
+            if (!missing.isEmpty()) {
+                throw new VendorDetailsRequiredException(missing);
+            }
+        }
+
         User user = new User();
         user.setEmail(email);
         user.setUsername(username);
@@ -95,6 +119,7 @@ public class AuthService {
         user.setFirstName(request.firstName().trim());
         user.setLastName(request.lastNameOrEmpty());
         user.setRole(UserRole.valueOf(request.roleOrDefault()));
+        user.setBusinessName(request.businessNameOrNull());
         user.setIsVerified(false);
 
         User saved = userRepository.save(user);
@@ -278,6 +303,24 @@ public class AuthService {
     public static class UsernameTakenException extends RuntimeException {
         public UsernameTakenException(String username) {
             super("Username already taken: " + username);
+        }
+    }
+
+    /**
+     * Seller-only fields missing. Carries field-keyed messages so the
+     * register form marks the offending inputs instead of showing a detached
+     * banner — same contract the 400 validation handler produces.
+     */
+    public static class VendorDetailsRequiredException extends RuntimeException {
+        private final Map<String, List<String>> fieldErrors;
+
+        public VendorDetailsRequiredException(Map<String, List<String>> fieldErrors) {
+            super("Seller accounts require " + String.join(", ", fieldErrors.keySet()));
+            this.fieldErrors = fieldErrors;
+        }
+
+        public Map<String, List<String>> getFieldErrors() {
+            return fieldErrors;
         }
     }
 

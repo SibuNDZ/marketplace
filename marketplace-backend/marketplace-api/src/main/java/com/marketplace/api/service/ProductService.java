@@ -253,7 +253,9 @@ public class ProductService {
                 p.getId(), p.getName(), p.getDescription(), p.getSku(),
                 p.getPrice(), p.getStock(),
                 vendor != null ? vendor.getId() : null,
-                vendor != null ? vendor.getFullName() : null,
+                // Storefront name, NOT the person's name: a listing is
+                // attributed to the business that sells it (V19).
+                vendor != null ? vendor.getStorefrontName() : null,
                 pop != null ? pop.getAvgRating() : BigDecimal.ZERO,
                 pop != null ? pop.getReviewCount() : 0L,
                 pop != null ? pop.getSalesCount() : 0L,

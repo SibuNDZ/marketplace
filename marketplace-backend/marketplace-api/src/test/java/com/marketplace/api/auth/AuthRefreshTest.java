@@ -72,7 +72,8 @@ class AuthRefreshTest {
                 tag,
                 "User",
                 tag.replace("-", "_"),
-                "CUSTOMER"));
+                "CUSTOMER",
+                null));
 
         User user = userRepository.findByEmail(email).orElseThrow();
         user.setIsVerified(true);

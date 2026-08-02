@@ -22,7 +22,9 @@ export function RegisterPage() {
     searchParams.get('role')?.toLowerCase() === 'vendor' ? 'VENDOR' : 'CUSTOMER')
   const [form, setForm] = useState({
     email: '', password: '', confirmPassword: '', firstName: '', lastName: '', username: '',
+    businessName: '',
   })
+  const isVendor = role === 'VENDOR'
   const [error, setError] = useState<string>()
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
   const [loading, setLoading] = useState(false)
@@ -85,8 +87,14 @@ export function RegisterPage() {
     try {
       // confirmPassword is a client-side guard and is not part of the API
       // contract, so it is dropped rather than sent and ignored.
-      const { confirmPassword: _confirmPassword, ...payload } = form
-      const result = await register({ ...payload, role })
+      const { confirmPassword: _confirmPassword, businessName, ...payload } = form
+      const result = await register({
+        ...payload,
+        role,
+        // Buyers have no storefront; sending an empty string would look like
+        // an intentional blank name rather than "not applicable".
+        ...(role === 'VENDOR' ? { businessName } : {}),
+      })
       // Never lands in the app: the account cannot sign in until confirmed.
       navigate('/check-email', {
         state: { email: result.email, emailSent: result.emailSent },
@@ -173,15 +181,49 @@ export function RegisterPage() {
                 style={inputStyle} />
             </label>
             <label style={halfField}>
-              {/* Not required: mononyms are common, and the API accepts an
-                  absent surname. "Optional" lives in the placeholder, not the
-                  label: a wrapping label pushed this input out of line with
-                  First name at narrow widths. */}
+              {/* Optional for buyers (mononyms are common, and the API
+                  accepts an absent surname) but REQUIRED for sellers: a
+                  trading account has a real person behind it who takes
+                  money. "Optional" lives in the placeholder, not the label —
+                  a wrapping label pushed this input out of line with First
+                  name at narrow widths. */}
               Last name
-              <input value={form.lastName} onChange={e => set('lastName', e.target.value)}
-                placeholder="Optional" style={inputStyle} />
+              <input required={isVendor} value={form.lastName}
+                onChange={e => set('lastName', e.target.value)}
+                placeholder={isVendor ? '' : 'Optional'}
+                style={{
+                  ...inputStyle,
+                  borderColor: fieldErrors.lastName ? 'var(--clay)' : 'var(--line)',
+                }} />
+              {fieldErrors.lastName && (
+                <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--clay)' }}>
+                  {fieldErrors.lastName[0]}
+                </span>
+              )}
             </label>
           </div>
+
+          {/* Sellers trade under a business name — it is what buyers see on
+              every listing, so it is collected up front rather than left to
+              a later settings visit. Buyers are never shown this field. */}
+          {isVendor && (
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 500 }}>
+              Business name
+              <input required value={form.businessName}
+                onChange={e => set('businessName', e.target.value)}
+                placeholder="e.g. Morning Star Essentials"
+                style={{
+                  ...inputStyle,
+                  borderColor: fieldErrors.businessName ? 'var(--clay)' : 'var(--line)',
+                }} />
+              <span style={{
+                fontSize: 12, fontWeight: 400,
+                color: fieldErrors.businessName ? 'var(--clay)' : 'var(--ink-soft)',
+              }}>
+                {fieldErrors.businessName?.[0] ?? 'Shown on your product listings'}
+              </span>
+            </label>
+          )}
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 500 }}>
             Username
             <input required value={form.username} onChange={e => set('username', e.target.value)}

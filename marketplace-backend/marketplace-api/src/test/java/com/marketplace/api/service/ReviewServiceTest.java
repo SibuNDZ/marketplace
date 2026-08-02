@@ -64,6 +64,44 @@ class ReviewServiceTest {
     // -- helpers ----------------------------------------------------------
 
     /** Drive a freshly placed order all the way to DELIVERED via the full payment path. */
+    /**
+     * The summary drives whether the product page offers a review form at
+     * all, so canReview must agree exactly with what create() would do —
+     * otherwise the UI invites someone to write a review and then 403s or
+     * 409s them.
+     */
+    @Test
+    void summary_reportsCallerEligibility_matchingWhatCreateWouldAllow() {
+        Product product = fixtures.product("Gadget rv-elig", "SKU-RV-ELIG", new BigDecimal("15.00"), 5);
+        User buyer = fixtures.customerWithCart("rv-elig-buyer", product, 1);
+        User stranger = fixtures.customer("rv-elig-stranger");
+        User admin = fixtures.admin("rv-elig-admin");
+
+        // Anonymous: aggregate only, never an invitation to write.
+        assertThat(reviewService.summary(product.getId(), null).canReview()).isFalse();
+        assertThat(reviewService.summary(product.getId(), null).myReviewId()).isNull();
+
+        // Signed in but never bought it.
+        assertThat(reviewService.summary(product.getId(), stranger.getId()).canReview()).isFalse();
+
+        // Bought but not yet delivered — create() would 403 here, so must be false.
+        OrderResponse order = orderService.placeOrder(buyer.getId());
+        assertThat(reviewService.summary(product.getId(), buyer.getId()).canReview()).isFalse();
+
+        // Delivered: now eligible.
+        driveToDelivered(order.id(), admin.getId());
+        assertThat(reviewService.summary(product.getId(), buyer.getId()).canReview()).isTrue();
+
+        // After reviewing: no longer eligible to create, but the id is
+        // returned so the page can offer edit instead.
+        ReviewResponse mine = reviewService.create(product.getId(), review(4, "Good"), buyer.getId());
+        ReviewSummary after = reviewService.summary(product.getId(), buyer.getId());
+        assertThat(after.canReview()).isFalse();
+        assertThat(after.myReviewId()).isEqualTo(mine.id());
+        // Another shopper's view is unaffected by my review existing.
+        assertThat(reviewService.summary(product.getId(), stranger.getId()).myReviewId()).isNull();
+    }
+
     private Long driveToDelivered(Long orderId, Long adminId) {
         paymentEventService.handleCheckoutCompleted(orderId); // PENDING -> PAID
         orderAdminService.transition(orderId, OrderStatus.SHIPPED,   adminId, "shipped");
@@ -96,7 +134,7 @@ class ReviewServiceTest {
         assertThat(response.comment()).isEqualTo("Excellent!");
         assertThat(response.createdAt()).isNotNull();
 
-        ReviewSummary summary = reviewService.summary(product.getId());
+        ReviewSummary summary = reviewService.summary(product.getId(), null);
         assertThat(summary.reviewCount()).isEqualTo(1);
         assertThat(summary.averageRating()).isEqualTo(5.0);
 
@@ -216,7 +254,7 @@ class ReviewServiceTest {
 
         assertThat(reviewRepository.findById(reviewId)).isEmpty();
 
-        ReviewSummary summary = reviewService.summary(product.getId());
+        ReviewSummary summary = reviewService.summary(product.getId(), null);
         assertThat(summary.reviewCount()).isEqualTo(0);
     }
 }

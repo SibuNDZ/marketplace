@@ -33,6 +33,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     boolean existsByUserIdAndProductId(Long userId, Long productId);
 
+    /** The caller's own review, so the page can offer edit instead of a create form. */
+    Optional<Review> findByUserIdAndProductId(Long userId, Long productId);
+
     Optional<Review> findByIdAndUserId(Long id, Long userId);
 
     @EntityGraph(attributePaths = {"user"})

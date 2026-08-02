@@ -495,6 +495,8 @@ export const auth = {
   async register(input: {
     email: string; password: string; firstName: string; lastName: string
     username: string; role: 'CUSTOMER' | 'VENDOR'
+    /** Required by the API for VENDOR, ignored for CUSTOMER. */
+    businessName?: string
   }) {
     return api<RegisterResponse>('/api/v1/auth/register', {
       method: 'POST', body: input, auth: false,

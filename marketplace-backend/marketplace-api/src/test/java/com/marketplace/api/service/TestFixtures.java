@@ -78,6 +78,7 @@ public class TestFixtures {
                     v.setIsVerified(true);
                     v.setPassword("{noop}test-not-a-real-hash");
                     v.setRole(UserRole.VENDOR);
+                    v.setBusinessName("Fixture Vendor");
                     return userRepository.save(v);
                 });
     }
@@ -172,6 +173,11 @@ public class TestFixtures {
         u.setIsVerified(true);
         u.setPassword("{noop}test-not-a-real-hash");
         u.setRole(role);
+        // Vendors trade under a business name (V19); fixtures mirror real
+        // accounts so listing-attribution tests exercise the real path.
+        if (role == UserRole.VENDOR) {
+            u.setBusinessName(username + " Trading");
+        }
         return userRepository.save(u);
     }
 

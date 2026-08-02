@@ -97,6 +97,15 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.CONFLICT, "Email already registered", ex.getMessage());
     }
 
+    @ExceptionHandler(com.marketplace.api.auth.AuthService.VendorDetailsRequiredException.class)
+    public ProblemDetail vendorDetailsRequired(
+            com.marketplace.api.auth.AuthService.VendorDetailsRequiredException ex) {
+        ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "Validation failed",
+                "Seller accounts need a few more details");
+        pd.setProperty("errors", ex.getFieldErrors());
+        return pd;
+    }
+
     @ExceptionHandler(UsernameTakenException.class)
     public ProblemDetail usernameTaken(UsernameTakenException ex) {
         ProblemDetail pd = problem(HttpStatus.CONFLICT, "Username taken",

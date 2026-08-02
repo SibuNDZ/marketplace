@@ -65,6 +65,15 @@ public class User {
     private UserRole role = UserRole.CUSTOMER;
 
     /**
+     * The name this vendor trades under, shown on every product card (V19).
+     * Null for buyers. Required for vendors, enforced at registration and at
+     * the buyer->vendor upgrade rather than by a column constraint that
+     * would also bind customers.
+     */
+    @Column(name = "business_name", length = 200)
+    private String businessName;
+
+    /**
      * Flat delivery fee this vendor charges per order (V16). Meaningful only
      * for VENDOR rows; 0 means free delivery. This is the vendor's CURRENT
      * fee — orders snapshot it into OrderDeliveryFee at placement, so edits
@@ -230,9 +239,27 @@ public class User {
         this.deliveryFee = deliveryFee;
     }
 
+    public String getBusinessName() {
+        return businessName;
+    }
+
+    public void setBusinessName(String businessName) {
+        this.businessName = businessName;
+    }
+
     // Utility methods
     public String getFullName() {
-        return firstName + " " + lastName;
+        return (firstName + " " + (lastName == null ? "" : lastName)).trim();
+    }
+
+    /**
+     * What the public sees attributed to this user on a listing: the trading
+     * name, never the person's name. The fallback exists only for rows that
+     * predate V19's backfill or were created by fixtures; a vendor with no
+     * business name is a data defect, not a display case worth designing for.
+     */
+    public String getStorefrontName() {
+        return businessName == null || businessName.isBlank() ? getFullName() : businessName;
     }
 
     @Override

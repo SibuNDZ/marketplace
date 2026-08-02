@@ -84,7 +84,7 @@ class AuthVerificationTest {
     private RegisterResponse register(String tag) {
         return authService.register(new RegisterRequest(
                 tag + "@verify-test.local", "password123",
-                "Test", "User", tag, "CUSTOMER"));
+                "Test", "User", tag, "CUSTOMER", null));
     }
 
     @Test
@@ -199,7 +199,7 @@ class AuthVerificationTest {
 
         assertThatThrownBy(() -> authService.register(new RegisterRequest(
                 "different-address@verify-test.local", "password123",
-                "Other", "Person", "V_DUPE", "CUSTOMER")))
+                "Other", "Person", "V_DUPE", "CUSTOMER", null)))
                 .isInstanceOf(UsernameTakenException.class);
     }
 
@@ -209,7 +209,7 @@ class AuthVerificationTest {
         // and the entity's @NotBlank turned it into a 500.
         RegisterResponse r = authService.register(new RegisterRequest(
                 "mononym@verify-test.local", "password123",
-                "Sibongile", null, "mononym_user", "CUSTOMER"));
+                "Sibongile", null, "mononym_user", "CUSTOMER", null));
 
         assertThat(r.email()).isEqualTo("mononym@verify-test.local");
         User user = userRepository.findByEmail("mononym@verify-test.local").orElseThrow();

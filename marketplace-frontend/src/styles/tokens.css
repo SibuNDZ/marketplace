@@ -56,7 +56,15 @@
   --shadow-lift: 0 2px 4px rgba(24,36,32,.08), 0 10px 28px rgba(24,36,32,.10);
 
   /* layout */
-  --content-max: 1160px;
+  /* Full-bleed: the storefront uses the whole window rather than a centred
+     1160px column, so the hero spans edge to edge, the category rail sits
+     hard left, and the product grid runs to the right edge. Only --gutter
+     keeps content off the literal pixel edge.
+     Note this governs the CHROME and the catalogue only. Reading and form
+     pages (legal, auth, cart, feedback, account) set their own narrower
+     max-width inline on .page-shell, which still wins — long prose and
+     single-column forms stay readable instead of stretching to 2000px. */
+  --content-max: 100%;
   --gutter: 24px;
   --trustbar-h: 30px;
   --topbar-h: 60px;

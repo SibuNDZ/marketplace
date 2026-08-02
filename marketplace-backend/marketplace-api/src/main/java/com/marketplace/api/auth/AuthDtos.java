@@ -42,10 +42,25 @@ public class AuthDtos {
                     message = "Username must be 3-30 characters, letters, numbers or underscore")
             String username,
             @Pattern(regexp = "CUSTOMER|VENDOR",
-                    message = "Role must be CUSTOMER or VENDOR") String role
+                    message = "Role must be CUSTOMER or VENDOR") String role,
+            /**
+             * Required for VENDOR only (checked in AuthService, where the
+             * role is known). Buyers never supply one — asking every shopper
+             * for a business name to satisfy a schema would be signup
+             * friction for nothing.
+             */
+            @Size(max = 200) String businessName
     ) {
         public String roleOrDefault() {
             return role == null || role.isBlank() ? "CUSTOMER" : role;
+        }
+
+        public boolean isVendor() {
+            return "VENDOR".equals(roleOrDefault());
+        }
+
+        public String businessNameOrNull() {
+            return businessName == null || businessName.isBlank() ? null : businessName.trim();
         }
 
         public String lastNameOrEmpty() {

@@ -9,6 +9,7 @@ import { useCartDrawer } from '../../context/CartDrawerContext'
 import { ALL_SLUG } from '../../data/categories'
 import { CartDrawer } from '../cart/CartDrawer'
 import { RetailCategoryNav } from './RetailCategoryNav'
+import { LogoMark } from './LogoMark'
 
 export function SiteHeader() {
   const { user, logout } = useAuth()
@@ -130,7 +131,7 @@ export function SiteHeader() {
 
         <div className="main-bar">
           <div className="main-bar__inner main-bar__desktop">
-            <Link to="/" className="wordmark">eRestyu</Link>
+            <Link to="/" className="wordmark-group"><LogoMark size={26} /><span className="wordmark">eRestyu</span></Link>
             {searchForm()}
             <nav className="main-actions" aria-label="Account and cart">
               <button className="main-action notification-action" aria-label="Notifications" title="Notifications">
@@ -172,7 +173,7 @@ export function SiteHeader() {
 
           <div className="main-bar__inner main-bar__mobile">
             <button ref={drawerTriggerRef} className="mobile-icon" onClick={() => setDrawerOpen(true)} aria-label="Open menu"><Menu size={23} strokeWidth={1.75} /></button>
-            <Link to="/" className="wordmark">eRestyu</Link>
+            <Link to="/" className="wordmark-group"><LogoMark size={22} /><span className="wordmark">eRestyu</span></Link>
             <div className="mobile-actions">
               <button className="mobile-icon" aria-label="Notifications" title="Notifications"><Bell size={21} strokeWidth={1.75} /></button>
               {/* Persistent account entry: field-tested gap. A vendor at a
@@ -211,7 +212,7 @@ export function SiteHeader() {
           <button className="mobile-drawer-backdrop" onClick={() => setDrawerOpen(false)} aria-label="Close menu" />
           <div ref={drawerRef} className="mobile-drawer" role="dialog" aria-modal="true" aria-label="Site menu">
             <div className="mobile-drawer__header">
-              <span className="wordmark">eRestyu</span>
+              <span className="wordmark-group"><LogoMark size={22} /><span className="wordmark">eRestyu</span></span>
               <button className="mobile-icon" onClick={() => setDrawerOpen(false)} aria-label="Close menu"><X size={22} /></button>
             </div>
             {searchForm(true)}

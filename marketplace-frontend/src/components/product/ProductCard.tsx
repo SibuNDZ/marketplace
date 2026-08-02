@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ApiError, api, ProductResponse } from '../../lib/api'
-import { StockBadge } from '../ui/StockBadge'
+import { StockBadge, OutOfStockOverlay } from '../ui/StockBadge'
 import { productImageUrl } from '../../lib/productImage'
 
 interface Props {
@@ -66,6 +66,7 @@ export function ProductCard({ product }: Props) {
   })
 
   const canAdd = product.stock > 0 && !product.deletedAt
+  const isOutOfStock = product.stock === 0 && !product.deletedAt
   const rating = Number(product.avgRating)
 
   return (
@@ -98,6 +99,7 @@ export function ProductCard({ product }: Props) {
             New in
           </span>
         )}
+        {isOutOfStock && <OutOfStockOverlay />}
       </Link>
 
       <div style={{ padding: '12px 14px 14px', display: 'flex', flexDirection: 'column', gap: 5, flex: 1 }}>
@@ -117,8 +119,10 @@ export function ProductCard({ product }: Props) {
           </span>
         )}
 
-        {/* Urgency — real stock only */}
-        <StockBadge product={product} />
+        {/* Urgency — real stock only. The true out-of-stock case moved to
+            the image overlay above; this inline row still carries "No
+            longer available" (soft-deleted) and the low/in-stock states. */}
+        {!isOutOfStock && <StockBadge product={product} />}
 
         {/* Price + Add */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 6 }}>
@@ -141,6 +145,10 @@ export function ProductCard({ product }: Props) {
           >
             {added ? '✓ Added' : 'Add to cart'}
           </button>
+          {/* TODO(notify-me): "Notify me when available" for isOutOfStock
+              products belongs here, gated behind the transactional-email
+              slice (no email infra to fire the notification yet). Deferred,
+              not rejected — see UI polish pass spec. */}
         </div>
       </div>
     </div>

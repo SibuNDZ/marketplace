@@ -98,6 +98,26 @@ public class TestFixtures {
     }
 
     /** Cart holding one unit of each given product — multi-vendor order fixtures. */
+    /**
+     * Refills an existing customer's cart, for tests that need a SECOND
+     * order from the same buyer (placeOrder empties the cart).
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void addToCart(Long userId, Product product, int quantity) {
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    Cart c = new Cart();
+                    c.setUser(userRepository.getReferenceById(userId));
+                    return c;
+                });
+        CartItem item = new CartItem();
+        item.setCart(cart);
+        item.setProduct(productRepository.getReferenceById(product.getId()));
+        item.setQuantity(quantity);
+        cart.getItems().add(item);
+        cartRepository.save(cart);
+    }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public User customerWithCartOf(String username, Product... products) {
         User user = persistUser(username, UserRole.CUSTOMER);

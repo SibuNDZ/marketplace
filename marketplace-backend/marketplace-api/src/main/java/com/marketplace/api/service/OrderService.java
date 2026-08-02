@@ -253,7 +253,36 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public Page<OrderResponse> getMyOrders(Long userId, Pageable pageable) {
-        return orderRepository.findByUserId(userId, pageable).map(this::toResponse);
+        return getMyOrders(userId, OrderTab.ALL, pageable);
+    }
+
+    /** Buyer's orders for one tab. ALL skips the status predicate entirely. */
+    @Transactional(readOnly = true)
+    public Page<OrderResponse> getMyOrders(Long userId, OrderTab tab, Pageable pageable) {
+        Page<Order> page = tab == null || tab.isAll()
+                ? orderRepository.findByUserId(userId, pageable)
+                : orderRepository.findByUserIdAndStatusIn(userId, tab.statuses(), pageable);
+        return page.map(this::toResponse);
+    }
+
+    /**
+     * Counts per tab for the badge row. One grouped query, then folded into
+     * the tab groupings here so the mapping lives in exactly one place
+     * (OrderTab) rather than being re-derived by the frontend.
+     */
+    @Transactional(readOnly = true)
+    public Map<OrderTab, Long> getMyOrderCounts(Long userId) {
+        Map<OrderStatus, Long> byStatus = new java.util.EnumMap<>(OrderStatus.class);
+        for (Object[] row : orderRepository.countByStatusForUser(userId)) {
+            byStatus.put((OrderStatus) row[0], ((Number) row[1]).longValue());
+        }
+        Map<OrderTab, Long> counts = new java.util.EnumMap<>(OrderTab.class);
+        for (OrderTab tab : OrderTab.values()) {
+            counts.put(tab, tab.statuses().stream()
+                    .mapToLong(s -> byStatus.getOrDefault(s, 0L))
+                    .sum());
+        }
+        return counts;
     }
 
     /**

@@ -210,6 +210,23 @@ public class GlobalExceptionHandler {
                 .body(pd);
     }
 
+    @ExceptionHandler(com.marketplace.api.feedback.FeedbackExceptions.FeedbackRateLimitExceededException.class)
+    public ResponseEntity<ProblemDetail> feedbackRateLimited(
+            com.marketplace.api.feedback.FeedbackExceptions.FeedbackRateLimitExceededException ex) {
+        ProblemDetail pd = problem(HttpStatus.TOO_MANY_REQUESTS, "Too many requests",
+                "You have sent several pieces of feedback in a short time. "
+                        + "Please wait " + ex.getRetryAfterSeconds() + " seconds and try again.");
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+                .body(pd);
+    }
+
+    @ExceptionHandler(com.marketplace.api.feedback.FeedbackService.FeedbackNotFoundException.class)
+    public ProblemDetail feedbackNotFound(
+            com.marketplace.api.feedback.FeedbackService.FeedbackNotFoundException ex) {
+        return problem(HttpStatus.NOT_FOUND, "Feedback not found", ex.getMessage());
+    }
+
     @ExceptionHandler(PaymentProviderException.class)
     public ProblemDetail paymentProviderError(PaymentProviderException ex) {
         log.error("Payment provider error", ex);

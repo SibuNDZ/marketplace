@@ -96,16 +96,30 @@ While onboarding with PayFast, ask in the same thread:
 Getting it enabled from day one beats retrofitting, even if we implement only
 when the second selling vendor arrives.
 
-## 5. The fee decision, which is a promise not a config value
+## 5. The fee decision — DECIDED: the platform absorbs it
 
-Whoever absorbs the processing fee must be decided explicitly:
+**Settled 2026-08-02. The vendor receives exactly their expected share:
+sale price plus their delivery fee, minus commission. Nothing else.**
 
-- **Platform absorbs** — vendor receives exactly the number they expect.
-- **Vendor's share carries it** — vendor receives slightly less than list.
+The rejected alternative was folding processing fees into the vendor's side.
+That makes a vendor's payout vary with the card-versus-EFT mix of whoever
+happened to buy from them, which turns every payout statement into a
+reconciliation question. It fails the honest-fee rule in spirit even when
+disclosed, because the vendor cannot predict their own income.
 
-This is the payout-transparency promise in concrete form. Whichever way it
-goes, it belongs in the Fees section of How It Works **the day commission
-goes live**, not after a vendor asks why the number is short.
+Consequence for pricing: the commission percentage must be set knowing it
+has to cover the processor's cut (~3% on cards, varies by method) plus
+margin. That is a one-time pricing decision by the operator, not a recurring
+surprise for the vendor. **The percentage itself is still unset** — a
+business call, not an engineering one.
+
+Implementation note for whoever builds the ledger: "amount owed to vendor"
+is therefore `sum(item price snapshots) + their delivery fee - commission`,
+with the processing fee absent from that formula entirely. It comes off
+eRestyu's side.
+
+This belongs in the Fees section of How It Works **the day commission goes
+live**, not after a vendor asks why the number is short.
 
 ## 6. Trigger
 

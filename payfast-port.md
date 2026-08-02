@@ -100,6 +100,20 @@ the security gauntlet below, then calls
 (non-200 makes PayFast retry: immediately, after 10 minutes, then
 exponentially).
 
+## Future: Split Payments (see vendor-payouts.md)
+
+When vendor payouts move to splits, a `setup` field carrying JSON rides on
+the payment request. PayFast documents it as **NOT included in the
+signature** — but `PayfastSignature.sign()` iterates the whole field map, so
+adding `setup` naively will break signature validation on every split
+payment. Exclude it explicitly at that point. Flagged here because the
+failure mode (works in dev with no split, fails the moment splits turn on)
+is exactly the kind that reaches production.
+
+Also relevant: only ONE receiving merchant is allowed per split transaction,
+which does not cover multi-vendor carts. Details and the open question for
+PayFast are in vendor-payouts.md.
+
 ## Signature rules (both directions)
 
 - Pairs joined with `&`, values URL-encoded with UPPERCASE percent-encoding

@@ -18,7 +18,10 @@ export function CategoryPane({ tree, active, onSelect }: Props) {
         >
           <span>All products</span>
         </button>
-        {tree.map(root => (
+        {/* Zero-count categories never render: the server already filters
+            them (includeEmpty defaults false) and this filter keeps a
+            poisoned or stale tree from resurfacing "Category 0" rows. */}
+        {tree.filter(root => root.productCount > 0).map(root => (
           <div className="category-pane__group" key={root.slug}>
             <button
               className={active === root.slug ? 'is-active' : ''}
@@ -27,9 +30,9 @@ export function CategoryPane({ tree, active, onSelect }: Props) {
               <span>{root.name}</span>
               <span className="num">{root.productCount}</span>
             </button>
-            {root.children.length > 0 && (
+            {root.children.some(child => child.productCount > 0) && (
               <ul>
-                {root.children.map(child => (
+                {root.children.filter(child => child.productCount > 0).map(child => (
                   <li key={child.slug}>
                     <button
                       className={active === child.slug ? 'is-active' : ''}

@@ -79,7 +79,7 @@ public class YocoWebhookController {
 
         String type = root.path("type").asText("");
         if (!PAYMENT_SUCCEEDED.equals(type)) {
-            log.debug("Yoco webhook event type {} not handled — acknowledging", type);
+            log.debug("Yoco webhook event type {} not handled - acknowledging", type);
             return ResponseEntity.ok().build();
         }
 
@@ -88,7 +88,7 @@ public class YocoWebhookController {
             // The webhook carries no checkout reference, so without metadata
             // there is NOTHING to reconcile against — money has moved and we
             // cannot say for which order. This log line is the alert.
-            log.error("Yoco {} without {} metadata — event {} needs investigation, "
+            log.error("Yoco {} without {} metadata - event {} needs investigation, "
                             + "payment {} is unreconciled",
                     PAYMENT_SUCCEEDED, YocoCheckoutService.ORDER_ID_KEY,
                     root.path("id").asText("?"), root.path("payload").path("id").asText("?"));

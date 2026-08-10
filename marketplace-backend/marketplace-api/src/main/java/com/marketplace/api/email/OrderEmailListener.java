@@ -69,7 +69,7 @@ public class OrderEmailListener {
                 default -> { }
             }
         } catch (Exception e) {
-            log.error("Order {} email for {} transition failed — order state is unaffected",
+            log.error("Order {} email for {} transition failed - order state is unaffected",
                     event.orderId(), event.to(), e);
         }
     }

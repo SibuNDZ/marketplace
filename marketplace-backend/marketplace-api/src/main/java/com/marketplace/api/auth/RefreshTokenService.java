@@ -84,7 +84,7 @@ public class RefreshTokenService {
 
         if (token.getRevokedAt() != null) {
             Long userId = token.getUser().getId();
-            log.warn("Refresh token reuse detected for user {} — revoking all sessions", userId);
+            log.warn("Refresh token reuse detected for user {} - revoking all sessions", userId);
             refreshTokenRepository.revokeAllActiveByUserId(userId, LocalDateTime.now());
             throw new BadCredentialsException("Invalid refresh token");
         }

@@ -95,7 +95,7 @@ public class EmailService {
     boolean send(String to, String subject, String html) {
         if (apiKey.isBlank()) {
             // Not an error: this is the configured dev/test behaviour.
-            log.warn("RESEND_API_KEY not set — email to {} not sent. Subject: {}", to, subject);
+            log.warn("RESEND_API_KEY not set - email to {} not sent. Subject: {}", to, subject);
             return false;
         }
 
@@ -121,7 +121,7 @@ public class EmailService {
             // Body carries Resend's reason (unverified domain, bad key, rate
             // limit). Logging it is the difference between a five-minute fix
             // and guessing.
-            log.error("Resend rejected email to {} — HTTP {}: {}",
+            log.error("Resend rejected email to {} - HTTP {}: {}",
                     to, response.statusCode(), response.body());
             return false;
 

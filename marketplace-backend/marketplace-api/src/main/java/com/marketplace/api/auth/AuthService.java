@@ -30,7 +30,7 @@ import java.util.Map;
  *
  * passwordEncoder.matches() runs even when the user doesn't exist (against a
  * dummy hash). Without this, "unknown email" returns in ~1ms and "known email,
- * wrong password" in ~100ms (bcrypt cost) — a timing side channel that
+ * wrong password" in ~100ms (bcrypt cost) - a timing side channel that
  * enumerates users just as effectively as different error messages.
  *
  * EmailNotVerifiedException is the ONE deliberate exception to that rule.
@@ -105,7 +105,7 @@ public class AuthService {
             }
             if (request.businessNameOrNull() == null) {
                 missing.put("businessName",
-                        List.of("Business name is required — this is what buyers see on your listings"));
+                        List.of("Business name is required. This is what buyers see on your listings"));
             }
             if (!missing.isEmpty()) {
                 throw new VendorDetailsRequiredException(missing);
@@ -162,7 +162,7 @@ public class AuthService {
             // the log lied convincingly enough that nothing else noticed.
             userRepository.save(saved);
 
-            log.error("VERIFICATION EMAIL FAILED for {} — account auto-verified so the "
+            log.error("VERIFICATION EMAIL FAILED for {} - account auto-verified so the "
                     + "user is not locked out. Email verification is currently NOT being "
                     + "enforced; fix the mail provider.", saved.getEmail());
         }
@@ -259,7 +259,7 @@ public class AuthService {
         refreshTokenService.revokeAllForUser(user.getId());
         userTokenService.revokeAll(user.getId(), TokenPurpose.PASSWORD_RESET);
 
-        log.info("Password reset completed for user {} — all sessions revoked", user.getId());
+        log.info("Password reset completed for user {} - all sessions revoked", user.getId());
     }
 
     public boolean isUsernameAvailable(String username) {

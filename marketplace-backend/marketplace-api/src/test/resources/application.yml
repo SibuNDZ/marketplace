@@ -33,6 +33,21 @@ app:
     cancel-url: http://localhost:4200/checkout/cancelled
   payments:
     provider: stripe
+  yoco:
+    # Deterministic so YocoSignatureTest/YocoWebhookTest can pre-compute
+    # signatures by hand. The secret must be a real "whsec_<base64>" because
+    # verification base64-decodes it — a placeholder like "test-secret" would
+    # throw on decode and make every test fail for the wrong reason.
+    # Decodes to the ASCII bytes of "yoco-test-webhook-secret-32bytes".
+    secret-key: sk_test_placeholder_for_tests
+    webhook-secret: whsec_eW9jby10ZXN0LXdlYmhvb2stc2VjcmV0LTMyYnl0ZXM=
+    # No outbound call happens in tests; the checkout HTTP seam is pointed at
+    # a local stub server by the tests that exercise it.
+    checkouts-url: http://localhost:9/api/checkouts
+    success-url: http://localhost:4200/checkout/success
+    cancel-url: http://localhost:4200/checkout/cancelled
+    failure-url: http://localhost:4200/checkout/cancelled
+    webhook-tolerance-seconds: 180
   payfast:
     # Deterministic values so PayfastItnTest can pre-compute signatures.
     # No outbound calls happen in tests: the validator seam is stubbed.

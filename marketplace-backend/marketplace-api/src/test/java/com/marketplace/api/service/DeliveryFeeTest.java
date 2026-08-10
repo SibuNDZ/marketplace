@@ -113,7 +113,7 @@ class DeliveryFeeTest {
         assertThat(order.deliveryFees().get(0).fee()).isEqualByComparingTo("25.00");
 
         // Vendor's own view carries the snapshot too (visible once PAID).
-        paymentEventService.handleCheckoutCompleted(orderId);
+        paymentEventService.handleCheckoutCompleted(orderId, "Stripe");
         assertThat(vendorOrderService.get(vendor.getId(), orderId).deliveryFee())
                 .isEqualByComparingTo("25.00");
         // Their items subtotal stays item-only; the fee is its own field.

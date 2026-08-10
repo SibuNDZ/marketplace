@@ -118,7 +118,7 @@ public class PayfastItnService {
         // The state machine takes it from here, idempotently: duplicate
         // COMPLETE ITNs land in "already PAID, ignoring", exactly like
         // duplicate Stripe webhooks.
-        eventService.handleCheckoutCompleted(orderId);
+        eventService.handleCheckoutCompleted(orderId, "PayFast");
     }
 
     static String paramStringWithoutSignature(List<Map.Entry<String, String>> ordered) {

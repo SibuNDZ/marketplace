@@ -75,7 +75,7 @@ class VendorOrderVisibilityTest {
         assertThatThrownBy(() -> vendorOrderService.get(vendor.getId(), orderId))
                 .isInstanceOf(OrderNotFoundException.class);
 
-        paymentEventService.handleCheckoutCompleted(orderId);
+        paymentEventService.handleCheckoutCompleted(orderId, "Stripe");
 
         Page<VendorOrderResponse> page = pageFor(vendor);
         assertThat(page.getContent()).hasSize(1);
@@ -97,7 +97,7 @@ class VendorOrderVisibilityTest {
         User buyer = fixtures.customerWithCartOf("vov-buyer2", pa, pb);
 
         Long orderId = orderService.placeOrder(buyer.getId()).id();
-        paymentEventService.handleCheckoutCompleted(orderId);
+        paymentEventService.handleCheckoutCompleted(orderId, "Stripe");
 
         VendorOrderResponse aView = vendorOrderService.get(vendorA.getId(), orderId);
         assertThat(aView.items()).hasSize(1);
@@ -123,7 +123,7 @@ class VendorOrderVisibilityTest {
         User buyer = fixtures.customerWithCartOf("vov-buyer3", p);
 
         Long orderId = orderService.placeOrder(buyer.getId()).id();
-        paymentEventService.handleCheckoutCompleted(orderId);
+        paymentEventService.handleCheckoutCompleted(orderId, "Stripe");
 
         // A vendor with no items in the order cannot see or ship it, and the
         // failure is indistinguishable from a nonexistent order.

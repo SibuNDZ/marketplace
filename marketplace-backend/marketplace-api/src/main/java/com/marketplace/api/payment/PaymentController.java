@@ -54,6 +54,7 @@ public class PaymentController {
 
     private final StripeCheckoutService checkoutService;
     private final PayfastCheckoutService payfastCheckoutService;
+    private final YocoCheckoutService yocoCheckoutService;
     private final PaymentEventService eventService;
     private final ObjectMapper objectMapper;
     private final String webhookSecret;
@@ -61,12 +62,14 @@ public class PaymentController {
 
     public PaymentController(StripeCheckoutService checkoutService,
                              PayfastCheckoutService payfastCheckoutService,
+                             YocoCheckoutService yocoCheckoutService,
                              PaymentEventService eventService,
                              ObjectMapper objectMapper,
                              @Value("${app.stripe.webhook-secret}") String webhookSecret,
                              @Value("${app.payments.provider:stripe}") String provider) {
         this.checkoutService = checkoutService;
         this.payfastCheckoutService = payfastCheckoutService;
+        this.yocoCheckoutService = yocoCheckoutService;
         this.eventService = eventService;
         this.objectMapper = objectMapper;
         this.webhookSecret = webhookSecret;
@@ -74,11 +77,13 @@ public class PaymentController {
     }
 
     /**
-     * Provider cutover switch (app.payments.provider). Response SHAPE tells
-     * the frontend what to do: {checkoutUrl} means redirect (Stripe),
-     * {processUrl, fields} means render and auto-submit a form (PayFast).
-     * Stripe stays selectable until the first real PayFast rand clears end
-     * to end in production — see payfast-port.md for the decommission plan.
+     * Provider cutover switch (app.payments.provider): stripe | payfast | yoco.
+     * Response SHAPE tells the frontend what to do: {checkoutUrl} means
+     * redirect (Stripe AND Yoco — both are hosted-page redirects, which is why
+     * the Yoco slice needed no frontend change), {processUrl, fields} means
+     * render and auto-submit a form (PayFast). Stripe stays selectable as the
+     * rollback until the first real rand clears end to end on the new
+     * provider — see payfast-port.md for the decommission plan.
      */
     @PostMapping("/api/v1/orders/{id}/pay")
     public Object pay(@PathVariable Long id,
@@ -86,6 +91,9 @@ public class PaymentController {
                       @AuthenticationPrincipal UserPrincipal me) {
         if ("payfast".equalsIgnoreCase(provider)) {
             return payfastCheckoutService.createCheckout(id, me.getId(), shipping);
+        }
+        if ("yoco".equalsIgnoreCase(provider)) {
+            return Map.of("checkoutUrl", yocoCheckoutService.createCheckout(id, me.getId(), shipping));
         }
         return Map.of("checkoutUrl", checkoutService.createCheckoutSession(id, me.getId(), shipping));
     }
@@ -104,7 +112,7 @@ public class PaymentController {
         if ("checkout.session.completed".equals(event.getType())) {
             String orderId = extractOrderId(payload);
             if (orderId != null) {
-                eventService.handleCheckoutCompleted(Long.parseLong(orderId));
+                eventService.handleCheckoutCompleted(Long.parseLong(orderId), "Stripe");
             } else {
                 log.error("checkout.session.completed without order_id metadata — "
                         + "event {} needs investigation", event.getId());

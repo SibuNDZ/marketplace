@@ -91,7 +91,7 @@ class OrderEmailFlowTest {
         Long orderId = orderService.placeOrder(buyer.getId()).id();
         setShippingAddress(orderId);
 
-        paymentEventService.handleCheckoutCompleted(orderId);
+        paymentEventService.handleCheckoutCompleted(orderId, "Stripe");
 
         ArgumentCaptor<String> buyerHtml = ArgumentCaptor.forClass(String.class);
         verify(emailService, timeout(5000)).send(
@@ -124,7 +124,7 @@ class OrderEmailFlowTest {
         User admin = fixtures.admin("mail-admin1");
 
         Long orderId = orderService.placeOrder(buyer.getId()).id();
-        paymentEventService.handleCheckoutCompleted(orderId);
+        paymentEventService.handleCheckoutCompleted(orderId, "Stripe");
         orderAdminService.transition(orderId, OrderStatus.SHIPPED, admin.getId(),
                 "Shipped", "TRK-MAIL-777");
 
@@ -143,7 +143,7 @@ class OrderEmailFlowTest {
         User buyer = fixtures.customerWithCart("mail-buyer3", product, 1);
 
         Long orderId = orderService.placeOrder(buyer.getId()).id();
-        paymentEventService.handleCheckoutCompleted(orderId);
+        paymentEventService.handleCheckoutCompleted(orderId, "Stripe");
 
         // The send was attempted (and blew up) on the async thread...
         verify(emailService, timeout(5000)).send(eq(buyer.getEmail()), anyString(), anyString());

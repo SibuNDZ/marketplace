@@ -177,7 +177,7 @@ public class TestFixtures {
      * Each step runs in its own transaction, matching real runtime behavior.
      */
     public void deliverOrder(Long orderId, Long adminId) {
-        paymentEventService.handleCheckoutCompleted(orderId); // PENDING -> PAID
+        paymentEventService.handleCheckoutCompleted(orderId, "Stripe"); // PENDING -> PAID
         orderAdminService.transition(orderId, OrderStatus.SHIPPED,    adminId, "Shipped");
         orderAdminService.transition(orderId, OrderStatus.DELIVERED,  adminId, "Delivered");
     }

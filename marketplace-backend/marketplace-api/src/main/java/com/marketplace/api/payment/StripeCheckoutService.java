@@ -134,8 +134,9 @@ public class StripeCheckoutService {
         }
     }
 
+    /** Delegates to the shared conversion — see Money, extracted for Yoco. */
     static long toCents(BigDecimal rand) {
-        return rand.multiply(BigDecimal.valueOf(100)).longValueExact();
+        return Money.toCents(rand);
     }
 
     /**

@@ -166,7 +166,7 @@ class ShippingAddressTest {
         Long orderId = orderService.placeOrder(customer.getId()).id();
         checkoutService.attachShipping(orderId, customer.getId(), sampleAddress());
 
-        paymentEventService.handleCheckoutCompleted(orderId);
+        paymentEventService.handleCheckoutCompleted(orderId, "Stripe");
 
         OrderResponse adminView = orderService.getOrderForAdmin(orderId);
         assertThat(adminView.status()).isEqualTo("PAID");

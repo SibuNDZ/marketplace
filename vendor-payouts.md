@@ -126,3 +126,26 @@ live**, not after a vendor asks why the number is short.
 Split payments moves from "parked until 3+ vendors" to **"ask PayFast now,
 implement at the second selling vendor"**. The trigger got cheaper because
 the onboarding conversation is already open.
+
+### 6a. This entire trigger is PayFast-CONDITIONAL (added with the Yoco port)
+
+Everything above assumes PayFast is the live processor. It is not, as of the
+Yoco port: `PAYMENTS_PROVIDER` now selects `stripe | payfast | yoco`, and the
+intended live provider is **yoco**, whose Checkout API has **no split-payment
+equivalent** — one merchant receives, full stop.
+
+So the trigger above fires only if PayFast is selected. Under Yoco:
+
+- Payouts move entirely to the **ledger tier** (section 5's formula is
+  unchanged and becomes the only mechanism, not an interim one).
+- The "ask PayFast now" question is moot while yoco is live; do not spend the
+  onboarding conversation on it.
+- The one-recipient-per-transaction constraint stops being a blocker to work
+  around, because there is no split path to be blocked from. Order #11 in
+  production (Armani watch from vendor 29 + Lancôme cream from vendor 2, one
+  R5105 payment) is the multi-vendor shape that a ledger has to settle by
+  hand, and it is the regression case to keep.
+
+The `setup`-field signature landmine in section 2 stays true and stays
+dangerous, but it is now dormant code: it can only bite a deploy that switches
+back to PayFast AND starts sending splits.

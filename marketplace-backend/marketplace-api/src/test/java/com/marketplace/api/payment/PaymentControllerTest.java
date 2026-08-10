@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PaymentControllerTest {
 
     private final PaymentController controller =
-            new PaymentController(null, null, null, new ObjectMapper(), "whsec_test", "stripe");
+            new PaymentController(null, null, null, null, new ObjectMapper(), "whsec_test", "stripe");
 
     // Real-shaped: trimmed to the fields extractOrderId actually reads, but
     // same nesting Stripe sends for checkout.session.completed.

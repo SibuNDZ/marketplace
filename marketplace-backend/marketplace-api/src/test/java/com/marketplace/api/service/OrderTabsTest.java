@@ -67,18 +67,18 @@ class OrderTabsTest {
         Product p2 = fixtures.product("Tab-Paid", "SKU-TAB-2", new BigDecimal("10.00"), 20);
         Long paid = orderService.placeOrder(
                 fixtures.customerWithCartOf("tabs-b2", p2).getId()).id();
-        paymentEventService.handleCheckoutCompleted(paid);
+        paymentEventService.handleCheckoutCompleted(paid, "Stripe");
 
         Product p3 = fixtures.product("Tab-Shipped", "SKU-TAB-3", new BigDecimal("10.00"), 20);
         Long shipped = orderService.placeOrder(
                 fixtures.customerWithCartOf("tabs-b3", p3).getId()).id();
-        paymentEventService.handleCheckoutCompleted(shipped);
+        paymentEventService.handleCheckoutCompleted(shipped, "Stripe");
         orderAdminService.transition(shipped, OrderStatus.SHIPPED, admin.getId(), "s");
 
         Product p4 = fixtures.product("Tab-Delivered", "SKU-TAB-4", new BigDecimal("10.00"), 20);
         Long delivered = orderService.placeOrder(
                 fixtures.customerWithCartOf("tabs-b4", p4).getId()).id();
-        paymentEventService.handleCheckoutCompleted(delivered);
+        paymentEventService.handleCheckoutCompleted(delivered, "Stripe");
         orderAdminService.transition(delivered, OrderStatus.SHIPPED, admin.getId(), "s");
         orderAdminService.transition(delivered, OrderStatus.DELIVERED, admin.getId(), "d");
 
@@ -104,7 +104,7 @@ class OrderTabsTest {
         Product p6 = fixtures.product("Tab-Refunded", "SKU-TAB-6", new BigDecimal("10.00"), 20);
         User b6 = fixtures.customerWithCartOf("tabs-b6", p6);
         Long refunded = orderService.placeOrder(b6.getId()).id();
-        paymentEventService.handleCheckoutCompleted(refunded);
+        paymentEventService.handleCheckoutCompleted(refunded, "Stripe");
         orderAdminService.transition(refunded, OrderStatus.SHIPPED, admin.getId(), "s");
         orderAdminService.transition(refunded, OrderStatus.DELIVERED, admin.getId(), "d");
         orderAdminService.transition(refunded, OrderStatus.REFUNDED, admin.getId(), "r");
@@ -125,7 +125,7 @@ class OrderTabsTest {
         // A second, paid order for the same buyer.
         fixtures.addToCart(buyer.getId(), p, 1);
         Long second = orderService.placeOrder(buyer.getId()).id();
-        paymentEventService.handleCheckoutCompleted(second);
+        paymentEventService.handleCheckoutCompleted(second, "Stripe");
 
         List<Long> all = idsIn(buyer.getId(), OrderTab.ALL);
         assertThat(all).contains(first, second);

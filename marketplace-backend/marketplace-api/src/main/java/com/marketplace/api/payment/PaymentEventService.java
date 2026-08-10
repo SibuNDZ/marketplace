@@ -40,14 +40,21 @@ public class PaymentEventService {
         this.recorder = recorder;
     }
 
+    /**
+     * @param provider display label for the audit trail and logs ("Stripe",
+     *                 "PayFast", "Yoco"). Every provider funnels through this
+     *                 one method, so the label is the only thing that says
+     *                 which one moved the money — it was hardcoded to
+     *                 "Stripe" until Yoco made the misattribution three-way.
+     */
     @Transactional
-    public void handleCheckoutCompleted(Long orderId) {
+    public void handleCheckoutCompleted(Long orderId, String provider) {
         Order order = orderRepository.findByIdForUpdate(orderId).orElse(null);
         if (order == null) {
             // Metadata pointed at a nonexistent order — misconfiguration or a
             // different environment's webhook. Log loudly, return normally:
-            // a 4xx/5xx would make Stripe retry forever.
-            log.error("Stripe checkout.session.completed for unknown order {}", orderId);
+            // a 4xx/5xx would make the provider retry forever.
+            log.error("{} payment webhook for unknown order {}", provider, orderId);
             return;
         }
 
@@ -72,7 +79,7 @@ public class PaymentEventService {
 
         order.setStatus(OrderStatus.PAID);
         recorder.record(order, current, OrderStatus.PAID,
-                order.getUser().getId(), "Payment completed (Stripe)");
-        log.info("Order {} PENDING -> PAID via Stripe webhook", orderId);
+                order.getUser().getId(), "Payment completed (" + provider + ")");
+        log.info("Order {} PENDING -> PAID via {} webhook", orderId, provider);
     }
 }

@@ -102,9 +102,28 @@ app:
     success-url: ${APP_FRONTEND_URL:http://localhost:5173}/checkout/success
     cancel-url: ${APP_FRONTEND_URL:http://localhost:5173}/checkout/cancelled
   payments:
-    # Cutover switch: stripe | payfast. Stripe remains the default until the
-    # first real PayFast rand clears end to end (payfast-port.md).
+    # Cutover switch: stripe | payfast | yoco. Stripe remains the default and
+    # the rollback until the first real rand clears end to end on the new
+    # provider (payfast-port.md).
     provider: ${PAYMENTS_PROVIDER:stripe}
+  yoco:
+    # Blank defaults, NOT sandbox defaults: Yoco test keys are per-merchant
+    # (Yoco app -> Checkout API integration -> Test keys), so there is no
+    # public pair to ship like PayFast's. Blank + YocoConfigValidator means an
+    # unset key fails the boot ONLY on a deploy that selects yoco, and never
+    # breaks a Stripe deploy that has no Yoco vars at all.
+    secret-key: ${YOCO_SECRET_KEY:}
+    webhook-secret: ${YOCO_WEBHOOK_SECRET:}
+    checkouts-url: ${YOCO_CHECKOUTS_URL:https://payments.yoco.com/api/checkouts}
+    # Yoco has three return URLs where Stripe has two: a cancelled checkout
+    # and a FAILED one are different events. Both land on our cancelled page
+    # for now — the page reads the order and polls, so it tells the truth
+    # either way.
+    success-url: ${APP_FRONTEND_URL:http://localhost:5173}/checkout/success
+    cancel-url: ${APP_FRONTEND_URL:http://localhost:5173}/checkout/cancelled
+    failure-url: ${APP_FRONTEND_URL:http://localhost:5173}/checkout/cancelled
+    # Yoco's docs recommend "up to 3 minutes" for replay defence.
+    webhook-tolerance-seconds: ${YOCO_WEBHOOK_TOLERANCE_SECONDS:180}
   payfast:
     # Defaults are PayFast's PUBLIC sandbox demo pair, safe to ship: they can
     # only ever create sandbox transactions. Production overrides all of

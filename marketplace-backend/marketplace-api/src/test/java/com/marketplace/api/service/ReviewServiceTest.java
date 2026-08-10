@@ -103,7 +103,7 @@ class ReviewServiceTest {
     }
 
     private Long driveToDelivered(Long orderId, Long adminId) {
-        paymentEventService.handleCheckoutCompleted(orderId); // PENDING -> PAID
+        paymentEventService.handleCheckoutCompleted(orderId, "Stripe"); // PENDING -> PAID
         orderAdminService.transition(orderId, OrderStatus.SHIPPED,   adminId, "shipped");
         orderAdminService.transition(orderId, OrderStatus.DELIVERED, adminId, "delivered");
         return orderId;

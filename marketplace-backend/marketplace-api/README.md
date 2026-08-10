@@ -57,6 +57,22 @@ Required environment for production (fail-fast where marked):
 `SENTRY_DSN` (optional; blank disables),
 `SPRING_PROFILES_ACTIVE=prod`.
 
+Payments provider selection (`PAYMENTS_PROVIDER`: `stripe` | `payfast` | `yoco`,
+default `stripe`). Each provider's own variables are only required when it is
+the selected one:
+
+| Provider | Variables | Fail-fast |
+|---|---|---|
+| stripe | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Always ★ (even when another provider is live) |
+| payfast | `PAYFAST_MERCHANT_ID`, `PAYFAST_MERCHANT_KEY`, `PAYFAST_PASSPHRASE`, `PAYFAST_NOTIFY_URL`, `PAYFAST_VERIFY_SOURCE=true` | Never — defaults are PayFast's public sandbox pair |
+| yoco | `YOCO_SECRET_KEY`, `YOCO_WEBHOOK_SECRET` | Only when `PAYMENTS_PROVIDER=yoco` (see `YocoConfigValidator`) |
+
+Yoco has no public sandbox pair to default to, so its variables are blank by
+default and validated at boot only on a deploy that actually selects it. The
+webhook secret is returned exactly once, by the registration call
+(`POST https://payments.yoco.com/api/webhooks`), and is mode-scoped: a test-key
+registration cannot verify live deliveries or vice versa.
+
 ## Testing philosophy
 
 Every test runs against PostgreSQL 16 in TestContainers, built by the real Flyway migrations — H2 was removed from the project after it masked two lock-semantics bugs that only reproduce on the real engine. The concurrency tests use `CyclicBarrier`-synchronized threads against genuinely committed data (fixtures commit in `REQUIRES_NEW`; the test classes are deliberately *not* `@Transactional`, which would deadlock against worker-thread row locks). The suite covers: last-unit oversell, same-user checkout double-submit, stock-adjustment racing checkout, illegal state transitions leaving zero audit rows, refresh-token reuse detection, webhook idempotency, payment-received-after-cancellation, and rate-limiter scoping.

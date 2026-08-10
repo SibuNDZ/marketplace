@@ -60,7 +60,7 @@ class PaymentEventServiceTest {
         User buyer = fixtures.customerWithCart("pe-buyer1", product, 1);
 
         Long orderId = orderService.placeOrder(buyer.getId()).id();
-        paymentEventService.handleCheckoutCompleted(orderId);
+        paymentEventService.handleCheckoutCompleted(orderId, "Stripe");
 
         assertThat(orderRepository.findById(orderId).orElseThrow().getStatus())
                 .isEqualTo(OrderStatus.PAID);
@@ -78,8 +78,8 @@ class PaymentEventServiceTest {
         User buyer = fixtures.customerWithCart("pe-buyer2", product, 1);
 
         Long orderId = orderService.placeOrder(buyer.getId()).id();
-        paymentEventService.handleCheckoutCompleted(orderId);
-        paymentEventService.handleCheckoutCompleted(orderId); // duplicate delivery
+        paymentEventService.handleCheckoutCompleted(orderId, "Stripe");
+        paymentEventService.handleCheckoutCompleted(orderId, "Stripe"); // duplicate delivery
 
         assertThat(orderRepository.findById(orderId).orElseThrow().getStatus())
                 .isEqualTo(OrderStatus.PAID);
@@ -100,7 +100,7 @@ class PaymentEventServiceTest {
 
         // Simulate webhook arriving after manual cancellation — should not throw,
         // should not change status (logs MANUAL REFUND REQUIRED server-side)
-        paymentEventService.handleCheckoutCompleted(orderId);
+        paymentEventService.handleCheckoutCompleted(orderId, "Stripe");
 
         assertThat(orderRepository.findById(orderId).orElseThrow().getStatus())
                 .isEqualTo(OrderStatus.CANCELLED);

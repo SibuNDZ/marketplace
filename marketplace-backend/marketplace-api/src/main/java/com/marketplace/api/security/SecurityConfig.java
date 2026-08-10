@@ -67,6 +67,9 @@ public class SecurityConfig {
                     // PayFast ITN: unauthenticated like the Stripe webhook;
                     // authenticity comes from the signed-payload gauntlet.
                     .requestMatchers("/api/v1/payments/payfast/itn").permitAll()
+                    // Yoco webhook: same trust model again — authenticity is
+                    // the svix HMAC over id.timestamp.body (see YocoSignature).
+                    .requestMatchers("/api/v1/payments/yoco/webhook").permitAll()
                     .requestMatchers("/actuator/health/**").permitAll()  // probe-reachable without JWT
                     .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                     .anyRequest().authenticated())

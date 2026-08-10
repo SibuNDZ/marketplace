@@ -63,7 +63,7 @@ public class OrderExpiryJob {
             for (Order order : stale) {
                 try {
                     orderService.cancelExpired(order.getId());
-                    log.info("Expired unpaid order {} — stock restored", order.getId());
+                    log.info("Expired unpaid order {} - stock restored", order.getId());
                 } catch (Exception e) {
                     // One bad order must not stop the sweep; it'll be retried
                     // next cycle and the error is visible for investigation.

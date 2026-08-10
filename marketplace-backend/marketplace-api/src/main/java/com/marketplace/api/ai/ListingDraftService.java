@@ -160,7 +160,7 @@ public class ListingDraftService {
                 .map(CategoryOption::slug)
                 .collect(Collectors.toSet());
         if (!known.contains(categorySlug)) {
-            log.warn("Draft model returned unknown category slug '{}' — falling back to '{}'",
+            log.warn("Draft model returned unknown category slug '{}' - falling back to '{}'",
                     categorySlug, FALLBACK_SLUG);
             categorySlug = FALLBACK_SLUG;
         }

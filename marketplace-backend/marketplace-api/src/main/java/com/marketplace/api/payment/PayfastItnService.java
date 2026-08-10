@@ -84,7 +84,7 @@ public class PayfastItnService {
         if (!"COMPLETE".equals(status)) {
             // CANCELLED (subscriptions) or anything unrecognised: not a
             // payment, nothing to transition. Logged for the audit trail.
-            log.info("PayFast ITN for order {} with payment_status {} — no transition", orderId, status);
+            log.info("PayFast ITN for order {} with payment_status {} - no transition", orderId, status);
             return;
         }
 
@@ -100,7 +100,7 @@ public class PayfastItnService {
             // The alert string. If this fires, money and order disagree and
             // a human must look before anything ships.
             log.error("PAYFAST AMOUNT MISMATCH for order {}: expected {} but ITN says '{}' "
-                            + "(pf_payment_id {}) — MANUAL REVIEW REQUIRED, order NOT transitioned",
+                            + "(pf_payment_id {}) - MANUAL REVIEW REQUIRED, order NOT transitioned",
                     orderId, order.getTotalAmount(), params.get("amount_gross"), pfPaymentId);
             return;
         }

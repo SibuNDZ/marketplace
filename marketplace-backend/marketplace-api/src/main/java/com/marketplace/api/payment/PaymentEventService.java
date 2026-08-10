@@ -61,7 +61,7 @@ public class PaymentEventService {
         OrderStatus current = order.getStatus();
 
         if (current == OrderStatus.PAID) {
-            log.info("Duplicate payment webhook for order {} — already PAID, ignoring", orderId);
+            log.info("Duplicate payment webhook for order {} - already PAID, ignoring", orderId);
             return;
         }
 
@@ -72,7 +72,7 @@ public class PaymentEventService {
             // restored and possibly resold; the money must go back. Until
             // automated refunds exist, this log line IS the refund queue —
             // it's the string to alert on in Sentry/monitoring.
-            log.error("PAYMENT RECEIVED FOR NON-PAYABLE ORDER {} (status {}) — "
+            log.error("PAYMENT RECEIVED FOR NON-PAYABLE ORDER {} (status {}) - "
                     + "MANUAL REFUND REQUIRED", orderId, current);
             return;
         }

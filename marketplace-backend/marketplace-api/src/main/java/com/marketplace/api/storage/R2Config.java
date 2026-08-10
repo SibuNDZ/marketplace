@@ -73,7 +73,7 @@ class R2Config {
                     .forcePathStyle(true)   // required by MinIO; harmless on R2
                     .build();
         } catch (IllegalArgumentException e) {
-            log.error("R2 endpoint '{}' is not a valid URI — check R2_ACCOUNT_ID is the bare " +
+            log.error("R2 endpoint '{}' is not a valid URI - check R2_ACCOUNT_ID is the bare " +
                     "account-id hex string, not a full URL: {}", endpoint, e.getMessage());
             throw e;
         }

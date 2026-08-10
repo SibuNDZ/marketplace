@@ -114,7 +114,7 @@ public class PaymentController {
             if (orderId != null) {
                 eventService.handleCheckoutCompleted(Long.parseLong(orderId), "Stripe");
             } else {
-                log.error("checkout.session.completed without order_id metadata — "
+                log.error("checkout.session.completed without order_id metadata - "
                         + "event {} needs investigation", event.getId());
             }
         }

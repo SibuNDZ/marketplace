@@ -72,7 +72,7 @@ public class AccountController {
      * must not be a cheaper door into the same role.
      */
     public record BecomeVendorRequest(
-            @NotBlank(message = "Business name is required — this is what buyers see on your listings")
+            @NotBlank(message = "Business name is required. This is what buyers see on your listings")
             @Size(max = 200) String businessName,
             @NotBlank(message = "Last name is required for seller accounts")
             @Size(max = 100) String lastName

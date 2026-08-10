@@ -42,7 +42,7 @@ public class AdminBootstrap {
             }
             if (email.isBlank() || password.isBlank()) {
                 log.warn("No ADMIN user exists and APP_BOOTSTRAP_ADMIN_EMAIL / "
-                        + "APP_BOOTSTRAP_ADMIN_PASSWORD are not set — order status "
+                        + "APP_BOOTSTRAP_ADMIN_PASSWORD are not set - order status "
                         + "transitions will be impossible until an admin is created.");
                 return;
             }

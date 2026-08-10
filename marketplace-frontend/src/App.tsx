@@ -2,6 +2,7 @@ import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import { CartDrawerProvider } from './context/CartDrawerContext'
+import { RightPanelProvider } from './context/RightPanelContext'
 import { Footer } from './components/layout/Footer'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
@@ -52,6 +53,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <CartDrawerProvider>
+        <RightPanelProvider>
         <Routes>
           <Route path="/" element={<CatalogPage />} />
           <Route path="/products/:id" element={<ProductDetailPage />} />
@@ -87,6 +89,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <ChromeFooter />
+        </RightPanelProvider>
       </CartDrawerProvider>
     </BrowserRouter>
   )

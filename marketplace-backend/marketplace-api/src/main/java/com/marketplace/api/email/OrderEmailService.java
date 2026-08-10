@@ -126,7 +126,7 @@ public class OrderEmailService {
         for (OrderItem item : order.getOrderItems()) {
             User vendor = item.getProduct() == null ? null : item.getProduct().getVendor();
             if (vendor == null) {
-                log.warn("Order {} item '{}' has no vendor (product deleted?) — no vendor email",
+                log.warn("Order {} item '{}' has no vendor (product deleted?) - no vendor email",
                         order.getOrderNumber(), item.getProductNameAtPurchase());
                 continue;
             }

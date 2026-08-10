@@ -116,7 +116,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         // production logs can show zero errors while users are being turned
         // away. That silence is what made this filter's role in a registration
         // outage so expensive to find — the logs looked healthy.
-        log.warn("Auth rate limit exceeded: {} {} from {} — returning 429",
+        log.warn("Auth rate limit exceeded: {} {} from {} - returning 429",
                 request.getMethod(), request.getRequestURI(), request.getRemoteAddr());
 
         // Same problem+json shape as everything else; Retry-After makes

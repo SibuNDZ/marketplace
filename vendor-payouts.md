@@ -121,6 +121,30 @@ eRestyu's side.
 This belongs in the Fees section of How It Works **the day commission goes
 live**, not after a vendor asks why the number is short.
 
+## 5b. Provider strategy — DECIDED: Yoco ALONGSIDE PayFast
+
+**Settled 2026-08-03. Yoco does not replace PayFast; both live behind
+`PAYMENTS_PROVIDER`.**
+
+The two do different jobs and the flag makes keeping both nearly free:
+
+- **Yoco** is the fast route to accepting real money. Onboarding is quick
+  and the integration is merged and tested. It is **card-only** and has no
+  split mechanism, so while Yoco is the live provider the payout model is
+  still collect-then-disburse — i.e. Tier 1 (ledger + Nedbank bulk file),
+  with the NPS Act / FICA considerations in §1 still applying.
+- **PayFast** remains the payout strategy, because Split Payments is what
+  removes the money-holding problem structurally rather than managing it.
+
+So the sequencing is: take real money on Yoco first if PayFast onboarding
+drags, and move to PayFast for splits when the merchant account and the
+multi-recipient answer (§1) are in hand. Switching is an env var, not a
+rewrite — that is the whole point of the provider flag.
+
+**Consequence to keep in view:** every day the live provider is Yoco is a
+day vendor money lands in the Nedbank account and must be paid out by
+hand. That makes the Tier 1 commission ledger MORE urgent, not less.
+
 ## 6. Trigger
 
 Split payments moves from "parked until 3+ vendors" to **"ask PayFast now,

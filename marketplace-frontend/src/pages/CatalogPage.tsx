@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api, Page, ProductResponse } from '../lib/api'
@@ -6,24 +6,12 @@ import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { ProductCard } from '../components/product/ProductCard'
 import { CategoryPane } from '../components/product/CategoryPane'
 import { PromoCarousel } from '../components/promo/PromoCarousel'
+import { ExpandedCategories } from '../components/catalog/ExpandedCategories'
+import { FeaturedCarousel } from '../components/catalog/FeaturedCarousel'
+import { RightCartPanel } from '../components/cart/RightCartPanel'
 import { ALL_SLUG } from '../data/categories'
+import { QUICK_FILTERS, QuickFilterKey, isQuickFilterKey } from '../data/quickFilters'
 import { useCategoryTree, findBySlug } from '../hooks/useCategoryTree'
-
-// bestSelling and fiveStar run on REAL aggregates from the popularity read
-// model. On a fresh catalog with no activity they simply match nothing —
-// the truthful result, not a bug.
-//
-// handmade is different in kind and that difference is deliberate: it is a
-// SERVER-side filter on a product column, so it goes in the query rather
-// than filtering the current page client-side. Filtering handmade in the
-// browser would only ever search the 20 products already loaded, which
-// silently lies once there is more than one page.
-const QUICK_FILTERS = [
-  { key: 'handmade', label: '🧵 Handmade' },
-  { key: 'bestSelling', label: '🔥 Best-Selling' },
-  { key: 'fiveStar', label: '⭐ Top Rated' },
-] as const
-type QuickFilterKey = typeof QUICK_FILTERS[number]['key']
 
 function SectionDivider({ icon, label }: { icon: string; label: string }) {
   return (
@@ -39,9 +27,17 @@ export function CatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const category = searchParams.get('category') ?? ALL_SLUG
   const name = searchParams.get('name')?.trim() ?? ''
-  const [activeFilters, setActiveFilters] = useState<Set<QuickFilterKey>>(new Set())
   const [page, setPage] = useState(0)
   const PAGE_SIZE = 20
+
+  // Quick filters live in the URL (?filters=handmade,bestSelling) so the
+  // chip row and the right panel's Highlights chips share one source of
+  // truth, the same way ?category= keeps the sidebar and nav in sync.
+  const filtersParam = searchParams.get('filters') ?? ''
+  const activeFilters = useMemo(
+    () => new Set(filtersParam.split(',').filter(isQuickFilterKey)),
+    [filtersParam],
+  )
 
   // Counts arrive on the tree itself, so there is no second request and no
   // way for a category and the number beside it to disagree.
@@ -57,11 +53,24 @@ export function CatalogPage() {
     setSearchParams(next)
   }
 
+  const scrollToGrid = () => {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    document.getElementById('all-products')
+      ?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })
+  }
+
+  // Banner tiles and expanded-category chips filter the grid AND bring it
+  // into view — clicking a tile far above the grid must show its effect.
+  const browseCategory = (slug: string) => {
+    selectCategory(slug)
+    scrollToGrid()
+  }
+
   const handmadeOnly = activeFilters.has('handmade')
 
   useEffect(() => {
     setPage(0)
-  }, [category, name])
+  }, [category, name, handmadeOnly])
 
   // Category AND handmade are both server-side. Category is a slug now, and
   // a top-level slug also matches its subcategories on the backend, so
@@ -83,15 +92,15 @@ export function CatalogPage() {
   const recommended = products.filter(p => p.reviewCount > 0 && Number(p.avgRating) >= 4.0)
 
   const toggleFilter = (key: QuickFilterKey) => {
-    setActiveFilters(prev => {
-      const next = new Set(prev)
-      next.has(key) ? next.delete(key) : next.add(key)
-      return next
-    })
+    const nextFilters = new Set(activeFilters)
+    nextFilters.has(key) ? nextFilters.delete(key) : nextFilters.add(key)
+    const next = new URLSearchParams(searchParams)
+    if (nextFilters.size > 0) next.set('filters', [...nextFilters].join(','))
+    else next.delete('filters')
+    setSearchParams(next)
     // handmade changes the QUERY, not just the client-side view, so the
-    // current page number no longer means anything. The other two filter
-    // what is already loaded and can leave paging alone.
-    if (key === 'handmade') setPage(0)
+    // current page number no longer means anything (the effect above resets
+    // it). The other two filter what is already loaded.
   }
 
   let mainList = products
@@ -112,7 +121,7 @@ export function CatalogPage() {
     <>
       <Topbar />
       <main className="page-shell">
-        <PromoCarousel />
+        <PromoCarousel onSelect={browseCategory} />
 
         {/* Mobile-only seller strip (hidden on desktop via .seller-strip).
             One line, below the hero, nothing louder: vendor acquisition is
@@ -121,7 +130,11 @@ export function CatalogPage() {
           🏪 Sell on eRestyu <span aria-hidden>→</span>
         </Link>
 
-        <div className="catalog-layout">
+        <ExpandedCategories tree={categoryTree} active={category} onSelect={browseCategory} />
+
+        <FeaturedCarousel />
+
+        <div className="catalog-layout" id="all-products">
           <CategoryPane tree={categoryTree} active={category} onSelect={selectCategory} />
 
           <div className="catalog-results">
@@ -183,6 +196,11 @@ export function CatalogPage() {
               </>
             )}
           </div>
+
+          <RightCartPanel
+            activeFilters={activeFilters}
+            onHighlight={key => { toggleFilter(key); scrollToGrid() }}
+          />
         </div>
       </main>
     </>

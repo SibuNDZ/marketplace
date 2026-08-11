@@ -294,6 +294,28 @@ export interface CategoryOption {
   parentSlug: string | null
 }
 
+/**
+ * A purchasable option on a product (backend V20).
+ *
+ * ONE axis, not two: `label` is a single flat choice ("Black", "XL",
+ * "2pcs black"), deliberately not colour x size as a matrix — see
+ * product-variants.md §2 for why. Price is ABSOLUTE, not a delta off the
+ * product price.
+ *
+ * These are still INERT on the buy path: the cart and order endpoints take
+ * a productId only, so nothing can be added to a cart per-variant yet.
+ * Render them as information; do not build a buy flow on them until
+ * product-variants.md step 2 lands.
+ */
+export interface VariantResponse {
+  id: number
+  label: string
+  sku?: string | null
+  price: string
+  stock: number
+  imageUrl: string | null
+}
+
 export interface ProductResponse {
   id: number
   name: string
@@ -316,6 +338,8 @@ export interface ProductResponse {
   handmade: boolean
   tags: string[]
   imageUrl: string | null    // null until a vendor uploads one — frontend falls back to a placeholder
+  /** Empty for products the vendor has not given options; never null. */
+  variants: VariantResponse[]
 }
 
 /** POST/PUT /api/v1/products body — mirrors backend ProductDtos.ProductRequest exactly. */

@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useRightPanel } from '../../context/RightPanelContext'
 import { bargains, topSelling, useProductPool } from '../../hooks/useProductPool'
 import { productImageUrl } from '../../lib/productImage'
+import { RatingLine } from '../product/RatingLine'
 import { QUICK_FILTERS, QuickFilterKey } from '../../data/quickFilters'
 
 /**
@@ -103,7 +104,10 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
     <div key={p.id} className="mini-product">
       <Link to={`/products/${p.id}`} className="mini-product__main" onClick={closeDrawer}>
         <img src={productImageUrl(p, 96, 96)} alt="" width={44} height={44} loading="lazy" />
-        <span className="mini-product__name">{p.name}</span>
+        <span className="mini-product__text">
+          <span className="mini-product__name">{p.name}</span>
+          <RatingLine product={p} compact />
+        </span>
         <span className="num mini-product__price">R{Number(p.price).toFixed(2)}</span>
       </Link>
       <button

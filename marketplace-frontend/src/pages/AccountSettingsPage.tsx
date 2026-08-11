@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError } from '../lib/api'
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
@@ -153,7 +153,20 @@ export function AccountSettingsPage() {
  */
 function BecomeSeller() {
   const qc = useQueryClient()
-  const [open, setOpen] = useState(false)
+  // Arriving on #start-selling means they already tapped a seller button, so
+  // the form opens itself and scrolls into view rather than making them hunt
+  // for a green box below the fold and press "Start selling" a second time.
+  const deepLinked = typeof window !== 'undefined' && window.location.hash === '#start-selling'
+  const [open, setOpen] = useState(deepLinked)
+  const sectionRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    if (!deepLinked) return
+    sectionRef.current?.scrollIntoView({
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      block: 'center',
+    })
+  }, [deepLinked])
   const [businessName, setBusinessName] = useState('')
   const [lastName, setLastName] = useState('')
   const [error, setError] = useState<string>()
@@ -172,7 +185,7 @@ function BecomeSeller() {
   })
 
   return (
-    <section style={{
+    <section id="start-selling" ref={sectionRef} style={{
       marginTop: 24, padding: 20, borderRadius: 'var(--r)',
       border: '1px solid var(--aloe)', background: 'var(--aloe-tint)',
     }}>

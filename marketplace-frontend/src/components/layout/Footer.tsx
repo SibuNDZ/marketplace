@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { PaymentMarks } from './PaymentMarks'
+import { useSellerEntry } from '../../hooks/useSellerEntry'
 
 // Footer rule: every item is a real destination. Topics we want but haven't
 // written yet exist as pages that say "under construction" (Careers, Contact)
@@ -32,6 +33,7 @@ const SOCIALS = [
 ]
 
 export function Footer() {
+  const sellerEntry = useSellerEntry()
   return (
     <footer aria-label="Site footer" style={{ background: 'var(--footer-bg)', marginTop: 48, color: 'var(--footer-text)' }}>
       <div style={{ maxWidth: 'var(--content-max)', margin: '0 auto', padding: '48px var(--gutter) 32px' }}>
@@ -58,7 +60,9 @@ export function Footer() {
 
           <Column title="Sell on eRestyu">
             <LinkItem to="/how-it-works">How to Buy / How to Sell</LinkItem>
-            <LinkItem to="/register">Start Selling</LinkItem>
+            {/* Same role-aware destination as the mobile seller strip: this
+                used to send a signed-in seller to a signup form. */}
+            {sellerEntry && <LinkItem to={sellerEntry.to}>{sellerEntry.label}</LinkItem>}
             <LinkItem to="/orders">Check Order Status</LinkItem>
           </Column>
 

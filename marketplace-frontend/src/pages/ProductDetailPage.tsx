@@ -142,11 +142,16 @@ export function ProductDetailPage() {
             <p style={{ fontSize: 12, color: 'var(--ink-soft)' }}>SKU: <span className="num">{product.sku ?? '-'}</span></p>
 
             {/* Who you are buying from. Vendors trade under a business name
-                (V19), so this is a storefront, not a person. */}
-            <div style={{
-              marginTop: 4, padding: 14, borderRadius: 'var(--r-sm)',
-              border: '1px solid var(--line)', display: 'flex', gap: 12, alignItems: 'center',
-            }}>
+                (V19), so this is a storefront, not a person — and now a real
+                link to that storefront, so a shopper who likes one item can
+                see the rest of the stall. */}
+            <Link
+              to={`/shop/${product.vendorId}`}
+              aria-label={`See all products from ${product.vendorName ?? 'this vendor'}`}
+              style={{
+                marginTop: 4, padding: 14, borderRadius: 'var(--r-sm)',
+                border: '1px solid var(--line)', display: 'flex', gap: 12, alignItems: 'center',
+              }}>
               <div aria-hidden style={{
                 width: 38, height: 38, borderRadius: '50%', background: stripe,
                 display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 15,
@@ -165,7 +170,8 @@ export function ProductDetailPage() {
                   </div>
                 )}
               </div>
-            </div>
+              <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--ink-soft)', fontSize: 18 }}>›</span>
+            </Link>
           </div>
         </div>
 

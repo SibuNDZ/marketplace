@@ -4,26 +4,15 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ApiError, api, ProductResponse } from '../../lib/api'
 import { StockBadge, OutOfStockOverlay } from '../ui/StockBadge'
 import { productImageUrl } from '../../lib/productImage'
+import { RatingLine } from './RatingLine'
 
 interface Props {
   product: ProductResponse
 }
 
-// Real aggregates only: no reviews → no stars. The empty state IS the
-// honest state — resist any urge to fill the gap.
-function Stars({ rating, reviewCount }: { rating: number; reviewCount: number }) {
-  const full = Math.round(rating)
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-      <span style={{ color: 'var(--marigold)', fontSize: 12 }}>
-        {'★'.repeat(full)}{'☆'.repeat(5 - full)}
-      </span>
-      <span style={{ fontSize: 11, color: 'var(--ink-soft)' }}>
-        <span className="num">{rating.toFixed(1)}</span> (<span className="num">{reviewCount.toLocaleString()}</span>)
-      </span>
-    </div>
-  )
-}
+// Star rendering moved to RatingLine, which every card surface shares so
+// the rating slot looks identical on the grid, the carousel and the panel.
+// Real aggregates only: no reviews means "New", never an invented score.
 
 function formatSold(n: number): string {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}K+ sold` : `${n} sold`
@@ -111,7 +100,10 @@ export function ProductCard({ product }: Props) {
           {product.name}
         </Link>
 
-        {product.reviewCount > 0 && <Stars rating={rating} reviewCount={product.reviewCount} />}
+        {/* Always present, never blank: a rated product shows its score, an
+            unrated one says "New" rather than leaving a gap that reads as a
+            missing element. */}
+        <RatingLine product={product} />
 
         {product.soldCount > 0 && (
           <span className="num" style={{ fontSize: 11, color: 'var(--ink-soft)' }}>

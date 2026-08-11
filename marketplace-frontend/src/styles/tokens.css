@@ -860,6 +860,37 @@ button { cursor: pointer; font: inherit; }
 }
 
 /* ============================================================
+   Vendor storefront (/shop/:vendorId)
+   ============================================================ */
+.shop-breadcrumb { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; color: var(--ink-soft); font-size: 13px; }
+.shop-breadcrumb a:hover { color: var(--aloe-deep); text-decoration: underline; }
+.shop-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--line);
+  border-radius: var(--r);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.shop-header__avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  color: white;
+  font-size: 21px;
+  font-weight: 800;
+}
+.shop-header h1 { font-family: var(--display); font-size: 22px; font-weight: 800; line-height: 1.2; }
+.shop-header p { color: var(--ink-soft); font-size: 13px; }
+
+/* ============================================================
    Right cart panel: sticky column ≥1280px, slide-in drawer below
    ============================================================ */
 /* The grid it lives in must never scroll under the fixed header when a
@@ -985,8 +1016,8 @@ button { cursor: pointer; font: inherit; }
 .mini-product__main { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
 .mini-product__main img { flex-shrink: 0; border-radius: var(--r-sm); object-fit: cover; }
 .mini-product__main:hover .mini-product__name { color: var(--aloe-deep); }
+.mini-product__text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .mini-product__name {
-  flex: 1;
   overflow: hidden;
   font-size: 12.5px;
   font-weight: 600;

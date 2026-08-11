@@ -30,12 +30,20 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
      * categoryIds is a list, not a single id, because a top-level category
      * has to match its children too — CategoryService.resolveToIds does
      * that expansion.
+     *
+     * vendorId powers the public storefront (?vendorId=). It goes HERE
+     * rather than reusing findByVendorId because that method deliberately
+     * includes soft-deleted rows for the vendor's own dashboard and carries
+     * a "never expose this on a public path" warning. Filtering through this
+     * query keeps the deletedAt guard, and composes with category/search so
+     * a shopper can narrow within one stall.
      */
     @Query("""
            SELECT p FROM Product p
            WHERE p.deletedAt IS NULL
              AND (:categoryIds IS NULL OR p.category.id IN :categoryIds)
              AND (:handmade IS NULL OR p.handmade = :handmade)
+             AND (:vendorId IS NULL OR p.vendor.id = :vendorId)
                    AND (:searchDisabled = TRUE
                         OR LOWER(p.name) LIKE LOWER(CONCAT('%', :searchText, '%'))
                         OR LOWER(p.vendor.username) LIKE LOWER(CONCAT('%', :searchText, '%')))
@@ -44,6 +52,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                @Param("handmade") Boolean handmade,
                                @Param("searchDisabled") boolean searchDisabled,
                                @Param("searchText") String searchText,
+                               @Param("vendorId") Long vendorId,
                                Pageable pageable);
 
     /**

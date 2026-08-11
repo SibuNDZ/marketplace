@@ -68,9 +68,14 @@ public class ProductController {
             @RequestParam(required = false) String category,
             @RequestParam(required = false) Boolean handmade,
             @RequestParam(required = false) String name,
+            // Public storefront filter: one vendor's LIVE listings, the link
+            // a market trader shares on WhatsApp. Live-only by construction
+            // (see ProductRepository.findFiltered) so it can never enumerate
+            // someone's archived products.
+            @RequestParam(required = false) Long vendorId,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
             Pageable pageable) {
-        return productService.list(category, handmade, name, pageable);
+        return productService.list(category, handmade, name, vendorId, pageable);
     }
 
     /**

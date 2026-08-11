@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext'
 import { api, CartResponse } from '../../lib/api'
 import { useCategoryTree } from '../../hooks/useCategoryTree'
 import { useCartDrawer } from '../../context/CartDrawerContext'
+import { useSellerEntry } from '../../hooks/useSellerEntry'
 import { ALL_SLUG } from '../../data/categories'
 import { CartDrawer } from '../cart/CartDrawer'
 import { RetailCategoryNav } from './RetailCategoryNav'
@@ -16,6 +17,7 @@ export function SiteHeader() {
   const navigate = useNavigate()
   const location = useLocation()
   const cartDrawer = useCartDrawer()
+  const sellerEntry = useSellerEntry()
   const [accountOpen, setAccountOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [expandedRoot, setExpandedRoot] = useState<string | null>(null)
@@ -237,10 +239,13 @@ export function SiteHeader() {
               ))}
             </nav>
             {/* Vendor acquisition happens in person at markets; the seller
-                door must be one obvious tap, not a scavenger hunt. */}
-            <Link to="/register?role=vendor" className="mobile-drawer__sell" onClick={() => setDrawerOpen(false)}>
-              🏪 Sell on eRestyu <span aria-hidden>→</span>
-            </Link>
+                door must be one obvious tap, not a scavenger hunt. Where it
+                leads depends on who is signed in — see useSellerEntry. */}
+            {sellerEntry && (
+              <Link to={sellerEntry.to} className="mobile-drawer__sell" onClick={() => setDrawerOpen(false)}>
+                🏪 {sellerEntry.label} <span aria-hidden>→</span>
+              </Link>
+            )}
             <nav className="mobile-account-links" aria-label="Account links">
               {user ? (
                 <>

@@ -12,6 +12,7 @@ import { RightCartPanel } from '../components/cart/RightCartPanel'
 import { ALL_SLUG } from '../data/categories'
 import { QUICK_FILTERS, QuickFilterKey, isQuickFilterKey } from '../data/quickFilters'
 import { useCategoryTree, findBySlug } from '../hooks/useCategoryTree'
+import { useSellerEntry } from '../hooks/useSellerEntry'
 
 function SectionDivider({ icon, label }: { icon: string; label: string }) {
   return (
@@ -45,6 +46,7 @@ export function CatalogPage() {
   // header's More panel without making them primary navigation targets.
   const { data: tree } = useCategoryTree(true)
   const categoryTree = tree ?? []
+  const sellerEntry = useSellerEntry()
 
   const selectCategory = (slug: string) => {
     const next = new URLSearchParams(searchParams)
@@ -125,10 +127,14 @@ export function CatalogPage() {
 
         {/* Mobile-only seller strip (hidden on desktop via .seller-strip).
             One line, below the hero, nothing louder: vendor acquisition is
-            in-person, and this is the tap a market vendor gets pointed at. */}
-        <Link to="/register?role=vendor" className="seller-strip">
-          🏪 Sell on eRestyu <span aria-hidden>→</span>
-        </Link>
+            in-person, and this is the tap a market vendor gets pointed at.
+            Destination and wording follow the signed-in role — a vendor sees
+            "List a product" pointing at their stall, not a signup pitch. */}
+        {sellerEntry && (
+          <Link to={sellerEntry.to} className="seller-strip">
+            🏪 {sellerEntry.label} <span aria-hidden>→</span>
+          </Link>
+        )}
 
         <ExpandedCategories tree={categoryTree} active={category} onSelect={browseCategory} />
 

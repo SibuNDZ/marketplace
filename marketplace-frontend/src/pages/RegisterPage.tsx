@@ -1,5 +1,5 @@
 import React, { FormEvent, useEffect, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { ApiError, auth as authApi, fieldErrorsFrom } from '../lib/api'
 
@@ -13,13 +13,13 @@ type UsernameState =
   | { kind: 'free' }
 
 export function RegisterPage() {
-  const { register } = useAuth()
+  const { register, user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
   // ?role=vendor preselects the seller card: the "Sell on eRestyu" entry
   // points land here with intent already declared, so don't ask twice.
   const [searchParams] = useSearchParams()
-  const [role, setRole] = useState<'CUSTOMER' | 'VENDOR'>(
-    searchParams.get('role')?.toLowerCase() === 'vendor' ? 'VENDOR' : 'CUSTOMER')
+  const wantsVendor = searchParams.get('role')?.toLowerCase() === 'vendor'
+  const [role, setRole] = useState<'CUSTOMER' | 'VENDOR'>(wantsVendor ? 'VENDOR' : 'CUSTOMER')
   const [form, setForm] = useState({
     email: '', password: '', confirmPassword: '', firstName: '', lastName: '', username: '',
     businessName: '',
@@ -149,6 +149,18 @@ export function RegisterPage() {
       case 'invalid':  return <span style={{ color: 'var(--clay)' }}>{usernameState.message}</span>
       default:         return <span style={{ color: 'var(--ink-soft)' }}>Your public name on eRestyu</span>
     }
+  }
+
+  // Someone already signed in cannot create an account, and showing them one
+  // reads as "you are not signed up" — the exact dead end that trapped a
+  // vendor who tapped a seller button and landed here. Send them where they
+  // were actually trying to go: a seller to their stall, and anyone who asked
+  // to sell (?role=vendor) to the self-serve upgrade. Waits for authLoading so
+  // a reload does not flash the form before the session rehydrates.
+  if (!authLoading && user) {
+    if (user.role === 'VENDOR') return <Navigate to="/vendor" replace />
+    if (wantsVendor && user.role === 'CUSTOMER') return <Navigate to="/account#start-selling" replace />
+    return <Navigate to="/" replace />
   }
 
   return (

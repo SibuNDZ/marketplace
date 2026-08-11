@@ -99,13 +99,26 @@ public class ProductService {
     public Page<ProductResponse> list(@Nullable String categorySlug,
                                       @Nullable Boolean handmade,
                                       Pageable pageable) {
-        return list(categorySlug, handmade, null, pageable);
+        return list(categorySlug, handmade, null, null, pageable);
         }
 
         @Transactional(readOnly = true)
         public Page<ProductResponse> list(@Nullable String categorySlug,
                           @Nullable Boolean handmade,
                           @Nullable String name,
+                          Pageable pageable) {
+        return list(categorySlug, handmade, name, null, pageable);
+        }
+
+    /**
+     * vendorId is the public storefront filter: LIVE products only, so it
+     * cannot be used to enumerate a vendor's archived listings.
+     */
+        @Transactional(readOnly = true)
+        public Page<ProductResponse> list(@Nullable String categorySlug,
+                          @Nullable Boolean handmade,
+                          @Nullable String name,
+                          @Nullable Long vendorId,
                           Pageable pageable) {
         List<Long> categoryIds = categorySlug == null || categorySlug.isBlank()
                 ? null
@@ -115,10 +128,10 @@ public class ProductService {
             ? ""
             : name.strip();
 
-        if (categoryIds == null && handmade == null && searchDisabled) return list(pageable);
+        if (categoryIds == null && handmade == null && searchDisabled && vendorId == null) return list(pageable);
 
         return toResponses(
-            productRepository.findFiltered(categoryIds, handmade, searchDisabled, searchText, pageable));
+            productRepository.findFiltered(categoryIds, handmade, searchDisabled, searchText, vendorId, pageable));
     }
 
     @Transactional(readOnly = true)

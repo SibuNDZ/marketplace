@@ -167,6 +167,34 @@ public class ProductService {
             productRepository.findFiltered(categoryIds, handmade, searchDisabled, searchText, vendorId, pageable));
     }
 
+    /**
+     * Related products for the "You might also like" shelf.
+     *
+     * The query text is the source product's own name plus its tags — the two
+     * fields a vendor chooses deliberately. Description is left out on
+     * purpose: it is prose, and feeding a paragraph in produces a tsquery of
+     * mostly incidental words that matches everything weakly.
+     *
+     * Returns an empty list rather than filler when nothing shares a signal.
+     * An empty shelf is the honest answer on a catalogue this size, and the
+     * frontend renders nothing at all in that case.
+     */
+    @Transactional(readOnly = true)
+    public List<ProductResponse> similar(Long productId, int limit) {
+        Product source = productRepository.findByIdAndDeletedAtIsNull(productId).orElse(null);
+        if (source == null) return List.of();
+
+        String text = source.getName() + " " + String.join(" ", source.getTags());
+        String tsQuery = buildTsQuery(text, " | ");
+        // No usable lexemes (a name of pure punctuation, or only stop words):
+        // a sentinel that matches nothing leaves the category bonus as the
+        // only signal, rather than throwing on an empty tsquery.
+        if (tsQuery.isEmpty()) tsQuery = "zzzz_no_match_zzzz";
+
+        Long categoryId = source.getCategory() == null ? null : source.getCategory().getId();
+        return toResponses(productRepository.findSimilar(productId, categoryId, tsQuery, limit));
+    }
+
     /** Terms are lexemes for to_tsquery, so anything that is not a letter or
      *  digit has to go: &, |, !, ':' and parentheses are tsquery OPERATORS,
      *  and a stray one turns a search into a syntax error rather than a
@@ -199,6 +227,18 @@ public class ProductService {
      * "do not run a full-text search".
      */
     String buildTsQuery(String rawSearchText) {
+        return buildTsQuery(rawSearchText, " & ");
+    }
+
+    /**
+     * joiner picks the semantics between the shopper's own words:
+     *   " & " for SEARCH — every word must appear, so adding a word narrows.
+     *   " | " for SIMILARITY — any overlap counts, because two products are
+     *         related when they share some words, never all of them. An AND
+     *         here would return nothing for almost every pair.
+     * Synonym expansion inside each group is identical either way.
+     */
+    String buildTsQuery(String rawSearchText, String joiner) {
         String[] rawTerms = TERM_SPLIT.split(rawSearchText.toLowerCase().strip());
 
         List<String> terms = new java.util.ArrayList<>();
@@ -221,7 +261,7 @@ public class ProductService {
             List<String> lexemes = group.stream().map(s -> s + ":*").toList();
             groups.add("(" + String.join(" | ", lexemes) + ")");
         }
-        return String.join(" & ", groups);
+        return String.join(joiner, groups);
     }
 
     @Transactional(readOnly = true)

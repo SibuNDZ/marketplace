@@ -14,12 +14,14 @@ import com.marketplace.api.exception.ProductExceptions.DuplicateSkuException;
 import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
 import com.marketplace.api.repository.ProductRepository;
 import com.marketplace.api.repository.ProductVariantRepository;
+import com.marketplace.api.repository.SearchSynonymRepository;
 import com.marketplace.api.repository.UserRepository;
 import com.marketplace.api.security.UserPrincipal;
 import com.marketplace.api.storage.ObjectStorageService;
 import org.springframework.lang.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -53,6 +55,7 @@ public class ProductService {
     private final ObjectStorageService storage;
     private final CategoryService categoryService;
     private final ProductVariantRepository variantRepository;
+    private final SearchSynonymRepository synonymRepository;
 
     public ProductService(ProductRepository productRepository,
                           UserRepository userRepository,
@@ -60,7 +63,8 @@ public class ProductService {
                           ProductPopularityRepository popularityRepository,
                           ObjectStorageService storage,
                           CategoryService categoryService,
-                          ProductVariantRepository variantRepository) {
+                          ProductVariantRepository variantRepository,
+                          SearchSynonymRepository synonymRepository) {
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.viewRecorder = viewRecorder;
@@ -68,6 +72,7 @@ public class ProductService {
         this.storage = storage;
         this.categoryService = categoryService;
         this.variantRepository = variantRepository;
+        this.synonymRepository = synonymRepository;
     }
 
     @Transactional(readOnly = true)
@@ -130,8 +135,93 @@ public class ProductService {
 
         if (categoryIds == null && handmade == null && searchDisabled && vendorId == null) return list(pageable);
 
+        // A real search goes through full-text (V21); everything else stays on
+        // the browse query. Splitting on searchDisabled rather than adding a
+        // branch inside one query keeps category browsing — the path every
+        // nav click uses — untouched by search changes.
+        if (!searchDisabled) {
+            String tsQuery = buildTsQuery(searchText);
+            if (!tsQuery.isEmpty()) {
+                // The Pageable's sort MUST be dropped. Spring Data appends a
+                // native query's Sort verbatim, which would both fight the
+                // ORDER BY already in the query and emit the JPA property
+                // name ("createdAt") where the column name is required —
+                // a 42601 syntax error, not a wrong order. Relevance is the
+                // only sensible ordering for a search anyway.
+                Pageable unsorted = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+                return toResponses(productRepository.searchRanked(
+                        categoryIds == null,
+                        categoryIds == null ? List.of(-1L) : categoryIds,
+                        handmade,
+                        vendorId,
+                        tsQuery,
+                        "%" + searchText + "%",
+                        unsorted));
+            }
+            // Nothing survived sanitising (punctuation only, or pure stop
+            // words). Fall through to the substring path rather than running
+            // an empty tsquery that matches nothing.
+        }
+
         return toResponses(
             productRepository.findFiltered(categoryIds, handmade, searchDisabled, searchText, vendorId, pageable));
+    }
+
+    /** Terms are lexemes for to_tsquery, so anything that is not a letter or
+     *  digit has to go: &, |, !, ':' and parentheses are tsquery OPERATORS,
+     *  and a stray one turns a search into a syntax error rather than a
+     *  no-match. Splitting on non-alphanumerics does the sanitising and the
+     *  tokenising in one pass, so there is no path where a raw fragment of
+     *  user input reaches the query string. */
+    private static final java.util.regex.Pattern TERM_SPLIT =
+            java.util.regex.Pattern.compile("[^\\p{Alnum}]+");
+
+    /** Hard ceiling on terms. Without it a pasted paragraph becomes a
+     *  hundred-clause tsquery, and each term is another synonym expansion. */
+    private static final int MAX_TERMS = 8;
+
+    /**
+     * Turns "rose gold watches" into a tsquery, widening each term with its
+     * curated synonyms:
+     *
+     *   (rose:*) & (gold:*) & (watch:* | timepiece:* | wristwatch:*)
+     *
+     * AND between the shopper's own words, OR within a word's synonym group.
+     * That is the combination that behaves the way people expect: adding a
+     * word narrows the result, and a synonym never narrows anything.
+     *
+     * The :* prefix match is deliberate on a catalogue this small. Stemming
+     * already handles watch/watches; prefixes additionally catch the partial
+     * word ("neckl") and compound-ish typing, and over-matching across 12
+     * products is a far better failure than an empty page.
+     *
+     * Returns "" when nothing usable survives, which the caller treats as
+     * "do not run a full-text search".
+     */
+    String buildTsQuery(String rawSearchText) {
+        String[] rawTerms = TERM_SPLIT.split(rawSearchText.toLowerCase().strip());
+
+        List<String> terms = new java.util.ArrayList<>();
+        for (String term : rawTerms) {
+            if (!term.isBlank() && !terms.contains(term)) terms.add(term);
+            if (terms.size() == MAX_TERMS) break;
+        }
+        if (terms.isEmpty()) return "";
+
+        Map<String, List<String>> synonyms = synonymRepository.findForTerms(terms);
+
+        List<String> groups = new java.util.ArrayList<>();
+        for (String term : terms) {
+            // LinkedHashSet: a term whose synonym is also a typed term must
+            // not appear twice inside its own OR group.
+            java.util.Set<String> group = new java.util.LinkedHashSet<>();
+            group.add(term);
+            group.addAll(synonyms.getOrDefault(term, List.of()));
+
+            List<String> lexemes = group.stream().map(s -> s + ":*").toList();
+            groups.add("(" + String.join(" | ", lexemes) + ")");
+        }
+        return String.join(" & ", groups);
     }
 
     @Transactional(readOnly = true)

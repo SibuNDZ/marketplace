@@ -56,6 +56,61 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                Pageable pageable);
 
     /**
+     * Full-text search (V21), used ONLY when the caller supplied ?name=.
+     *
+     * Native rather than JPQL because tsvector/tsquery and ts_rank have no
+     * JPQL equivalent, and deliberately a SEPARATE method from findFiltered
+     * rather than another branch inside it: the browse path is the one every
+     * category click goes through, and it is not worth risking a regression
+     * there to save a method.
+     *
+     * tsQuery arrives pre-built and pre-sanitised from ProductService — it is
+     * tsquery SYNTAX (lexemes joined by & and |), so it cannot be assembled
+     * from raw user input here. See buildTsQuery for the sanitisation.
+     *
+     * The vendor ILIKE is an OR alongside the vector match so that searching
+     * a stall name ("seorim") still finds that stall's products. Those rows
+     * score 0 from ts_rank and therefore sort below genuine text matches,
+     * which is the correct priority: a name match on the product beats a
+     * match on who sells it.
+     *
+     * Ordering is rank first, then newest, so an unranked vendor match still
+     * has a stable order rather than whatever the planner returns.
+     */
+    @Query(value = """
+           SELECT p.* FROM products p
+           LEFT JOIN users u ON u.id = p.vendor_id
+           WHERE p.deleted_at IS NULL
+             AND (:categoryFilterDisabled = TRUE OR p.category_id IN (:categoryIds))
+             AND (:handmade IS NULL OR p.handmade = :handmade)
+             AND (:vendorId IS NULL OR p.vendor_id = :vendorId)
+             AND (p.search_vector @@ to_tsquery('english', :tsQuery)
+                  OR u.business_name ILIKE :likeText
+                  OR u.username ILIKE :likeText)
+           ORDER BY ts_rank(p.search_vector, to_tsquery('english', :tsQuery)) DESC,
+                    p.created_at DESC
+           """,
+           countQuery = """
+           SELECT count(*) FROM products p
+           LEFT JOIN users u ON u.id = p.vendor_id
+           WHERE p.deleted_at IS NULL
+             AND (:categoryFilterDisabled = TRUE OR p.category_id IN (:categoryIds))
+             AND (:handmade IS NULL OR p.handmade = :handmade)
+             AND (:vendorId IS NULL OR p.vendor_id = :vendorId)
+             AND (p.search_vector @@ to_tsquery('english', :tsQuery)
+                  OR u.business_name ILIKE :likeText
+                  OR u.username ILIKE :likeText)
+           """,
+           nativeQuery = true)
+    Page<Product> searchRanked(@Param("categoryFilterDisabled") boolean categoryFilterDisabled,
+                               @Param("categoryIds") List<Long> categoryIds,
+                               @Param("handmade") Boolean handmade,
+                               @Param("vendorId") Long vendorId,
+                               @Param("tsQuery") String tsQuery,
+                               @Param("likeText") String likeText,
+                               Pageable pageable);
+
+    /**
      * ALL of one vendor's products, soft-deleted included — the vendor
      * dashboard shows archived items alongside live ones. Never expose this
      * on a public path.

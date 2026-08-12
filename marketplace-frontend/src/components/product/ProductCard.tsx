@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ApiError, api, ProductResponse } from '../../lib/api'
 import { StockBadge, OutOfStockOverlay } from '../ui/StockBadge'
-import { productImageUrl } from '../../lib/productImage'
+import { productImageUrl, productImageSrcSet, IMAGE_WIDTHS, IMAGE_SIZES } from '../../lib/productImage'
 import { RatingLine } from './RatingLine'
 
 interface Props {
@@ -74,9 +74,12 @@ export function ProductCard({ product }: Props) {
       {/* Product image */}
       <Link to={`/products/${product.id}`} style={{ position: 'relative', display: 'block', height: 180, flexShrink: 0, background: '#EAEEED' }}>
         <img
-          src={productImageUrl(product, 400, 300)}
+          src={productImageUrl(product, 640, 480)}
+          srcSet={productImageSrcSet(product, IMAGE_WIDTHS.card)}
+          sizes={IMAGE_SIZES.card}
           alt={product.name}
           loading="lazy"
+          decoding="async"
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
         {isNewIn(product) && (

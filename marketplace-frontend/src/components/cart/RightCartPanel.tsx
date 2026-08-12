@@ -6,7 +6,7 @@ import { ApiError, api, CartResponse, ProductResponse } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import { useRightPanel } from '../../context/RightPanelContext'
 import { bargains, topSelling, useProductPool } from '../../hooks/useProductPool'
-import { productImageUrl } from '../../lib/productImage'
+import { productImageUrl, productImageSrcSet, IMAGE_WIDTHS, IMAGE_SIZES } from '../../lib/productImage'
 import { RatingLine } from '../product/RatingLine'
 import { QUICK_FILTERS, QuickFilterKey } from '../../data/quickFilters'
 
@@ -103,7 +103,12 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
   const miniRow = (p: ProductResponse) => (
     <div key={p.id} className="mini-product">
       <Link to={`/products/${p.id}`} className="mini-product__main" onClick={closeDrawer}>
-        <img src={productImageUrl(p, 96, 96)} alt="" width={44} height={44} loading="lazy" />
+        <img
+          src={productImageUrl(p, 88, 88)}
+          srcSet={productImageSrcSet(p, IMAGE_WIDTHS.thumb)}
+          sizes={IMAGE_SIZES.thumb}
+          alt="" width={44} height={44} loading="lazy" decoding="async"
+        />
         <span className="mini-product__text">
           <span className="mini-product__name">{p.name}</span>
           <RatingLine product={p} compact />

@@ -1,5 +1,5 @@
-import React from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import React, { useLayoutEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigationType } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import { CartDrawerProvider } from './context/CartDrawerContext'
 import { RightPanelProvider } from './context/RightPanelContext'
@@ -50,11 +50,55 @@ function ChromeFooter() {
   return <Footer />
 }
 
+/**
+ * Resets scroll position when the route changes.
+ *
+ * React Router does not touch scroll on a client-side navigation, so a link
+ * clicked while scrolled down mounts the next page at the OLD offset. Click
+ * a related product from the shelf at the bottom of a product page and you
+ * land on the new page already scrolled to its footer, looking at nothing.
+ *
+ * This is a plain component rather than react-router's own
+ * <ScrollRestoration>, which only works under a data router
+ * (createBrowserRouter). This app uses BrowserRouter + a flat <Routes>, so
+ * that component is unavailable without restructuring the whole router.
+ *
+ * useLayoutEffect, not useEffect: it runs before the browser paints, so the
+ * page never flashes at the wrong offset on the way to the top.
+ *
+ * Two deliberate exceptions, both cases where jumping to the top is wrong:
+ *
+ *   - A hash link is a request to go somewhere specific. The product page's
+ *     "(4 reviews)" link is an href="#reviews"; scrolling to top would make
+ *     it do nothing at all.
+ *   - POP is the back/forward button. The browser restores the previous
+ *     offset itself, and overriding that means going Back from a product
+ *     dumps you at the top of the catalogue having lost your place in the
+ *     grid — the exact complaint this component exists to fix, inverted.
+ *
+ * Keyed on pathname only, NOT search. Filter and pagination changes on the
+ * catalogue rewrite the query string, and whether those should jump to the
+ * top is a separate product decision from "links are broken".
+ */
+function ScrollToTop() {
+  const { pathname, hash } = useLocation()
+  const navigationType = useNavigationType()
+
+  useLayoutEffect(() => {
+    if (hash) return
+    if (navigationType === 'POP') return
+    window.scrollTo(0, 0)
+  }, [pathname, hash, navigationType])
+
+  return null
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <CartDrawerProvider>
         <RightPanelProvider>
+        <ScrollToTop />
         <Routes>
           <Route path="/" element={<CatalogPage />} />
           <Route path="/products/:id" element={<ProductDetailPage />} />

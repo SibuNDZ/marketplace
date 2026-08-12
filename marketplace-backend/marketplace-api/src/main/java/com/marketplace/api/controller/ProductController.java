@@ -98,6 +98,18 @@ public class ProductController {
         return productService.get(id, me != null ? me.getId() : null);
     }
 
+    /**
+     * Related products, derived from the catalogue's own text rather than
+     * from behaviour there is none of yet. Public: it is the same visibility
+     * as the product page it sits on. Returns an empty list when nothing is
+     * genuinely related, which the frontend renders as no shelf at all.
+     */
+    @GetMapping("/{id}/similar")
+    public List<ProductResponse> similar(@PathVariable Long id,
+                                         @RequestParam(defaultValue = "6") int limit) {
+        return productService.similar(id, Math.clamp(limit, 1, 24));
+    }
+
     @PostMapping
     @PreAuthorize("hasAnyRole('VENDOR', 'ADMIN')")
     public ResponseEntity<ProductResponse> create(

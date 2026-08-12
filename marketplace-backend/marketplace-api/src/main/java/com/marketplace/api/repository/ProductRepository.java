@@ -111,6 +111,59 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                Pageable pageable);
 
     /**
+     * "You might also like" — related products, computed from what the
+     * catalogue already knows rather than from embeddings.
+     *
+     * There is no purchase or click history to mine (see the honest-signals
+     * rule), so co-purchase and collaborative filtering would return nothing.
+     * What DOES exist is text: the V21 search vector already carries each
+     * product's name (weight A), the vendor's own tags (B) and description
+     * (C). Two products that share vocabulary are related, and because tags
+     * are in the vector, tag overlap is scored without a separate array
+     * intersection.
+     *
+     * tsQuery is built from the SOURCE product's own words, OR-joined and
+     * synonym-expanded, so "Rose Gold Watch set" also reaches listings that
+     * say timepiece or jewellery. ts_rank then does the weighting: a shared
+     * name word outranks a shared description word, which is the right
+     * priority and is free.
+     *
+     * Same-category adds a flat bonus rather than being a filter. As a filter
+     * it would collapse to "more from this category", which the category page
+     * already is; as a bonus it lets a strong cross-category text match
+     * through, which is where the interesting suggestions live.
+     *
+     * The 10x / 0.2 weighting is calibrated, not arbitrary. ts_rank returns
+     * small absolute numbers (~0.05-0.3 even for a good match), so an
+     * intuitive-looking "rank * 4 + 1 for same category" lets the category
+     * bonus swamp the text score entirely: measured on the dev catalogue, a
+     * search from "Fynbos Honey 500g" ranked an unrelated basket ABOVE two
+     * other honeys purely because they shared a category. Scaling the rank up
+     * and the bonus down puts a genuine word match first, which is the whole
+     * point of the shelf.
+     *
+     * The WHERE is the relevance gate: a product must share SOME signal to
+     * appear at all. Without it a thin catalogue pads the shelf with whatever
+     * is newest, which looks like a recommendation but is not one.
+     */
+    @Query(value = """
+           SELECT p.* FROM products p
+           WHERE p.deleted_at IS NULL
+             AND p.id <> :productId
+             AND p.stock_quantity > 0
+             AND (p.search_vector @@ to_tsquery('english', :tsQuery)
+                  OR p.category_id = :categoryId)
+           ORDER BY (ts_rank(p.search_vector, to_tsquery('english', :tsQuery)) * 10
+                     + CASE WHEN p.category_id = :categoryId THEN 0.2 ELSE 0 END) DESC,
+                    p.created_at DESC
+           LIMIT :limit
+           """, nativeQuery = true)
+    List<Product> findSimilar(@Param("productId") Long productId,
+                              @Param("categoryId") Long categoryId,
+                              @Param("tsQuery") String tsQuery,
+                              @Param("limit") int limit);
+
+    /**
      * ALL of one vendor's products, soft-deleted included — the vendor
      * dashboard shows archived items alongside live ones. Never expose this
      * on a public path.

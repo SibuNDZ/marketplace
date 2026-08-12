@@ -8,6 +8,7 @@ import { vendorHue } from '../lib/vendorHue'
 import { ErrorSurface } from '../components/ui/ErrorSurface'
 import { productImageUrl } from '../lib/productImage'
 import { ProductReviews } from '../components/product/ProductReviews'
+import { SimilarProducts } from '../components/product/SimilarProducts'
 
 export function ProductDetailPage() {
   const { id } = useParams()
@@ -178,6 +179,8 @@ export function ProductDetailPage() {
         <div id="reviews">
           <ProductReviews productId={String(id)} summary={summary} />
         </div>
+
+        <SimilarProducts productId={String(id)} />
       </main>
     </>
   )

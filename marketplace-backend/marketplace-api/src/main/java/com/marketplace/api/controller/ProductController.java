@@ -41,16 +41,22 @@ public class ProductController {
             @NotNull @Min(-10000) @Max(10000) Integer delta) {}
     public record StockAdjustmentResponse(Long productId, int stock) {}
 
+    /** Trailing-24h buyer count, or null when below the display threshold. */
+    public record DemandResponse(Long recentBuyers) {}
+
     private final ProductService productService;
     private final ProductStockService productStockService;
     private final ProductImageService productImageService;
+    private final com.marketplace.api.discovery.ProductDemandService demandService;
 
     public ProductController(ProductService productService,
                              ProductStockService productStockService,
-                             ProductImageService productImageService) {
+                             ProductImageService productImageService,
+                             com.marketplace.api.discovery.ProductDemandService demandService) {
         this.productService = productService;
         this.productStockService = productStockService;
         this.productImageService = productImageService;
+        this.demandService = demandService;
     }
 
     /**
@@ -104,6 +110,22 @@ public class ProductController {
      * as the product page it sits on. Returns an empty list when nothing is
      * genuinely related, which the frontend renders as no shelf at all.
      */
+    /**
+     * Trailing-24h buyer count for the product page's urgency line.
+     *
+     * A separate call rather than a field on ProductResponse: this is a live
+     * count that only one page wants, and putting it on the DTO would run it
+     * for every card in every grid. The product page already makes a second
+     * call of exactly this shape for its live review summary.
+     *
+     * recentBuyers is null far more often than not — see ProductDemandService
+     * for why silence beats a badge that says "1 person".
+     */
+    @GetMapping("/{id}/demand")
+    public DemandResponse demand(@PathVariable Long id) {
+        return new DemandResponse(demandService.recentBuyers(id));
+    }
+
     @GetMapping("/{id}/similar")
     public List<ProductResponse> similar(@PathVariable Long id,
                                          @RequestParam(defaultValue = "6") int limit) {

@@ -69,11 +69,27 @@ public class ProductEmbeddingRepository {
                 limit);
     }
 
+    /**
+     * @Transactional is REQUIRED here, not decoration.
+     *
+     * This datasource runs with hikari auto-commit: false. A JdbcTemplate
+     * write outside a Spring-managed transaction therefore executes, reports
+     * a row count, and is then silently discarded when the connection returns
+     * to the pool — no exception, nothing persisted. Every JPA path in this
+     * app is already inside a transaction, which is why nothing else hit it.
+     *
+     * That is exactly how this shipped broken once: the sweep logged
+     * "Embedded 12 product(s)" while the table stayed empty, so the rows
+     * looked stale forever and were re-embedded on every run — a silent,
+     * recurring bill for work that was thrown away. The row-count check below
+     * exists so a future failure is loud instead of invisible.
+     */
+    @org.springframework.transaction.annotation.Transactional
     public void save(long productId, String hash, double[] vector) {
         Double[] boxed = new Double[vector.length];
         for (int i = 0; i < vector.length; i++) boxed[i] = vector[i];
 
-        jdbc.update(con -> {
+        int updated = jdbc.update(con -> {
             var ps = con.prepareStatement("""
                     UPDATE products
                     SET embedding = ?, embedding_hash = ?, embedded_at = CURRENT_TIMESTAMP
@@ -85,6 +101,11 @@ public class ProductEmbeddingRepository {
             ps.setLong(3, productId);
             return ps;
         });
+
+        if (updated != 1) {
+            throw new IllegalStateException(
+                    "Embedding write affected " + updated + " rows for product " + productId);
+        }
     }
 
     /**

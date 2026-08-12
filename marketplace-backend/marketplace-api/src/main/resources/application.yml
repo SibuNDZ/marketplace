@@ -84,6 +84,25 @@ app:
     verification-expiry-seconds: ${VERIFICATION_TOKEN_EXPIRY_SECONDS:86400}
     # 1h: a reset link is an account-takeover primitive sitting in an inbox.
     reset-expiry-seconds: ${RESET_TOKEN_EXPIRY_SECONDS:3600}
+  embeddings:
+    # Voyage AI. Anthropic does not offer an embedding model, so the
+    # ANTHROPIC_API_KEY below cannot serve this — it is a separate provider
+    # and a separate key.
+    #
+    # Blank default for the same fault-isolation reason as the AI key: with
+    # no key the sweep is inert and related-products falls back to the
+    # lexical path (V21). Missing embeddings must never be a boot failure or
+    # an empty shelf.
+    api-key: ${VOYAGE_API_KEY:}
+    # voyage-4: 1024 dimensions, unit-normalised, so cosine == dot product.
+    model: voyage-4
+    # One batch every 5 minutes. Deliberately unhurried — the catalogue is
+    # small, embeddings only change when a vendor edits text, and a slow
+    # sweep cannot stampede the provider.
+    sweep-ms: 300000
+    initial-delay-ms: 20000
+    batch-size: 16
+
   ai:
     # Blank default, NOT fail-fast. Unlike JWT_SECRET, a missing key here must
     # degrade to "the draft button 500s" rather than a boot failure — see

@@ -185,7 +185,7 @@ public class ProductService {
         if (source == null) return List.of();
 
         String text = source.getName() + " " + String.join(" ", source.getTags());
-        String tsQuery = buildTsQuery(text, " | ");
+        String tsQuery = buildSimilarityQuery(text);
         // No usable lexemes (a name of pure punctuation, or only stop words):
         // a sentinel that matches nothing leaves the category bonus as the
         // only signal, rather than throwing on an empty tsquery.
@@ -226,8 +226,47 @@ public class ProductService {
      * Returns "" when nothing usable survives, which the caller treats as
      * "do not run a full-text search".
      */
+    /**
+     * Words that describe packaging or quantity rather than the thing itself.
+     * They are common across unrelated listings, so on the SIMILARITY path
+     * they manufacture matches: "Villa fragrance and body care gift set" and
+     * "Rose Gold Watch set" were being called related purely because both end
+     * in "set". That is the characteristic failure of text similarity, and it
+     * is what a shopper notices first.
+     *
+     * Dropped ONLY for similarity, never for search. A shopper who types
+     * "gift set" means it and must still find one; a product that merely
+     * happens to be sold as a set is not thereby related to every other set.
+     *
+     * Kept in code rather than beside the synonyms in the database because
+     * this is a ranking parameter, not editorial vocabulary: changing it
+     * changes what counts as related, which wants re-testing rather than a
+     * live edit. Move it to a table if it ever grows past a screenful.
+     */
+    private static final java.util.Set<String> COMMODITY_TERMS = java.util.Set.of(
+            "set", "sets", "pack", "packs", "packet", "pcs", "pc", "piece", "pieces",
+            "bundle", "combo", "kit", "box", "bag", "size", "item", "items", "product",
+            "ml", "kg", "cm", "mm", "g", "l");
+
+    /**
+     * A bare quantity, with or without a unit: 350g, 500ml, 250, 67. Two
+     * products sharing a pack size have nothing in common, and on this
+     * catalogue "350g" alone would have tied two unrelated pantry items.
+     */
+    private static final java.util.regex.Pattern MEASUREMENT =
+            java.util.regex.Pattern.compile("^\\d+[a-z]{0,2}$");
+
+    private static boolean isCommodityTerm(String term) {
+        return COMMODITY_TERMS.contains(term) || MEASUREMENT.matcher(term).matches();
+    }
+
     String buildTsQuery(String rawSearchText) {
-        return buildTsQuery(rawSearchText, " & ");
+        return buildTsQuery(rawSearchText, " & ", false);
+    }
+
+    /** Query built from a product's own words, to find products like it. */
+    String buildSimilarityQuery(String rawText) {
+        return buildTsQuery(rawText, " | ", true);
     }
 
     /**
@@ -238,12 +277,27 @@ public class ProductService {
      *         here would return nothing for almost every pair.
      * Synonym expansion inside each group is identical either way.
      */
-    String buildTsQuery(String rawSearchText, String joiner) {
+    /**
+     * similarityMode switches three things together, because they are one
+     * decision ("find things LIKE this" vs "find what the shopper typed"):
+     * terms are OR-joined, commodity words are dropped, and prefix matching
+     * is off.
+     *
+     * Prefix matching earns its place in SEARCH — a shopper types a fragment
+     * ("neckl") and a zero-result page is the worst outcome on a small
+     * catalogue. In similarity the source terms are already complete words
+     * taken from a product's own name, so a prefix only reaches words that
+     * merely start the same: measured here, "body care" matched "bodice"
+     * because both stem to a common prefix. That is noise, not a relation.
+     */
+    String buildTsQuery(String rawSearchText, String joiner, boolean similarityMode) {
         String[] rawTerms = TERM_SPLIT.split(rawSearchText.toLowerCase().strip());
 
         List<String> terms = new java.util.ArrayList<>();
         for (String term : rawTerms) {
-            if (!term.isBlank() && !terms.contains(term)) terms.add(term);
+            if (term.isBlank() || terms.contains(term)) continue;
+            if (similarityMode && isCommodityTerm(term)) continue;
+            terms.add(term);
             if (terms.size() == MAX_TERMS) break;
         }
         if (terms.isEmpty()) return "";
@@ -258,7 +312,8 @@ public class ProductService {
             group.add(term);
             group.addAll(synonyms.getOrDefault(term, List.of()));
 
-            List<String> lexemes = group.stream().map(s -> s + ":*").toList();
+            String suffix = similarityMode ? "" : ":*";
+            List<String> lexemes = group.stream().map(s -> s + suffix).toList();
             groups.add("(" + String.join(" | ", lexemes) + ")");
         }
         return String.join(joiner, groups);

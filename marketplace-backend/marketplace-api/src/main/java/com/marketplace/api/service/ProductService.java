@@ -56,6 +56,10 @@ public class ProductService {
     private final CategoryService categoryService;
     private final ProductVariantRepository variantRepository;
     private final SearchSynonymRepository synonymRepository;
+    private final com.marketplace.api.discovery.ProductEmbeddingRepository embeddingRepository;
+
+    /** Cosine floor for a pair to count as related. See semanticallySimilar. */
+    private static final double MIN_SIMILARITY = 0.55;
 
     public ProductService(ProductRepository productRepository,
                           UserRepository userRepository,
@@ -64,7 +68,8 @@ public class ProductService {
                           ObjectStorageService storage,
                           CategoryService categoryService,
                           ProductVariantRepository variantRepository,
-                          SearchSynonymRepository synonymRepository) {
+                          SearchSynonymRepository synonymRepository,
+                          com.marketplace.api.discovery.ProductEmbeddingRepository embeddingRepository) {
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.viewRecorder = viewRecorder;
@@ -73,6 +78,7 @@ public class ProductService {
         this.categoryService = categoryService;
         this.variantRepository = variantRepository;
         this.synonymRepository = synonymRepository;
+        this.embeddingRepository = embeddingRepository;
     }
 
     @Transactional(readOnly = true)
@@ -184,6 +190,17 @@ public class ProductService {
         Product source = productRepository.findByIdAndDeletedAtIsNull(productId).orElse(null);
         if (source == null) return List.of();
 
+        // Semantic first when both sides have vectors (V22). It relates
+        // products by MEANING, so a fragrance set can reach a body lotion
+        // without sharing a word, and it cannot be fooled by shared filler
+        // like "set" — the failure the lexical path had to be patched for.
+        List<ProductResponse> semantic = semanticallySimilar(productId, limit);
+        if (!semantic.isEmpty()) return semantic;
+
+        // Falls through whenever embeddings are absent: no VOYAGE_API_KEY, a
+        // product the sweep has not reached yet, or a provider outage. The
+        // lexical path is a real answer, not a placeholder, so the shelf keeps
+        // working rather than emptying.
         String text = source.getName() + " " + String.join(" ", source.getTags());
         String tsQuery = buildSimilarityQuery(text);
         // No usable lexemes (a name of pure punctuation, or only stop words):
@@ -193,6 +210,60 @@ public class ProductService {
 
         Long categoryId = source.getCategory() == null ? null : source.getCategory().getId();
         return toResponses(productRepository.findSimilar(productId, categoryId, tsQuery, limit));
+    }
+
+    /**
+     * Nearest neighbours by embedding cosine similarity.
+     *
+     * Voyage returns unit-length vectors, so cosine reduces to a dot product
+     * and no normalisation is needed here. Comparing in Java rather than SQL
+     * is deliberate at this catalogue size (see ProductEmbeddingRepository);
+     * it is also what lets this stay independent of pgvector.
+     *
+     * MIN_SIMILARITY is the whole quality gate. Over a small catalogue the
+     * nearest neighbour of anything is still *something*, so without a floor
+     * every product would show a full shelf of its least-unrelated peers —
+     * exactly the "looks like a recommendation but isn't" failure the lexical
+     * version was careful to avoid.
+     *
+     * The 0.55 floor is a STARTING VALUE, not a measured one: it is picked
+     * from the usual range for unit-normalised sentence embeddings and must
+     * be re-checked against real scores once the catalogue is embedded.
+     * Symptoms to tune on: unrelated products appearing means raise it,
+     * obviously-related pairs missing means lower it.
+     */
+    private List<ProductResponse> semanticallySimilar(Long productId, int limit) {
+        double[] source = embeddingRepository.embeddingOf(productId);
+        if (source == null) return List.of();
+
+        Map<Long, double[]> candidates = embeddingRepository.liveEmbeddings();
+        record Scored(Long id, double score) {}
+
+        List<Scored> ranked = new java.util.ArrayList<>();
+        for (Map.Entry<Long, double[]> entry : candidates.entrySet()) {
+            if (entry.getKey().equals(productId)) continue;
+            double score = dot(source, entry.getValue());
+            if (score >= MIN_SIMILARITY) ranked.add(new Scored(entry.getKey(), score));
+        }
+        if (ranked.isEmpty()) return List.of();
+
+        ranked.sort(java.util.Comparator.comparingDouble(Scored::score).reversed());
+        List<Long> ids = ranked.stream().limit(limit).map(Scored::id).toList();
+
+        // findAllById returns rows in arbitrary order; re-sort into the
+        // ranked order or the whole scoring exercise is discarded.
+        Map<Long, Product> byId = productRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(Product::getId, Function.identity()));
+        return toResponses(ids.stream().map(byId::get).filter(Objects::nonNull).toList());
+    }
+
+    /** Cosine for unit vectors. Length mismatch means a model changed
+     *  underneath us, which must not silently score as "unrelated". */
+    private static double dot(double[] a, double[] b) {
+        if (a.length != b.length) return -1;
+        double sum = 0;
+        for (int i = 0; i < a.length; i++) sum += a[i] * b[i];
+        return sum;
     }
 
     /** Terms are lexemes for to_tsquery, so anything that is not a letter or

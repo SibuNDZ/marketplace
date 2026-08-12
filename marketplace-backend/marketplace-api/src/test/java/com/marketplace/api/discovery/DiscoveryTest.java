@@ -290,4 +290,183 @@ class DiscoveryTest {
         mockMvc.perform(get("/api/v1/me/favorites"))
                 .andExpect(status().isUnauthorized());
     }
+
+    // ── related products ─────────────────────────────────────────────────
+    //
+    // These run WITHOUT a Voyage key, so no product has an embedding and every
+    // result arrives through the lexical tier. That is not a limitation of the
+    // tests, it is the fallback path in production whenever the sweep has not
+    // reached a product yet, and it is the path that exercises the native
+    // scored query — the part unit tests cannot reach.
+    //
+    // Nonsense words are deliberate: every fixture product files under the
+    // 'other' category, so the category branch of the relevance gate matches
+    // ALL of them and a common word would drag in rows from other test methods
+    // sharing this container.
+
+    /**
+     * Gives a product a hand-made unit vector, standing in for a Voyage call.
+     * Only products with a non-null embedding are semantic candidates, and no
+     * other fixture sets one, so this isolates the semantic tier to exactly
+     * the products a test opts in.
+     *
+     * The array is inlined rather than bound: JdbcTemplate has no mapping for
+     * double[] -> float8[], and these values are test literals. The explicit
+     * transaction is required because hikari.auto-commit is false — the same
+     * trap that made embedding writes vanish in production once already.
+     */
+    private void setEmbedding(Long productId, double... vector) {
+        StringBuilder literal = new StringBuilder("ARRAY[");
+        for (int i = 0; i < vector.length; i++) {
+            if (i > 0) literal.append(',');
+            literal.append(vector[i]);
+        }
+        literal.append("]::double precision[]");
+        new org.springframework.transaction.support.TransactionTemplate(tm).execute(status -> {
+            jdbc.update("UPDATE products SET embedding = " + literal
+                    + ", embedding_hash = 'test-hash', embedded_at = now() WHERE id = ?", productId);
+            return null;
+        });
+    }
+
+    /** Only the products this test made, in the order the shelf returned them. */
+    private List<Long> shelfOrderAmong(Long sourceId, int limit, List<Long> mine) {
+        return productService.similar(sourceId, limit).stream()
+                .map(com.marketplace.api.dto.ProductDtos.ProductResponse::id)
+                .filter(mine::contains)
+                .toList();
+    }
+
+    @Test
+    void similar_findsProductsSharingWords() {
+        Product source = fixtures.product("Zibbertron Lantern", "SKU-ZB-SRC", new BigDecimal("50"), 5);
+        Product match  = fixtures.product("Zibbertron Holder", "SKU-ZB-M1", new BigDecimal("40"), 5);
+
+        var results = productService.similar(source.getId(), 6);
+
+        assertThat(results).extracting(com.marketplace.api.dto.ProductDtos.ProductResponse::id)
+                .contains(match.getId())
+                .doesNotContain(source.getId());   // never recommend itself
+    }
+
+    @Test
+    void similar_qualityBreaksTiesBetweenIdenticalTextMatches() {
+        Product source = fixtures.product("Quaxil Teapot", "SKU-QX-SRC", new BigDecimal("50"), 5);
+        // Identical names, so identical ts_rank and identical category bonus.
+        // Text relevance cannot separate these two; only quality can.
+        Product plain   = fixtures.product("Quaxil Mug", "SKU-QX-P1", new BigDecimal("40"), 5);
+        Product praised = fixtures.product("Quaxil Mug", "SKU-QX-R1", new BigDecimal("40"), 5);
+
+        addReview(praised.getId(), 5);
+        addReview(praised.getId(), 5);
+        addReview(praised.getId(), 4);
+        popularityJob.rebuild();
+
+        assertThat(shelfOrderAmong(source.getId(), 12, List.of(plain.getId(), praised.getId())))
+                .containsExactly(praised.getId(), plain.getId());
+    }
+
+    @Test
+    void similar_vendorCapStopsOneStallFillingTheShelf() {
+        User hog   = fixtures.vendor("wibble_hog");
+        User small = fixtures.vendor("wibble_small");
+
+        Product source = fixtures.productForVendor(
+                "Wibblesnap Kitchen", "SKU-WB-SRC", new BigDecimal("50"), 5, hog);
+        // The hog's four products all match as strongly as each other.
+        List<Long> hogged = new java.util.ArrayList<>();
+        for (int i = 1; i <= 4; i++) {
+            hogged.add(fixtures.productForVendor(
+                    "Wibblesnap Bowl", "SKU-WB-H" + i, new BigDecimal("40"), 5, hog).getId());
+        }
+        // One competitor, matching on the same word.
+        Product rival = fixtures.productForVendor(
+                "Wibblesnap Bowl", "SKU-WB-S1", new BigDecimal("40"), 5, small);
+
+        List<Long> mine = new java.util.ArrayList<>(hogged);
+        mine.add(rival.getId());
+        List<Long> shelf = shelfOrderAmong(source.getId(), 6, mine);
+
+        // Without the cap the rival would sit at index 4, behind all four of
+        // the hog's listings. The cap pulls it up to third at the latest.
+        assertThat(shelf.indexOf(rival.getId())).isLessThanOrEqualTo(2);
+        // ...and the cap must not have dropped anyone: all five still present.
+        assertThat(shelf).hasSize(5);
+    }
+
+    @Test
+    void similar_categoryOnlyMatchIsNotCalledAKeywordMatch() {
+        // A name no other product shares a word with. Everything that comes
+        // back reached the shelf through the category branch alone, which also
+        // exercises the NULL-safe keywordMatch projection.
+        Product source = fixtures.product("Vorplequink Artifact", "SKU-VQ-SRC", new BigDecimal("50"), 5);
+        fixtures.product("Grumbold Pediment", "SKU-VQ-O1", new BigDecimal("40"), 5);
+
+        var results = productService.similar(source.getId(), 6);
+
+        assertThat(results).isNotEmpty();
+        assertThat(results).extracting(
+                        com.marketplace.api.dto.ProductDtos.ProductResponse::similarityReason)
+                .containsOnly("Same category");
+    }
+
+    @Test
+    void similar_semanticShelfIsNotPaddedWithSameCategoryProducts() {
+        // Production has an embedding on every product, so this is the normal
+        // path, and the danger is subtle: once lexical results are allowed to
+        // FILL a short shelf, the same-category rows the lexical gate admits
+        // would quietly appear behind every genuine match on the site.
+        Product source = fixtures.product("Ploofnix Vessel", "SKU-PX-SRC", new BigDecimal("50"), 5);
+        Product related = fixtures.product("Snorkbeam Chalice", "SKU-PX-R1", new BigDecimal("40"), 5);
+        // The decoy is what makes this test mean anything. It shares the
+        // 'other' category with the source, shares no words, and has no
+        // embedding, so it is exactly the padding this test forbids. Relying
+        // on other test methods to supply such a row would make the assertion
+        // silently vacuous whenever this test ran alone — which it did.
+        Product decoy = fixtures.product("Zarquon Trivet", "SKU-PX-D1", new BigDecimal("30"), 5);
+
+        setEmbedding(source.getId(), 1.0, 0.0, 0.0);
+        setEmbedding(related.getId(), 0.9, 0.4359, 0.0);   // cosine 0.9, comfortably related
+
+        var results = productService.similar(source.getId(), 6);
+
+        assertThat(results).extracting(com.marketplace.api.dto.ProductDtos.ProductResponse::id)
+                .doesNotContain(decoy.getId());
+        assertThat(results).extracting(
+                        com.marketplace.api.dto.ProductDtos.ProductResponse::similarityReason)
+                .containsOnly("Similar item");
+        assertThat(results).extracting(com.marketplace.api.dto.ProductDtos.ProductResponse::id)
+                .contains(related.getId());
+    }
+
+    @Test
+    void similar_semanticOutranksAStrongerLookingTextMatch() {
+        // ts_rank * 10 comfortably exceeds 1.0 while cosine cannot, so ranking
+        // the two on one scale would put text matches above every semantic
+        // one. The word-sharing product here scores higher NUMERICALLY and
+        // must still come second.
+        Product source = fixtures.product("Glimberwock Ewer", "SKU-GW-SRC", new BigDecimal("50"), 5);
+        Product semantic = fixtures.product("Thrimbly Decanter", "SKU-GW-S1", new BigDecimal("40"), 5);
+        Product wordy = fixtures.product("Glimberwock Tureen", "SKU-GW-W1", new BigDecimal("40"), 5);
+
+        setEmbedding(source.getId(), 1.0, 0.0, 0.0);
+        setEmbedding(semantic.getId(), 0.7, 0.7141, 0.0);   // cosine 0.70
+        // `wordy` gets NO embedding, so it can only arrive through the lexical
+        // tier — exactly a product the sweep has not reached yet.
+
+        assertThat(shelfOrderAmong(source.getId(), 6, List.of(semantic.getId(), wordy.getId())))
+                .containsExactly(semantic.getId(), wordy.getId());
+    }
+
+    @Test
+    void similar_outOfStockAndDeletedNeverAppear() {
+        Product source  = fixtures.product("Fnordly Basket", "SKU-FN-SRC", new BigDecimal("50"), 5);
+        Product soldOut = fixtures.product("Fnordly Liner", "SKU-FN-O1", new BigDecimal("40"), 0);
+        Product gone    = fixtures.product("Fnordly Cover", "SKU-FN-D1", new BigDecimal("40"), 5);
+        productRepository.delete(gone);
+
+        assertThat(productService.similar(source.getId(), 6))
+                .extracting(com.marketplace.api.dto.ProductDtos.ProductResponse::id)
+                .doesNotContain(soldOut.getId(), gone.getId());
+    }
 }

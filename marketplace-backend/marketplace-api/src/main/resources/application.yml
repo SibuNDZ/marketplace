@@ -171,6 +171,21 @@ app:
   discovery:
     popularity-refresh-ms: 3600000        # hourly
     view-retention-cron: "0 15 3 * * *"   # nightly sweep, 90-day window
+    similar:
+      # Cosine floor for "related". Measured against the live catalogue:
+      # genuine matches ran 0.610-0.747 and the nearest unrelated product sat
+      # at 0.507, so this falls inside a real gap. Raise it if unrelated
+      # products appear, lower it if obvious pairs go missing.
+      min-similarity: ${SIMILAR_MIN_SIMILARITY:0.55}
+      # How much rating/sales/views may move the order. Multiplicative, so
+      # 0.15 means a flawless product ranks at most 15% above an identically
+      # relevant one. Push this high and the shelf becomes a bestseller list
+      # that ignores what the shopper is actually looking at.
+      quality-weight: ${SIMILAR_QUALITY_WEIGHT:0.15}
+      # Max products per vendor on one shelf. One stall owns half this
+      # catalogue today, and without a cap its listings fill every shelf on
+      # the site. Never shrinks a shelf — capped items refill empty slots.
+      vendor-cap: ${SIMILAR_VENDOR_CAP:2}
   storage:
     r2:
       # Fail-fast, no defaults — same philosophy as JWT_SECRET/STRIPE_SECRET_KEY.

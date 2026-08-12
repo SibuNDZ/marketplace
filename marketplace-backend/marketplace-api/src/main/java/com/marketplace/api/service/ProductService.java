@@ -6,6 +6,7 @@ import com.marketplace.api.dto.ProductDtos.ProductResponse;
 import com.marketplace.api.discovery.ProductPopularity;
 import com.marketplace.api.discovery.ProductPopularityRepository;
 import com.marketplace.api.discovery.ProductViewRecorder;
+import com.marketplace.api.discovery.SimilarityRanker;
 import com.marketplace.api.entity.Product;
 import com.marketplace.api.entity.ProductVariant;
 import com.marketplace.api.entity.Category;
@@ -57,9 +58,16 @@ public class ProductService {
     private final ProductVariantRepository variantRepository;
     private final SearchSynonymRepository synonymRepository;
     private final com.marketplace.api.discovery.ProductEmbeddingRepository embeddingRepository;
+    private final SimilarityRanker ranker;
 
-    /** Cosine floor for a pair to count as related. See semanticallySimilar. */
-    private static final double MIN_SIMILARITY = 0.55;
+    /**
+     * Cosine floor for a pair to count as related. See semanticCandidates.
+     *
+     * Now configurable rather than a compile-time constant: it was written as
+     * a guess, it turned out to need checking against real scores, and a value
+     * that gets tuned belongs where it can be tuned without a deploy.
+     */
+    private final double minSimilarity;
 
     public ProductService(ProductRepository productRepository,
                           UserRepository userRepository,
@@ -69,7 +77,12 @@ public class ProductService {
                           CategoryService categoryService,
                           ProductVariantRepository variantRepository,
                           SearchSynonymRepository synonymRepository,
-                          com.marketplace.api.discovery.ProductEmbeddingRepository embeddingRepository) {
+                          com.marketplace.api.discovery.ProductEmbeddingRepository embeddingRepository,
+                          SimilarityRanker ranker,
+                          @org.springframework.beans.factory.annotation.Value(
+                                  "${app.discovery.similar.min-similarity:0.55}") double minSimilarity) {
+        this.ranker = ranker;
+        this.minSimilarity = minSimilarity;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.viewRecorder = viewRecorder;
@@ -190,17 +203,18 @@ public class ProductService {
         Product source = productRepository.findByIdAndDeletedAtIsNull(productId).orElse(null);
         if (source == null) return List.of();
 
-        // Semantic first when both sides have vectors (V22). It relates
-        // products by MEANING, so a fragrance set can reach a body lotion
-        // without sharing a word, and it cannot be fooled by shared filler
-        // like "set" — the failure the lexical path had to be patched for.
-        List<ProductResponse> semantic = semanticallySimilar(productId, limit);
-        if (!semantic.isEmpty()) return semantic;
+        // BOTH signals are gathered, then ranked together by SimilarityRanker.
+        // Previously the semantic path SHORT-CIRCUITED this method: whenever
+        // embeddings returned anything at all, the text score, the category
+        // bonus, and every popularity signal PopularityJob computes hourly
+        // were discarded, and cosine alone decided the whole shelf.
+        //
+        // Semantic still outranks lexical, because their scores are on
+        // different scales and only the tier comparison between them is
+        // meaningful. What changed is that lexical results now FILL a shelf
+        // the embeddings left short instead of being thrown away.
+        Map<Long, Double> semantic = semanticCandidates(productId);
 
-        // Falls through whenever embeddings are absent: no VOYAGE_API_KEY, a
-        // product the sweep has not reached yet, or a provider outage. The
-        // lexical path is a real answer, not a placeholder, so the shelf keeps
-        // working rather than emptying.
         String text = source.getName() + " " + String.join(" ", source.getTags());
         String tsQuery = buildSimilarityQuery(text);
         // No usable lexemes (a name of pure punctuation, or only stop words):
@@ -209,52 +223,121 @@ public class ProductService {
         if (tsQuery.isEmpty()) tsQuery = "zzzz_no_match_zzzz";
 
         Long categoryId = source.getCategory() == null ? null : source.getCategory().getId();
-        return toResponses(productRepository.findSimilar(productId, categoryId, tsQuery, limit));
+
+        // Over-fetch on purpose. Ranking and the vendor cap both reorder, so a
+        // SQL LIMIT of exactly `limit` would let the database pre-decide a
+        // shelf that Java is about to rearrange.
+        List<ProductRepository.ScoredCandidate> lexical =
+                productRepository.findSimilarScored(productId, categoryId, tsQuery, limit * 4);
+
+        if (semantic.isEmpty() && lexical.isEmpty()) return List.of();
+
+        // The lexical gate admits same-category rows that share no words. Those
+        // are a LAST RESORT, not filler: appending "some other thing from this
+        // category" behind three genuine matches pads a shelf that was honest
+        // before, and a padded shelf looks like a recommendation without being
+        // one. So they are allowed only when there is nothing better anywhere,
+        // which is exactly the old behaviour when embeddings were absent.
+        boolean categoryOnlyAllowed = semantic.isEmpty();
+
+        Map<Long, Double> lexicalScore = new java.util.LinkedHashMap<>();
+        java.util.Set<Long> keywordMatched = new java.util.HashSet<>();
+        for (ProductRepository.ScoredCandidate row : lexical) {
+            if (!row.getKeywordMatch() && !categoryOnlyAllowed) continue;
+            lexicalScore.put(row.getProductId(), row.getRelevance());
+            if (row.getKeywordMatch()) keywordMatched.add(row.getProductId());
+        }
+
+        java.util.Set<Long> ids = new java.util.LinkedHashSet<>(semantic.keySet());
+        ids.addAll(lexicalScore.keySet());
+
+        Map<Long, Product> byId = productRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(Product::getId, Function.identity()));
+        Map<Long, ProductPopularity> popularity = popularityRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(ProductPopularity::getProductId, Function.identity()));
+
+        List<SimilarityRanker.Candidate> candidates = new java.util.ArrayList<>(ids.size());
+        for (Long id : ids) {
+            Product candidate = byId.get(id);
+            if (candidate == null) continue;   // raced with a delete between queries
+            boolean isSemantic = semantic.containsKey(id);
+            // Null popularity is NORMAL — a product created since the last
+            // hourly rebuild has no row yet. Zeros are the truthful quality
+            // for it, and it still competes on relevance.
+            ProductPopularity pop = popularity.get(id);
+            candidates.add(new SimilarityRanker.Candidate(
+                    id,
+                    candidate.getVendor() == null ? null : candidate.getVendor().getId(),
+                    isSemantic ? semantic.get(id) : lexicalScore.get(id),
+                    isSemantic,
+                    keywordMatched.contains(id),
+                    pop == null || pop.getWeightedRating() == null ? 0
+                            : pop.getWeightedRating().doubleValue(),
+                    pop == null ? 0L : pop.getSalesCount(),
+                    pop == null ? 0L : pop.getViews30d()));
+        }
+
+        // Build the product list and the reason list in one pass so their
+        // indices align by construction — toResponses preserves input order,
+        // and pairing them afterwards by position would be a silent
+        // mis-labelling bug the moment a lookup missed.
+        List<SimilarityRanker.Ranked> ranked = ranker.rank(candidates, limit);
+        List<Product> ordered = new java.util.ArrayList<>(ranked.size());
+        List<String> reasons = new java.util.ArrayList<>(ranked.size());
+        for (SimilarityRanker.Ranked r : ranked) {
+            Product p = byId.get(r.productId());
+            if (p == null) continue;
+            ordered.add(p);
+            reasons.add(r.reason());
+        }
+
+        List<ProductResponse> responses = toResponses(ordered);
+        List<ProductResponse> labelled = new java.util.ArrayList<>(responses.size());
+        for (int i = 0; i < responses.size(); i++) {
+            labelled.add(responses.get(i).withSimilarityReason(reasons.get(i)));
+        }
+        return labelled;
     }
 
     /**
-     * Nearest neighbours by embedding cosine similarity.
+     * Candidate ids to cosine similarity, for everything above the floor.
+     *
+     * Returns raw scores rather than responses because ranking now happens in
+     * SimilarityRanker, which needs the number. No limit is applied here for
+     * the same reason: trimming before the blend would discard candidates the
+     * ranker might promote.
      *
      * Voyage returns unit-length vectors, so cosine reduces to a dot product
      * and no normalisation is needed here. Comparing in Java rather than SQL
      * is deliberate at this catalogue size (see ProductEmbeddingRepository);
      * it is also what lets this stay independent of pgvector.
      *
-     * MIN_SIMILARITY is the whole quality gate. Over a small catalogue the
+     * minSimilarity is the whole relevance gate. Over a small catalogue the
      * nearest neighbour of anything is still *something*, so without a floor
      * every product would show a full shelf of its least-unrelated peers —
      * exactly the "looks like a recommendation but isn't" failure the lexical
-     * version was careful to avoid.
+     * version was careful to avoid. Note the ranker CANNOT rescue a product
+     * rejected here, which is the intended division of labour: this decides
+     * what is related, the ranker only decides what order.
      *
-     * The 0.55 floor is a STARTING VALUE, not a measured one: it is picked
-     * from the usual range for unit-normalised sentence embeddings and must
-     * be re-checked against real scores once the catalogue is embedded.
-     * Symptoms to tune on: unrelated products appearing means raise it,
-     * obviously-related pairs missing means lower it.
+     * The 0.55 default was a guess when written and has since been measured
+     * against the live catalogue: genuine matches ran 0.610-0.747 and the
+     * first unrelated product sat at 0.507, so the floor falls inside a real
+     * gap. It stays configurable because that gap will move as the catalogue
+     * grows denser.
      */
-    private List<ProductResponse> semanticallySimilar(Long productId, int limit) {
+    private Map<Long, Double> semanticCandidates(Long productId) {
         double[] source = embeddingRepository.embeddingOf(productId);
-        if (source == null) return List.of();
+        if (source == null) return Map.of();
 
         Map<Long, double[]> candidates = embeddingRepository.liveEmbeddings();
-        record Scored(Long id, double score) {}
-
-        List<Scored> ranked = new java.util.ArrayList<>();
+        Map<Long, Double> scored = new java.util.LinkedHashMap<>();
         for (Map.Entry<Long, double[]> entry : candidates.entrySet()) {
             if (entry.getKey().equals(productId)) continue;
             double score = dot(source, entry.getValue());
-            if (score >= MIN_SIMILARITY) ranked.add(new Scored(entry.getKey(), score));
+            if (score >= minSimilarity) scored.put(entry.getKey(), score);
         }
-        if (ranked.isEmpty()) return List.of();
-
-        ranked.sort(java.util.Comparator.comparingDouble(Scored::score).reversed());
-        List<Long> ids = ranked.stream().limit(limit).map(Scored::id).toList();
-
-        // findAllById returns rows in arbitrary order; re-sort into the
-        // ranked order or the whole scoring exercise is discarded.
-        Map<Long, Product> byId = productRepository.findAllById(ids).stream()
-                .collect(Collectors.toMap(Product::getId, Function.identity()));
-        return toResponses(ids.stream().map(byId::get).filter(Objects::nonNull).toList());
+        return scored;
     }
 
     /** Cosine for unit vectors. Length mismatch means a model changed
@@ -581,6 +664,8 @@ public class ProductService {
                 List.copyOf(p.getTags()),
                 p.getImageKey() != null ? storage.publicUrl(p.getImageKey()) : null,
                 p.getDeletedAt(),
-                variantResponses);
+                variantResponses,
+                // Set only on the related-items path, via withSimilarityReason.
+                null);
     }
 }

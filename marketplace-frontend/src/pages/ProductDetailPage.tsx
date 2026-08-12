@@ -36,6 +36,18 @@ export function ProductDetailPage() {
     enabled: !!id,
   })
 
+  // Trailing-24h buyer count. Returns null far more often than not — the
+  // backend withholds it below a threshold, because "1 person bought this"
+  // is an urgency badge advertising an empty shop. Today it is null for
+  // every product in production and no line renders at all; this is wired
+  // up so it starts working on its own once real orders arrive.
+  const { data: demand } = useQuery<{ recentBuyers: number | null }>({
+    queryKey: ['demand', id],
+    queryFn: () => api(`/api/v1/products/${id}/demand`),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
+  })
+
   const addToCart = useMutation({
     mutationFn: () => api('/api/v1/cart/items', {
       method: 'POST', body: { productId: Number(id), quantity: qty },
@@ -78,6 +90,19 @@ export function ProductDetailPage() {
 
           {/* Buy panel */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Demand line. Renders ONLY when the count is genuinely above
+                the backend's threshold, which today is never — so on the
+                live site this element does not exist. It is not padded,
+                bucketed or softened into "many people": if it says four,
+                four different people bought it in the last 24 hours. */}
+            {demand?.recentBuyers != null && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--flame)' }}>
+                <span aria-hidden>🔥</span>
+                <span>
+                  In demand. <span className="num">{demand.recentBuyers}</span> people bought this in the last 24 hours.
+                </span>
+              </div>
+            )}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 9, height: 9, borderRadius: '50%', background: stripe }} />
               <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>{product.vendorName}</span>

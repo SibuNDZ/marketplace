@@ -171,6 +171,15 @@ app:
   discovery:
     popularity-refresh-ms: 3600000        # hourly
     view-retention-cron: "0 15 3 * * *"   # nightly sweep, 90-day window
+    demand:
+      # Floor for the product page's "N people bought this in the last 24
+      # hours" line. Below this the API returns null and no line renders.
+      #
+      # 3 because "1 person bought this" is worse than saying nothing: it is
+      # an urgency badge that advertises an empty shop. Production sits at 0
+      # for every product today, so this is inert by design and switches on
+      # by itself once real orders arrive.
+      min-buyers: ${DEMAND_MIN_BUYERS:3}
     similar:
       # Cosine floor for "related". Measured against the live catalogue:
       # genuine matches ran 0.610-0.747 and the nearest unrelated product sat

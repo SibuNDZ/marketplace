@@ -89,8 +89,29 @@ public class ProductDtos {
              * live: `stock` above is their summed stock and `price` is the
              * cheapest variant, so a card can honestly say "from R120".
              */
-            List<VariantResponse> variants
-    ) {}
+            List<VariantResponse> variants,
+            /**
+             * Why this product appears on a related-items shelf. Null on every
+             * other endpoint, in the same spirit as deletedAt above: the field
+             * is meaningful on exactly one path and honest about it elsewhere.
+             *
+             * Two values, both literally true — "Similar item" for an
+             * embedding match, "Shares keywords" for a text-only one. It is
+             * also the only way to tell from outside the app whether a shelf
+             * came from embeddings or fell back to text, which previously
+             * needed a database query to answer.
+             */
+            String similarityReason
+    ) {
+        /** Records have no withers, and the alternative is repeating twenty
+         *  fields at the one call site that needs this. */
+        public ProductResponse withSimilarityReason(String reason) {
+            return new ProductResponse(id, name, description, sku, price, stock,
+                    vendorId, vendorName, avgRating, reviewCount, soldCount,
+                    createdAt, categorySlug, categoryName, parentCategorySlug,
+                    handmade, tags, imageUrl, deletedAt, variants, reason);
+        }
+    }
 
     /** One purchasable option. Price is absolute, never a delta. */
     public record VariantResponse(

@@ -326,6 +326,11 @@ export interface ProductResponse {
   vendorId?: number
   vendorName?: string
   deletedAt?: string | null  // null = live, string = soft-deleted timestamp
+  // Present only on /similar responses. Deliberately NOT rendered: every card
+  // on that shelf would carry the same words as the shelf's own heading, which
+  // is the "New on 100% of cards" problem again. It exists so the API can say
+  // whether a shelf came from embeddings or fell back to text search.
+  similarityReason?: string | null
   // Real signals from the product_popularity read model (hourly rebuild).
   // Zeros mean "no activity yet" — the truthful state, not missing data.
   avgRating: string          // BigDecimal serializes as string; 0 when unreviewed

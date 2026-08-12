@@ -145,23 +145,50 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
      * The WHERE is the relevance gate: a product must share SOME signal to
      * appear at all. Without it a thin catalogue pads the shelf with whatever
      * is newest, which looks like a recommendation but is not one.
+     *
+     * RETURNS THE SCORE, not just the order. SimilarityRanker blends this with
+     * the popularity read model in Java, which it cannot do if SQL has already
+     * collapsed the score into a row order. The calibrated 10x / 0.2 weighting
+     * above is unchanged and still computed here, because it is a property of
+     * the text match rather than of the blend.
+     *
+     * keywordMatch separates a real word overlap from a same-category-only
+     * row. Both are allowed through the gate, but only the first is a claim
+     * worth showing a shopper, so the ranker uses it for the reason string.
+     * COALESCE is load-bearing, not defensive noise: @@ against a NULL
+     * search_vector yields NULL rather than false, that row can still reach
+     * the result set through the category branch of the WHERE, and unboxing
+     * the NULL into the projection's primitive boolean would throw.
+     *
+     * Aliases are double-quoted deliberately: Postgres folds unquoted
+     * identifiers to lower case, and the interface projection below binds by
+     * exact alias name.
      */
     @Query(value = """
-           SELECT p.* FROM products p
+           SELECT p.id AS "productId",
+                  ts_rank(p.search_vector, to_tsquery('english', :tsQuery)) * 10
+                    + CASE WHEN p.category_id = :categoryId THEN 0.2 ELSE 0 END AS "relevance",
+                  COALESCE(p.search_vector @@ to_tsquery('english', :tsQuery), false) AS "keywordMatch"
+           FROM products p
            WHERE p.deleted_at IS NULL
              AND p.id <> :productId
              AND p.stock_quantity > 0
              AND (p.search_vector @@ to_tsquery('english', :tsQuery)
                   OR p.category_id = :categoryId)
-           ORDER BY (ts_rank(p.search_vector, to_tsquery('english', :tsQuery)) * 10
-                     + CASE WHEN p.category_id = :categoryId THEN 0.2 ELSE 0 END) DESC,
-                    p.created_at DESC
+           ORDER BY "relevance" DESC, p.created_at DESC
            LIMIT :limit
            """, nativeQuery = true)
-    List<Product> findSimilar(@Param("productId") Long productId,
-                              @Param("categoryId") Long categoryId,
-                              @Param("tsQuery") String tsQuery,
-                              @Param("limit") int limit);
+    List<ScoredCandidate> findSimilarScored(@Param("productId") Long productId,
+                                            @Param("categoryId") Long categoryId,
+                                            @Param("tsQuery") String tsQuery,
+                                            @Param("limit") int limit);
+
+    /** One lexical candidate and the score that earned it its place. */
+    interface ScoredCandidate {
+        Long getProductId();
+        double getRelevance();
+        boolean getKeywordMatch();
+    }
 
     /**
      * ALL of one vendor's products, soft-deleted included — the vendor

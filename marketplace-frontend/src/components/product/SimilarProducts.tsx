@@ -9,12 +9,18 @@ interface Props {
 }
 
 /**
- * "You might also like", computed from the catalogue's own text.
+ * "You might also like", ranked by embedding similarity and broken out of
+ * near-ties by the product's own rating, sales and views. Falls back to text
+ * search when a product has no embedding yet.
  *
  * Deliberately renders NOTHING when the backend finds nothing genuinely
  * related. On a catalogue this small a padded shelf would just be "here are
  * some other products", which looks like a recommendation without being one
  * — the same reason Top Selling hides itself until real sales exist.
+ *
+ * The backend also sends a similarityReason per product. It is not rendered:
+ * on this shelf it would say "Similar item" under every card, restating the
+ * heading above them.
  */
 export function SimilarProducts({ productId, limit = 6 }: Props) {
   const { data, isLoading } = useQuery<ProductResponse[]>({

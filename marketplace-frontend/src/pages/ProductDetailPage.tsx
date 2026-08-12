@@ -6,7 +6,7 @@ import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { StockBadge } from '../components/ui/StockBadge'
 import { vendorHue } from '../lib/vendorHue'
 import { ErrorSurface } from '../components/ui/ErrorSurface'
-import { productImageUrl } from '../lib/productImage'
+import { productImageUrl, productImageSrcSet, IMAGE_WIDTHS, IMAGE_SIZES } from '../lib/productImage'
 import { ProductReviews } from '../components/product/ProductReviews'
 import { SimilarProducts } from '../components/product/SimilarProducts'
 
@@ -82,8 +82,15 @@ export function ProductDetailPage() {
           {/* Media */}
           <div style={{ borderRadius: 'var(--r)', aspectRatio: '4/3', overflow: 'hidden', background: '#EAEEED' }}>
             <img
-              src={productImageUrl(product, 800, 600)}
+              src={productImageUrl(product, 1280, 960)}
+              srcSet={productImageSrcSet(product, IMAGE_WIDTHS.hero)}
+              sizes={IMAGE_SIZES.hero}
               alt={product.name}
+              // This is the page's LCP element. fetchPriority high stops the
+              // browser from queueing it behind scripts, and decoding async
+              // keeps a large AVIF off the main thread.
+              fetchPriority="high"
+              decoding="async"
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
           </div>

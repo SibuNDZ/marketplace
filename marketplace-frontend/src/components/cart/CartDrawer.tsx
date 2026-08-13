@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, CartResponse } from '../../lib/api'
 import { useCartDrawer } from '../../context/CartDrawerContext'
+import { CartLineImage } from './CartLineImage'
 
 export function CartDrawer() {
   const { isOpen, close } = useCartDrawer()
@@ -52,12 +53,9 @@ export function CartDrawer() {
           )}
           {lines.map(line => (
             <div key={line.productId} style={{ display: 'flex', gap: 12, padding: '14px 0', borderBottom: '1px solid var(--line)' }}>
-              <img
-                src={`https://picsum.photos/seed/mk-${line.productId}/80/80`}
-                alt=""
-                width={56} height={56}
-                style={{ borderRadius: 'var(--r-sm)', objectFit: 'cover', flexShrink: 0 }}
-              />
+              {/* Was a picsum placeholder keyed on product id — see
+                  CartLineImage for why a wrong photo is worse than none. */}
+              <CartLineImage line={line} size={56} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{line.productName}</p>
                 <p className="num" style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 6 }}>R{Number(line.unitPrice).toFixed(2)}</p>

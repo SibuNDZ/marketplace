@@ -381,6 +381,9 @@ export interface CartLine {
   quantity: number
   lineTotal: string
   availableStock: number
+  // null when the vendor uploaded no photo. Cart rows previously had no
+  // image field at all, which is why both surfaces rendered placeholders.
+  imageUrl?: string | null
 }
 export interface CartResponse {
   items: CartLine[]

@@ -29,13 +29,16 @@ public class CartService {
     private final CartRepository cartRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final com.marketplace.api.storage.ObjectStorageService storage;
 
     public CartService(CartRepository cartRepository,
                        ProductRepository productRepository,
-                       UserRepository userRepository) {
+                       UserRepository userRepository,
+                       com.marketplace.api.storage.ObjectStorageService storage) {
         this.cartRepository = cartRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
+        this.storage = storage;
     }
 
     @Transactional(readOnly = true)
@@ -117,7 +120,11 @@ public class CartService {
                     BigDecimal lineTotal = p.getPrice()
                             .multiply(BigDecimal.valueOf(ci.getQuantity()));
                     return new CartLine(p.getId(), p.getName(), p.getPrice(),
-                            ci.getQuantity(), lineTotal, p.getStock());
+                            ci.getQuantity(), lineTotal, p.getStock(),
+                            // Same derivation as ProductResponse: the key is
+                            // stored, the URL is built, so the serving domain
+                            // can change without a data migration (V11).
+                            p.getImageKey() != null ? storage.publicUrl(p.getImageKey()) : null);
                 })
                 .toList();
         BigDecimal subtotal = lines.stream()

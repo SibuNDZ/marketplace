@@ -33,7 +33,14 @@ public class CartDtos {
                 BigDecimal unitPrice,
                 int quantity,
                 BigDecimal lineTotal,
-                int availableStock // lets the UI warn "only 2 left" pre-checkout
+                int availableStock, // lets the UI warn "only 2 left" pre-checkout
+                /**
+                 * Null when the vendor has not uploaded a photo, exactly as on
+                 * ProductResponse. Its absence is why both cart surfaces were
+                 * rendering picsum placeholders: a shopper reviewing their own
+                 * cart was shown stock photos of things they had not chosen.
+                 */
+                String imageUrl
         ) {}
     }
 }

@@ -27,6 +27,13 @@ public record OrderResponse(
     public record OrderItemResponse(
             Long productId,
             String productName,   // snapshot at purchase time
+            /**
+             * The option bought, e.g. "Large". Snapshot too, and null for a
+             * product with no options. Reading it off the live variant would
+             * make a receipt change when a vendor renames an option, or blank
+             * out entirely when one is deleted.
+             */
+            String variantLabel,
             BigDecimal unitPrice, // snapshot at purchase time
             int quantity,
             BigDecimal lineTotal

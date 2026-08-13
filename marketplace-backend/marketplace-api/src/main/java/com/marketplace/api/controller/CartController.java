@@ -37,19 +37,27 @@ public class CartController {
         return cartService.addItem(me.getId(), request);
     }
 
+    /**
+     * variantId identifies WHICH line, since a product can now sit in the
+     * cart more than once under different options. Optional, and absent
+     * means the line with no option — the only kind that existed before V25,
+     * so every pre-existing client call keeps addressing the same row.
+     */
     @PutMapping("/items/{productId}")
     public CartResponse updateQuantity(
             @PathVariable Long productId,
+            @RequestParam(required = false) Long variantId,
             @Valid @RequestBody UpdateQuantityRequest request,
             @AuthenticationPrincipal UserPrincipal me) {
-        return cartService.updateQuantity(me.getId(), productId, request.quantity());
+        return cartService.updateQuantity(me.getId(), productId, variantId, request.quantity());
     }
 
     @DeleteMapping("/items/{productId}")
     public CartResponse removeItem(
             @PathVariable Long productId,
+            @RequestParam(required = false) Long variantId,
             @AuthenticationPrincipal UserPrincipal me) {
-        return cartService.removeItem(me.getId(), productId);
+        return cartService.removeItem(me.getId(), productId, variantId);
     }
 
     @DeleteMapping

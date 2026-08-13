@@ -14,11 +14,15 @@ import { RAIL_CARD_WIDTH } from '../components/product/CompactProductCard'
 import { RelatedSearches } from '../components/product/RelatedSearches'
 import { PriceBlock } from '../components/product/PriceBlock'
 import { ProductGallery } from '../components/product/ProductGallery'
+import { VariantSelector } from '../components/product/VariantSelector'
 
 export function ProductDetailPage() {
   const { id } = useParams()
   const qc = useQueryClient()
   const [qty, setQty] = useState(1)
+  // Null until the shopper picks. Never defaulted to the first option — see
+  // VariantSelector for why that would be buying on their behalf.
+  const [variantId, setVariantId] = useState<number | null>(null)
   const [cartError, setCartError] = useState<ApiError>()
   // A signed-out visitor is not an error condition. Kept separate from
   // cartError so a 401 never renders through ErrorSurface, which is built
@@ -80,7 +84,8 @@ export function ProductDetailPage() {
 
   const addToCart = useMutation({
     mutationFn: () => api('/api/v1/cart/items', {
-      method: 'POST', body: { productId: Number(id), quantity: qty },
+      method: 'POST',
+      body: { productId: Number(id), variantId, quantity: qty },
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['cart'] }) },
     onError: (e) => {
@@ -97,7 +102,23 @@ export function ProductDetailPage() {
   if (!product) return <><Topbar /><div className="page-shell no-catrail">Product not found.</div></>
 
   const stripe = vendorHue(product.vendorId ?? 1)
-  const canAdd = product.stock > 0
+
+  // Everything the buy box shows comes from the chosen option once there is
+  // one: its price, its stock, and whether the button works. Showing the
+  // product's aggregate price beside a selected option would be quoting a
+  // number the shopper is not about to pay.
+  const variants = product.variants ?? []
+  const hasVariants = variants.length > 0
+  const selected = variants.find(v => v.id === variantId) ?? null
+  const shownPrice = selected ? selected.price : product.price
+  const shownStock = selected ? selected.stock : product.stock
+
+  // A variant product cannot be added until an option is chosen. The backend
+  // enforces this too; disabling the button is so the shopper is told before
+  // they click rather than after.
+  const canAdd = hasVariants
+    ? selected !== null && selected.stock > 0
+    : product.stock > 0
 
   // Never show the product you are already looking at inside its own
   // recommendations. Applied here rather than in each rail so the rule is
@@ -191,7 +212,23 @@ export function ProductDetailPage() {
 
             {product.description && <p style={{ color: 'var(--ink-soft)', lineHeight: 1.6 }}>{product.description}</p>}
             <StockBadge product={product} />
-            <PriceBlock price={product.price} originalPrice={product.originalPrice} size={32} />
+            <PriceBlock
+              price={shownPrice}
+              // An option's price has no "was" to compare against, so the
+              // backend suppresses originalPrice entirely for variant
+              // products. Passing it here would strike through a number that
+              // was never this option's price.
+              originalPrice={hasVariants ? null : product.originalPrice}
+              size={32}
+            />
+
+            {hasVariants && (
+              <VariantSelector
+                variants={variants}
+                selectedId={variantId}
+                onSelect={setVariantId}
+              />
+            )}
 
             {needsSignIn && (
               <div style={{
@@ -216,14 +253,17 @@ export function ProductDetailPage() {
               <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid var(--line)', borderRadius: 'var(--r-sm)', overflow: 'hidden' }}>
                 <button onClick={() => setQty(q => Math.max(1, q - 1))} style={{ padding: '8px 14px', background: 'none', border: 'none', fontSize: 18 }}>−</button>
                 <span className="num" style={{ padding: '0 12px', minWidth: 32, textAlign: 'center' }}>{qty}</span>
-                <button onClick={() => setQty(q => Math.min(product.stock, q + 1))} style={{ padding: '8px 14px', background: 'none', border: 'none', fontSize: 18 }}>+</button>
+                <button onClick={() => setQty(q => Math.min(shownStock, q + 1))} style={{ padding: '8px 14px', background: 'none', border: 'none', fontSize: 18 }}>+</button>
               </div>
               <button disabled={!canAdd || addToCart.isPending} onClick={() => addToCart.mutate()} style={{
                 flex: 1, padding: '11px 20px', background: canAdd ? 'var(--flame-gradient)' : 'var(--line)',
                 color: canAdd ? '#fff' : 'var(--ink-soft)', border: 'none',
                 borderRadius: 'var(--r-sm)', fontWeight: 700, fontSize: 15,
               }}>
-                {addToCart.isPending ? 'Adding…' : addToCart.isSuccess ? '✓ Added' : 'Add to cart'}
+                {addToCart.isPending ? 'Adding…'
+                  : addToCart.isSuccess ? '✓ Added'
+                  : hasVariants && !selected ? 'Choose an option'
+                  : 'Add to cart'}
               </button>
             </div>
             <p style={{ fontSize: 12, color: 'var(--ink-soft)' }}>SKU: <span className="num">{product.sku ?? '-'}</span></p>

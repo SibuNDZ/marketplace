@@ -398,6 +398,10 @@ export interface CartLine {
   quantity: number
   lineTotal: string
   availableStock: number
+  // The chosen option, or null for a product with none. Identifies WHICH
+  // line: a product can appear twice in one cart under different options.
+  variantId?: number | null
+  variantLabel?: string | null
   // null when the vendor uploaded no photo. Cart rows previously had no
   // image field at all, which is why both surfaces rendered placeholders.
   imageUrl?: string | null

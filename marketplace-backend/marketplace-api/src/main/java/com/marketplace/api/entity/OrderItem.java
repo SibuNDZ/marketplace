@@ -32,6 +32,19 @@ public class OrderItem {
     private Order order;
 
     /** optional=true so a hard-deleted product doesn't orphan order history. */
+    /**
+     * The option bought, or null when the product had none (V25). Set to null
+     * by the database if the option is later deleted — order history outlives
+     * the catalogue, which is why variantLabelAtPurchase exists beside it.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "variant_id")
+    private ProductVariant variant;
+
+    /** Snapshot, so a receipt still names the option after it is deleted. */
+    @Column(name = "variant_label_at_purchase", length = 100)
+    private String variantLabelAtPurchase;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "product_id", nullable = true)
     private Product product;
@@ -58,4 +71,9 @@ public class OrderItem {
 
     public Product getProduct() { return product; }
     public void setProduct(Product product) { this.product = product; }
+
+    public ProductVariant getVariant() { return variant; }
+    public void setVariant(ProductVariant variant) { this.variant = variant; }
+    public String getVariantLabelAtPurchase() { return variantLabelAtPurchase; }
+    public void setVariantLabelAtPurchase(String label) { this.variantLabelAtPurchase = label; }
 }

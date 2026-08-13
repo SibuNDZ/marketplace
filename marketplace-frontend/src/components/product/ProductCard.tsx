@@ -55,7 +55,12 @@ export function ProductCard({ product }: Props) {
     },
   })
 
-  const canAdd = product.stock > 0 && !product.deletedAt
+  // A product with options cannot be added from a grid: the card has no
+  // room to choose one, and the backend rightly refuses a line that does not
+  // name an option. The button becomes a link to the page where the choice
+  // lives, rather than a button that 400s.
+  const needsOptions = (product.variants?.length ?? 0) > 0
+  const canAdd = product.stock > 0 && !product.deletedAt && !needsOptions
   const isOutOfStock = product.stock === 0 && !product.deletedAt
   const rating = Number(product.avgRating)
 
@@ -139,21 +144,36 @@ export function ProductCard({ product }: Props) {
         {/* Price + Add */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 6 }}>
           <PriceBlock price={product.price} originalPrice={product.originalPrice} size={18} />
-          <button
-            disabled={!canAdd || addToCart.isPending}
-            onClick={() => addToCart.mutate()}
-            style={{
-              padding: '7px 14px',
-              background: canAdd ? 'var(--flame-gradient)' : 'var(--line)',
-              color: canAdd ? '#fff' : 'var(--ink-soft)',
-              border: 'none',
-              borderRadius: 'var(--r-pill)',
-              fontSize: 12, fontWeight: 700,
-              cursor: canAdd ? 'pointer' : 'not-allowed',
-            }}
-          >
-            {added ? '✓ Added' : 'Add to cart'}
-          </button>
+          {needsOptions ? (
+            <Link
+              to={`/products/${product.id}`}
+              target="_blank"
+              rel="noopener"
+              style={{
+                padding: '7px 14px', background: 'var(--card)', color: 'var(--ink)',
+                border: '1.5px solid var(--line)', borderRadius: 'var(--r-pill)',
+                fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
+              }}
+            >
+              Choose options
+            </Link>
+          ) : (
+            <button
+              disabled={!canAdd || addToCart.isPending}
+              onClick={() => addToCart.mutate()}
+              style={{
+                padding: '7px 14px',
+                background: canAdd ? 'var(--flame-gradient)' : 'var(--line)',
+                color: canAdd ? '#fff' : 'var(--ink-soft)',
+                border: 'none',
+                borderRadius: 'var(--r-pill)',
+                fontSize: 12, fontWeight: 700,
+                cursor: canAdd ? 'pointer' : 'not-allowed',
+              }}
+            >
+              {added ? '✓ Added' : 'Add to cart'}
+            </button>
+          )}
           {/* TODO(notify-me): "Notify me when available" for isOutOfStock
               products belongs here, gated behind the transactional-email
               slice (no email infra to fire the notification yet). Deferred,

@@ -17,13 +17,18 @@ export function CartDrawer() {
   })
 
   const updateQty = useMutation({
-    mutationFn: ({ productId, quantity }: { productId: number; quantity: number }) =>
-      api(`/api/v1/cart/items/${productId}`, { method: 'PUT', body: { quantity } }),
+    mutationFn: ({ productId, variantId, quantity }: { productId: number; variantId?: number | null; quantity: number }) =>
+      // variantId identifies WHICH line when a product sits in the cart under
+      // more than one option.
+      api(`/api/v1/cart/items/${productId}${variantId != null ? `?variantId=${variantId}` : ''}`,
+        { method: 'PUT', body: { quantity } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cart'] }),
   })
 
   const removeItem = useMutation({
-    mutationFn: (productId: number) => api(`/api/v1/cart/items/${productId}`, { method: 'DELETE' }),
+    mutationFn: ({ productId, variantId }: { productId: number; variantId?: number | null }) =>
+      api(`/api/v1/cart/items/${productId}${variantId != null ? `?variantId=${variantId}` : ''}`,
+        { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cart'] }),
   })
 
@@ -57,15 +62,18 @@ export function CartDrawer() {
                   CartLineImage for why a wrong photo is worse than none. */}
               <CartLineImage line={line} size={56} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{line.productName}</p>
+                <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {line.productName}
+                  {line.variantLabel && <span style={{ color: 'var(--ink-soft)', fontWeight: 400 }}> · {line.variantLabel}</span>}
+                </p>
                 <p className="num" style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 6 }}>R{Number(line.unitPrice).toFixed(2)}</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <button onClick={() => updateQty.mutate({ productId: line.productId, quantity: line.quantity - 1 })}
+                  <button onClick={() => updateQty.mutate({ productId: line.productId, variantId: line.variantId, quantity: line.quantity - 1 })}
                     style={{ width: 22, height: 22, border: '1px solid var(--line)', borderRadius: 4, background: 'none', fontSize: 13 }}>−</button>
                   <span className="num" style={{ minWidth: 20, textAlign: 'center', fontSize: 12 }}>{line.quantity}</span>
-                  <button onClick={() => updateQty.mutate({ productId: line.productId, quantity: line.quantity + 1 })}
+                  <button onClick={() => updateQty.mutate({ productId: line.productId, variantId: line.variantId, quantity: line.quantity + 1 })}
                     style={{ width: 22, height: 22, border: '1px solid var(--line)', borderRadius: 4, background: 'none', fontSize: 13 }}>+</button>
-                  <button onClick={() => removeItem.mutate(line.productId)}
+                  <button onClick={() => removeItem.mutate({ productId: line.productId, variantId: line.variantId })}
                     style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--ink-soft)', background: 'none', border: 'none' }}>Remove</button>
                 </div>
               </div>

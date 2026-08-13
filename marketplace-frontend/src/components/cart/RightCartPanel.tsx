@@ -60,8 +60,11 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
   const progress = Math.min(subtotal / CHECKOUT_MIN_RAND, 1)
 
   const updateQty = useMutation({
-    mutationFn: ({ productId, quantity }: { productId: number; quantity: number }) =>
-      api(`/api/v1/cart/items/${productId}`, { method: 'PUT', body: { quantity } }),
+    mutationFn: ({ productId, variantId, quantity }: { productId: number; variantId?: number | null; quantity: number }) =>
+      // variantId identifies WHICH line: a product can now appear twice in
+      // one cart under different options.
+      api(`/api/v1/cart/items/${productId}${variantId != null ? `?variantId=${variantId}` : ''}`,
+        { method: 'PUT', body: { quantity } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cart'] }),
   })
 
@@ -120,12 +123,25 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
         </span>
         <span className="num mini-product__price">R{Number(p.price).toFixed(2)}</span>
       </Link>
-      <button
-        className="mini-product__add"
-        aria-label={`Add ${p.name} to cart`}
-        disabled={addToCart.isPending}
-        onClick={() => addToCart.mutate(p.id)}
-      >+</button>
+      {/* Same rule as ProductCard: a product with options has to be chosen
+          on its own page, so the quick-add becomes a link rather than a
+          button that the backend would refuse. */}
+      {(p.variants?.length ?? 0) > 0 ? (
+        <Link
+          className="mini-product__add"
+          to={`/products/${p.id}`}
+          target="_blank"
+          rel="noopener"
+          aria-label={`Choose options for ${p.name}`}
+        >›</Link>
+      ) : (
+        <button
+          className="mini-product__add"
+          aria-label={`Add ${p.name} to cart`}
+          disabled={addToCart.isPending}
+          onClick={() => addToCart.mutate(p.id)}
+        >+</button>
+      )}
     </div>
   )
 
@@ -237,14 +253,22 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
                             the empty well rather than a confident wrong
                             image. */}
                         <CartLineImage line={line} size={44} />
-                        <span className="rc-item__name">{line.productName}</span>
+                        {/* Without the option, two lines of the same product
+                            read as a duplicate bug rather than as a small and
+                            a large. */}
+                        <span className="rc-item__name">
+                          {line.productName}
+                          {line.variantLabel && (
+                            <span style={{ color: 'var(--ink-soft)' }}> · {line.variantLabel}</span>
+                          )}
+                        </span>
                         <span className="num rc-item__price">est. R{Number(line.lineTotal).toFixed(2)}</span>
                       </Link>
                       <select
                         className="rc-item__qty num"
                         value={line.quantity}
                         aria-label={`Quantity for ${line.productName}`}
-                        onChange={e => updateQty.mutate({ productId: line.productId, quantity: Number(e.target.value) })}
+                        onChange={e => updateQty.mutate({ productId: line.productId, variantId: line.variantId, quantity: Number(e.target.value) })}
                       >
                         {Array.from(
                           { length: Math.max(line.quantity, Math.min(QTY_CAP, line.availableStock)) },

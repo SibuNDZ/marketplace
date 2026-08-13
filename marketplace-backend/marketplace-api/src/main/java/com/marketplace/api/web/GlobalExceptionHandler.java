@@ -13,6 +13,8 @@ import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
 import com.marketplace.api.exception.ReviewExceptions.*;
 import com.marketplace.api.payment.PaymentExceptions.PaymentProviderException;
 import com.marketplace.api.service.ProductStockService.InsufficientAdjustmentException;
+import com.marketplace.api.storage.ProductImageService.ImageNotFoundException;
+import com.marketplace.api.storage.ProductImageService.TooManyImagesException;
 import com.marketplace.api.storage.ProductImageService.UnsupportedImageTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -166,6 +168,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UnsupportedImageTypeException.class)
     public ProblemDetail unsupportedImageType(UnsupportedImageTypeException ex) {
         return problem(HttpStatus.BAD_REQUEST, "Unsupported image", ex.getMessage());
+    }
+
+    @ExceptionHandler(TooManyImagesException.class)
+    public ProblemDetail tooManyImages(TooManyImagesException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Too many images", ex.getMessage());
+    }
+
+    @ExceptionHandler(ImageNotFoundException.class)
+    public ProblemDetail imageNotFound(ImageNotFoundException ex) {
+        return problem(HttpStatus.NOT_FOUND, "Image not found", ex.getMessage());
     }
 
     // Spring throws this BEFORE the controller when multipart limits trip

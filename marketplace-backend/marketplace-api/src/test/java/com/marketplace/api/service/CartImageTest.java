@@ -2,7 +2,9 @@ package com.marketplace.api.service;
 
 import com.marketplace.api.dto.CartDtos.CartResponse;
 import com.marketplace.api.entity.Product;
+import com.marketplace.api.entity.ProductImage;
 import com.marketplace.api.entity.User;
+import com.marketplace.api.repository.ProductImageRepository;
 import com.marketplace.api.repository.ProductRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -45,16 +47,25 @@ class CartImageTest {
     @Autowired TestFixtures       fixtures;
     @Autowired CartService        cartService;
     @Autowired ProductRepository  productRepository;
+    @Autowired ProductImageRepository imageRepository;
 
     private static int seq = 0;
     private static String uniq(String base) { return base + "-" + (++seq); }
+
+    /** Adds a photo to a product's gallery at the given position (V24). */
+    private void addImage(Product p, String key, int position) {
+        ProductImage img = new ProductImage();
+        img.setProduct(p);
+        img.setImageKey(key);
+        img.setPosition(position);
+        imageRepository.save(img);
+    }
 
     @Test
     @DisplayName("a cart line carries the vendor's real photo URL")
     void cartLineCarriesImageUrl() {
         Product p = fixtures.product(uniq("Cart Img"), uniq("SKU-CI"), new BigDecimal("50"), 10);
-        p.setImageKey("products/" + p.getId() + "/abc-123.jpg");
-        productRepository.save(p);
+        addImage(p, "products/" + p.getId() + "/abc-123.jpg", 0);
 
         User buyer = fixtures.customerWithCart(uniq("cart-img-buyer"), p, 2);
         CartResponse cart = cartService.getCart(buyer.getId());
@@ -64,6 +75,22 @@ class CartImageTest {
         // surfaces can never disagree about where an image lives.
         assertThat(cart.items().get(0).imageUrl())
                 .isEqualTo("https://images.erestyu.com/products/" + p.getId() + "/abc-123.jpg");
+    }
+
+    @Test
+    @DisplayName("a cart row shows the COVER photo, not whichever one the join returned")
+    void cartLineUsesFirstImage() {
+        Product p = fixtures.product(uniq("Cart Multi"), uniq("SKU-CM"), new BigDecimal("50"), 10);
+        // Inserted out of order on purpose: position, not insertion order,
+        // decides the cover, and the cart must agree with the product card.
+        addImage(p, "products/" + p.getId() + "/third.jpg", 2);
+        addImage(p, "products/" + p.getId() + "/cover.jpg", 0);
+        addImage(p, "products/" + p.getId() + "/second.jpg", 1);
+
+        User buyer = fixtures.customerWithCart(uniq("cart-multi-buyer"), p, 1);
+        CartResponse cart = cartService.getCart(buyer.getId());
+
+        assertThat(cart.items().get(0).imageUrl()).endsWith("/cover.jpg");
     }
 
     @Test

@@ -59,6 +59,7 @@ public class ProductService {
     private final SearchSynonymRepository synonymRepository;
     private final com.marketplace.api.discovery.ProductEmbeddingRepository embeddingRepository;
     private final SimilarityRanker ranker;
+    private final com.marketplace.api.repository.ProductImageRepository imageRepository;
 
     /**
      * Cosine floor for a pair to count as related. See semanticCandidates.
@@ -78,10 +79,12 @@ public class ProductService {
                           ProductVariantRepository variantRepository,
                           SearchSynonymRepository synonymRepository,
                           com.marketplace.api.discovery.ProductEmbeddingRepository embeddingRepository,
+                          com.marketplace.api.repository.ProductImageRepository imageRepository,
                           SimilarityRanker ranker,
                           @org.springframework.beans.factory.annotation.Value(
                                   "${app.discovery.similar.min-similarity:0.55}") double minSimilarity) {
         this.ranker = ranker;
+        this.imageRepository = imageRepository;
         this.minSimilarity = minSimilarity;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
@@ -583,7 +586,8 @@ public class ProductService {
     @Transactional(readOnly = true)
     public ProductResponse toResponse(Product p) {
         return toResponse(p, popularityRepository.findById(p.getId()).orElse(null),
-                variantRepository.findByProductIdOrderByPositionAscIdAsc(p.getId()));
+                variantRepository.findByProductIdOrderByPositionAscIdAsc(p.getId()),
+                imageRepository.findByProductIdOrderByPositionAscIdAsc(p.getId()));
     }
 
     /** Batch — one findAllById covers the whole list. Preserves input order. */
@@ -591,9 +595,11 @@ public class ProductService {
     public List<ProductResponse> toResponses(List<Product> products) {
         Map<Long, ProductPopularity> pop = popularityMap(products);
         Map<Long, List<ProductVariant>> variants = variantMap(products);
+        Map<Long, List<com.marketplace.api.entity.ProductImage>> images = imageMap(products);
         return products.stream()
                 .map(p -> toResponse(p, pop.get(p.getId()),
-                        variants.getOrDefault(p.getId(), List.of())))
+                        variants.getOrDefault(p.getId(), List.of()),
+                        images.getOrDefault(p.getId(), List.of())))
                 .toList();
     }
 
@@ -602,8 +608,18 @@ public class ProductService {
     public Page<ProductResponse> toResponses(Page<Product> page) {
         Map<Long, ProductPopularity> pop = popularityMap(page.getContent());
         Map<Long, List<ProductVariant>> variants = variantMap(page.getContent());
+        Map<Long, List<com.marketplace.api.entity.ProductImage>> images = imageMap(page.getContent());
         return page.map(p -> toResponse(p, pop.get(p.getId()),
-                variants.getOrDefault(p.getId(), List.of())));
+                variants.getOrDefault(p.getId(), List.of()),
+                images.getOrDefault(p.getId(), List.of())));
+    }
+
+    /** One query for every photo on a page — same anti-N+1 rule as variants. */
+    private Map<Long, List<com.marketplace.api.entity.ProductImage>> imageMap(List<Product> products) {
+        List<Long> ids = products.stream().map(Product::getId).toList();
+        if (ids.isEmpty()) return Map.of();
+        return imageRepository.findByProductIdInOrderByPositionAscIdAsc(ids).stream()
+                .collect(Collectors.groupingBy(i -> i.getProduct().getId()));
     }
 
     /** One query for a whole page of products, so a grid is not N+1. */
@@ -625,7 +641,8 @@ public class ProductService {
      * the last hourly rebuild has no row yet. Zeros are the truthful answer.
      */
     private ProductResponse toResponse(Product p, @Nullable ProductPopularity pop,
-                                       List<ProductVariant> variants) {
+                                       List<ProductVariant> variants,
+                                       List<com.marketplace.api.entity.ProductImage> images) {
         User vendor = p.getVendor();
         Category category = p.getCategory();
 
@@ -654,6 +671,11 @@ public class ProductService {
         // would be guessing which option the vendor discounted.
         BigDecimal effectiveOriginalPrice = hasVariants ? null : p.getOriginalPrice();
 
+        List<ProductDtos.ProductImageResponse> imageResponses = images.stream()
+                .map(img -> new ProductDtos.ProductImageResponse(
+                        img.getId(), storage.publicUrl(img.getImageKey()), img.getPosition()))
+                .toList();
+
         List<ProductDtos.VariantResponse> variantResponses = variants.stream()
                 .map(v -> new ProductDtos.VariantResponse(
                         v.getId(), v.getLabel(), v.getSku(), v.getPrice(),
@@ -677,7 +699,10 @@ public class ProductService {
                 category.isTopLevel() ? null : category.getParent().getSlug(),
                 Boolean.TRUE.equals(p.getHandmade()),
                 List.copyOf(p.getTags()),
-                p.getImageKey() != null ? storage.publicUrl(p.getImageKey()) : null,
+                // Derived, never stored: the first photo IS the cover, so
+                // imageUrl and images cannot drift apart.
+                imageResponses.isEmpty() ? null : imageResponses.get(0).url(),
+                imageResponses,
                 p.getDeletedAt(),
                 variantResponses,
                 // Set only on the related-items path, via withSimilarityReason.

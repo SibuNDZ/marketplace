@@ -1,7 +1,9 @@
 package com.marketplace.api.storage;
 
 import com.marketplace.api.entity.Product;
+import com.marketplace.api.entity.ProductImage;
 import com.marketplace.api.entity.User;
+import com.marketplace.api.repository.ProductImageRepository;
 import com.marketplace.api.security.UserPrincipal;
 import com.marketplace.api.service.TestFixtures;
 import com.marketplace.api.storage.ProductImageService.UnsupportedImageTypeException;
@@ -24,6 +26,7 @@ import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -72,6 +75,7 @@ class ProductImageServiceTest {
     }
 
     @Autowired ProductImageService productImageService;
+    @Autowired ProductImageRepository imageRepository;
     @Autowired ObjectStorageService storage;
     @Autowired S3Client s3;
     @Autowired TestFixtures fixtures;
@@ -109,8 +113,14 @@ class ProductImageServiceTest {
         assertThat(s3.headObject(b -> b.bucket(TEST_BUCKET).key(key)).contentType()).isEqualTo("image/png");
     }
 
+    /**
+     * Was upload_replacesOldKey. A second upload used to REPLACE the product's
+     * one photo and delete the old object; since V24 a product has a gallery
+     * and an upload appends to it. The old assertion — that the first object
+     * is gone — would now be asserting data loss.
+     */
     @Test
-    void upload_replacesOldKey() {
+    void upload_appendsToGallery() {
         Product product = fixtures.product("Image Test B", "SKU-IMG-B1", new BigDecimal("10"), 5);
         User vendor = fixtures.vendor("img-vendor2");
         reassignVendor(product.getId(), vendor.getId());
@@ -122,11 +132,77 @@ class ProductImageServiceTest {
         String secondKey = secondUrl.substring("https://images.erestyu.com/".length());
 
         assertThat(secondKey).isNotEqualTo(firstKey);
-        // Old object deleted (best-effort deleteQuietly) — headObject on a
-        // gone key throws; NoSuchKeyException confirms it's actually gone,
-        // not just that the call didn't throw for some other reason.
-        assertThatThrownBy(() -> s3.headObject(b -> b.bucket(TEST_BUCKET).key(firstKey)))
+
+        // BOTH objects survive now. The first one still being there is the
+        // whole point of the change.
+        assertThat(s3.headObject(b -> b.bucket(TEST_BUCKET).key(firstKey)).contentType())
+                .isEqualTo("image/png");
+        assertThat(s3.headObject(b -> b.bucket(TEST_BUCKET).key(secondKey)).contentType())
+                .isEqualTo("image/png");
+
+        // Ordered, and appended rather than prepended: the first upload stays
+        // the cover, so adding a photo never silently changes what a card shows.
+        List<ProductImage> gallery = imageRepository.findByProductIdOrderByPositionAscIdAsc(product.getId());
+        assertThat(gallery).hasSize(2);
+        assertThat(gallery.get(0).getImageKey()).isEqualTo(firstKey);
+        assertThat(gallery.get(0).getPosition()).isZero();
+        assertThat(gallery.get(1).getPosition()).isEqualTo(1);
+    }
+
+    @Test
+    void delete_removesObjectAndClosesTheGap() {
+        Product product = fixtures.product("Image Test D", "SKU-IMG-D-" + java.util.UUID.randomUUID(), new BigDecimal("10"), 5);
+        User vendor = fixtures.vendor("img-vendor-del-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        reassignVendor(product.getId(), vendor.getId());
+
+        productImageService.upload(product.getId(), pngFile("one"), UserPrincipal.from(vendor));
+        productImageService.upload(product.getId(), pngFile("two"), UserPrincipal.from(vendor));
+        productImageService.upload(product.getId(), pngFile("three"), UserPrincipal.from(vendor));
+
+        List<ProductImage> before = imageRepository.findByProductIdOrderByPositionAscIdAsc(product.getId());
+        String removedKey = before.get(0).getImageKey();
+
+        productImageService.delete(product.getId(), before.get(0).getId(), UserPrincipal.from(vendor));
+
+        // Renumbered from zero, so positions never drift away from the count.
+        List<ProductImage> after = imageRepository.findByProductIdOrderByPositionAscIdAsc(product.getId());
+        assertThat(after).hasSize(2);
+        assertThat(after).extracting(ProductImage::getPosition).containsExactly(0, 1);
+        assertThat(after.get(0).getImageKey()).isEqualTo(before.get(1).getImageKey());
+
+        assertThatThrownBy(() -> s3.headObject(b -> b.bucket(TEST_BUCKET).key(removedKey)))
                 .isInstanceOfAny(NoSuchKeyException.class, software.amazon.awssdk.services.s3.model.S3Exception.class);
+    }
+
+    @Test
+    void delete_strangerVendor_403() {
+        Product product = fixtures.product("Image Test E", "SKU-IMG-E-" + java.util.UUID.randomUUID(), new BigDecimal("10"), 5);
+        User owner = fixtures.vendor("img-vendor-e-owner-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        User stranger = fixtures.vendor("img-vendor-e-stranger-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        reassignVendor(product.getId(), owner.getId());
+        productImageService.upload(product.getId(), pngFile("x"), UserPrincipal.from(owner));
+        Long imageId = imageRepository.findByProductIdOrderByPositionAscIdAsc(product.getId()).get(0).getId();
+
+        // Deleting someone else's photo is the same ownership question as
+        // uploading to their product, and must answer it the same way.
+        assertThatThrownBy(() ->
+                productImageService.delete(product.getId(), imageId, UserPrincipal.from(stranger)))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void upload_pastTheCap_rejected() {
+        Product product = fixtures.product("Image Test F", "SKU-IMG-F-" + java.util.UUID.randomUUID(), new BigDecimal("10"), 5);
+        User vendor = fixtures.vendor("img-vendor-cap-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+        reassignVendor(product.getId(), vendor.getId());
+
+        for (int i = 0; i < ProductImageService.MAX_IMAGES; i++) {
+            productImageService.upload(product.getId(), pngFile("f" + i), UserPrincipal.from(vendor));
+        }
+
+        assertThatThrownBy(() ->
+                productImageService.upload(product.getId(), pngFile("overflow"), UserPrincipal.from(vendor)))
+                .isInstanceOf(ProductImageService.TooManyImagesException.class);
     }
 
     @Test

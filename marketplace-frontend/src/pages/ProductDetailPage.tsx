@@ -13,6 +13,7 @@ import { ProductRail } from '../components/product/ProductRail'
 import { RAIL_CARD_WIDTH } from '../components/product/CompactProductCard'
 import { RelatedSearches } from '../components/product/RelatedSearches'
 import { PriceBlock } from '../components/product/PriceBlock'
+import { ProductGallery } from '../components/product/ProductGallery'
 
 export function ProductDetailPage() {
   const { id } = useParams()
@@ -146,21 +147,10 @@ export function ProductDetailPage() {
           />
 
         <div className="pdp-main">
-          {/* Media */}
-          <div style={{ borderRadius: 'var(--r)', aspectRatio: '4/3', maxHeight: 600, overflow: 'hidden', background: '#EAEEED' }}>
-            <img
-              src={productImageUrl(product, 1280, 960)}
-              srcSet={productImageSrcSet(product, IMAGE_WIDTHS.hero)}
-              sizes={IMAGE_SIZES.hero}
-              alt={product.name}
-              // This is the page's LCP element. fetchPriority high stops the
-              // browser from queueing it behind scripts, and decoding async
-              // keeps a large AVIF off the main thread.
-              fetchPriority="high"
-              decoding="async"
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
-          </div>
+          {/* Media. The thumbnail rail inside appears only for products with
+              more than one photo, which is still most of this catalogue's
+              exception rather than its rule. */}
+          <ProductGallery product={product} />
 
           {/* Buy panel */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

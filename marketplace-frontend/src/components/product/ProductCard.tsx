@@ -71,8 +71,19 @@ export function ProductCard({ product }: Props) {
       onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow-lift)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)' }}
       onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow)'; (e.currentTarget as HTMLDivElement).style.transform = '' }}
     >
-      {/* Product image */}
-      <Link to={`/products/${product.id}`} style={{ position: 'relative', display: 'block', height: 180, flexShrink: 0, background: '#EAEEED' }}>
+      {/* Product image.
+          Opens in a NEW TAB, like every product tile on the site. A shopper
+          scanning a grid is comparing, not committing, and taking the grid
+          away on each look costs them their place, their filters and their
+          scroll position. rel="noopener" is not optional with target blank:
+          without it the new page holds a window.opener handle back to this
+          one. */}
+      <Link
+        to={`/products/${product.id}`}
+        target="_blank"
+        rel="noopener"
+        style={{ position: 'relative', display: 'block', height: 180, flexShrink: 0, background: '#EAEEED' }}
+      >
         <img
           src={productImageUrl(product, 640, 480)}
           srcSet={productImageSrcSet(product, IMAGE_WIDTHS.card)}
@@ -99,7 +110,12 @@ export function ProductCard({ product }: Props) {
         <span style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{product.vendorName ?? 'Vendor'}</span>
 
         {/* Name */}
-        <Link to={`/products/${product.id}`} style={{ fontWeight: 600, fontSize: 14, color: 'var(--ink)', lineHeight: 1.3, minHeight: 36 }}>
+        <Link
+          to={`/products/${product.id}`}
+          target="_blank"
+          rel="noopener"
+          style={{ fontWeight: 600, fontSize: 14, color: 'var(--ink)', lineHeight: 1.3, minHeight: 36 }}
+        >
           {product.name}
         </Link>
 

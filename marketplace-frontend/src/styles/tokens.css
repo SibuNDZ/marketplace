@@ -1113,3 +1113,19 @@ button { cursor: pointer; font: inherit; }
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* ---- product detail layout -------------------------------------------
+   Defined here rather than inline so a media query can reach it. The old
+   page was `1fr 420px` with NO breakpoint, so below about 900px the buy box
+   held its 420px and squeezed the image column to nothing. Proportional
+   columns scale, and below 900px they stack. */
+.pdp-main {
+  display: grid;
+  grid-template-columns: minmax(0, 55fr) minmax(0, 45fr);
+  gap: 40px;
+  align-items: start;
+  margin-top: 28px;
+}
+@media (max-width: 900px) {
+  .pdp-main { grid-template-columns: 1fr; gap: 24px; }
+}

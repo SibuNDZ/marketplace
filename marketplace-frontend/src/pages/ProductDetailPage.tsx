@@ -8,7 +8,10 @@ import { vendorHue } from '../lib/vendorHue'
 import { ErrorSurface } from '../components/ui/ErrorSurface'
 import { productImageUrl, productImageSrcSet, IMAGE_WIDTHS, IMAGE_SIZES } from '../lib/productImage'
 import { ProductReviews } from '../components/product/ProductReviews'
-import { SimilarProducts } from '../components/product/SimilarProducts'
+import { ProductBreadcrumb } from '../components/product/ProductBreadcrumb'
+import { ProductRail } from '../components/product/ProductRail'
+import { RAIL_CARD_WIDTH } from '../components/product/CompactProductCard'
+import { RelatedSearches } from '../components/product/RelatedSearches'
 
 export function ProductDetailPage() {
   const { id } = useParams()
@@ -48,6 +51,31 @@ export function ProductDetailPage() {
     staleTime: 5 * 60 * 1000,
   })
 
+  // The three rails. Each is independent and each hides itself when empty,
+  // so a failure or a thin catalogue costs a section rather than the page.
+  const { data: similar = [] } = useQuery<ProductResponse[]>({
+    queryKey: ['product', id, 'similar', 12],
+    queryFn: () => api(`/api/v1/products/${id}/similar?limit=12`),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const { data: shopPage } = useQuery<{ content: ProductResponse[] }>({
+    queryKey: ['product', id, 'from-shop', product?.vendorId],
+    queryFn: () => api(`/api/v1/products?vendorId=${product!.vendorId}&size=12`),
+    enabled: !!product?.vendorId,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  // Popularity, NOT similarity — this rail has to be different from the one
+  // at the top of the page or it is the same shelf printed twice. Sorted by
+  // views because sales are still too sparse to rank anything.
+  const { data: popular = [] } = useQuery<ProductResponse[]>({
+    queryKey: ['popular', 'views'],
+    queryFn: () => api('/api/v1/products/popular?by=views'),
+    staleTime: 5 * 60 * 1000,
+  })
+
   const addToCart = useMutation({
     mutationFn: () => api('/api/v1/cart/items', {
       method: 'POST', body: { productId: Number(id), quantity: qty },
@@ -69,18 +97,56 @@ export function ProductDetailPage() {
   const stripe = vendorHue(product.vendorId ?? 1)
   const canAdd = product.stock > 0
 
+  // Never show the product you are already looking at inside its own
+  // recommendations. Applied here rather than in each rail so the rule is
+  // stated once and cannot be forgotten by the next rail added.
+  const notThisOne = (p: ProductResponse) => p.id !== product.id
+  const fromShop = (shopPage?.content ?? []).filter(notThisOne)
+  const alsoLike = popular
+    .filter(notThisOne)
+    // Also drop anything already shown in the Similar rail above: two rails
+    // recommending the same product reads as a bug, not as emphasis.
+    .filter(p => !similar.some(s => s.id === p.id))
+    .slice(0, 12)
+
   return (
     <>
       <Topbar />
-      {/* Vendor stripe band */}
-      <div style={{ position: 'fixed', top: 'calc(var(--trustbar-h) + var(--topbar-h))', left: 0, right: 0, height: 5, background: stripe, zIndex: 99 }} />
-      <main className="page-shell no-catrail" style={{ paddingTop: 'calc(var(--trustbar-h) + var(--topbar-h) + 5px + 32px)' }}>
-        <Link to="/" style={{ fontSize: 13, color: 'var(--ink-soft)', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24 }}>
-          ← Back to catalog
-        </Link>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 420px', gap: 48, alignItems: 'start' }}>
+      {/* Vendor stripe band.
+          Pinned to --header-height, the ONE variable that means "bottom of
+          the fixed header". It previously used --trustbar-h + --topbar-h,
+          which is 90px and counts only two of the header's three bars —
+          the 44px category bar is missing from that sum, so the stripe was
+          rendering underneath the header and was invisible. */}
+      <div style={{ position: 'fixed', top: 'var(--header-height)', left: 0, right: 0, height: 5, background: stripe, zIndex: 99 }} />
+      {/* Same arithmetic, same bug: the old padding of 127px sat 9px UNDER a
+          136px header, so the first element on the page was always clipped.
+          It went unnoticed while that element was a small back-link. */}
+      <main className="page-shell no-catrail" style={{ paddingTop: 'calc(var(--header-height) + 5px + 28px)' }}>
+        {/* Everything on this page lives inside one measured column. The
+            page shell itself is full-bleed (--content-max: 100%), which is
+            right for a catalogue grid and wrong for a reading surface: at
+            1920px the old layout stretched the image column to ~1400px and
+            the product photo swallowed the page. */}
+        <div className="pdp" style={{ maxWidth: 1280, margin: '0 auto' }}>
+          <ProductBreadcrumb product={product} />
+
+          {/* Similar items FIRST, above the product itself. Counter-intuitive
+              until you consider the shopper who followed a link to something
+              nearly right: the fastest correction is a row of neighbours, and
+              burying it below the reviews means they leave instead. Compact
+              on purpose so it introduces the page rather than competing with
+              it. */}
+          <ProductRail
+            title="Similar items"
+            products={similar}
+            cardWidth={RAIL_CARD_WIDTH.tight}
+            seeMoreTo={`/products/${id}/similar`}
+          />
+
+        <div className="pdp-main">
           {/* Media */}
-          <div style={{ borderRadius: 'var(--r)', aspectRatio: '4/3', overflow: 'hidden', background: '#EAEEED' }}>
+          <div style={{ borderRadius: 'var(--r)', aspectRatio: '4/3', maxHeight: 600, overflow: 'hidden', background: '#EAEEED' }}>
             <img
               src={productImageUrl(product, 1280, 960)}
               srcSet={productImageSrcSet(product, IMAGE_WIDTHS.hero)}
@@ -212,7 +278,26 @@ export function ProductDetailPage() {
           <ProductReviews productId={String(id)} summary={summary} />
         </div>
 
-        <SimilarProducts productId={String(id)} />
+        {/* Ordered narrowest to broadest: the same stall, then the wider
+            catalogue, then plain search terms. Each rail hides itself when
+            empty, so a thin catalogue produces a short page rather than a
+            column of empty headings. */}
+        <ProductRail
+          title={`More from ${product.vendorName ?? 'this shop'}`}
+          products={fromShop}
+          cardWidth={RAIL_CARD_WIDTH.tight}
+          seeMoreTo={`/shop/${product.vendorId}`}
+          seeMoreLabel="Visit shop"
+        />
+
+        <ProductRail
+          title="You may also like"
+          products={alsoLike}
+          cardWidth={RAIL_CARD_WIDTH.wide}
+        />
+
+        <RelatedSearches product={product} />
+        </div>
       </main>
     </>
   )

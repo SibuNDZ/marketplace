@@ -5,6 +5,7 @@ import { ApiError, api, ProductResponse } from '../../lib/api'
 import { StockBadge, OutOfStockOverlay } from '../ui/StockBadge'
 import { productImageUrl, productImageSrcSet, IMAGE_WIDTHS, IMAGE_SIZES } from '../../lib/productImage'
 import { RatingLine } from './RatingLine'
+import { PriceBlock } from './PriceBlock'
 
 interface Props {
   product: ProductResponse
@@ -137,10 +138,7 @@ export function ProductCard({ product }: Props) {
 
         {/* Price + Add */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 6 }}>
-          <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--ink)' }}>
-            <span style={{ fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 400, color: 'var(--ink-soft)' }}>R</span>
-            <span className="num">{Number(product.price).toFixed(2)}</span>
-          </span>
+          <PriceBlock price={product.price} originalPrice={product.originalPrice} size={18} />
           <button
             disabled={!canAdd || addToCart.isPending}
             onClick={() => addToCart.mutate()}

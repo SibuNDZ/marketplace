@@ -37,6 +37,20 @@ public class Product {
     @NotNull(message = "Price is required")
     private BigDecimal price;
 
+    /**
+     * The "was" price, for a strikethrough and a discount percentage. NULL
+     * means not on sale, which is the normal state.
+     *
+     * V23 enforces original_price > price at the database level, so this can
+     * never hold a value that would render as a 0% or negative discount.
+     *
+     * Setting this is a legal representation, not decoration: the CPA treats
+     * an advertised former price as a claim that the goods were actually
+     * offered at it. The vendor form says so; nothing here can verify it.
+     */
+    @Column(name = "original_price", precision = 19, scale = 2)
+    private BigDecimal originalPrice;
+
     @Column(name = "stock_quantity", nullable = false)
     @NotNull(message = "Stock quantity is required")
     private Integer stockQuantity = 0;
@@ -159,6 +173,14 @@ public class Product {
 
     public void setPrice(BigDecimal price) {
         this.price = price;
+    }
+
+    public BigDecimal getOriginalPrice() {
+        return originalPrice;
+    }
+
+    public void setOriginalPrice(BigDecimal originalPrice) {
+        this.originalPrice = originalPrice;
     }
 
     public Integer getStockQuantity() {

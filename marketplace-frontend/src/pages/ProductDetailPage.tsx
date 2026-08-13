@@ -12,6 +12,7 @@ import { ProductBreadcrumb } from '../components/product/ProductBreadcrumb'
 import { ProductRail } from '../components/product/ProductRail'
 import { RAIL_CARD_WIDTH } from '../components/product/CompactProductCard'
 import { RelatedSearches } from '../components/product/RelatedSearches'
+import { PriceBlock } from '../components/product/PriceBlock'
 
 export function ProductDetailPage() {
   const { id } = useParams()
@@ -200,10 +201,7 @@ export function ProductDetailPage() {
 
             {product.description && <p style={{ color: 'var(--ink-soft)', lineHeight: 1.6 }}>{product.description}</p>}
             <StockBadge product={product} />
-            <div style={{ fontSize: 32, fontWeight: 700 }}>
-              <span style={{ fontFamily: 'var(--mono)', fontSize: 16, color: 'var(--ink-soft)', fontWeight: 400 }}>R</span>
-              <span className="num">{Number(product.price).toFixed(2)}</span>
-            </div>
+            <PriceBlock price={product.price} originalPrice={product.originalPrice} size={32} />
 
             {needsSignIn && (
               <div style={{

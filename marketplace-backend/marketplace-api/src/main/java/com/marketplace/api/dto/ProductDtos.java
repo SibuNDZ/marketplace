@@ -21,6 +21,17 @@ public class ProductDtos {
             @NotBlank @Size(max = 64) String sku,
             @NotNull @DecimalMin(value = "0.00") @Digits(integer = 17, fraction = 2)
             BigDecimal price,
+            /**
+             * The "was" price. Null or omitted means not on sale, which is
+             * the default and the state of every existing listing.
+             *
+             * Must exceed price — see discountIsReal below. That is checked
+             * here AND by a CHECK constraint in V23, deliberately: the
+             * message here is what a vendor reads, the constraint is what
+             * makes it impossible for any other write path to get around.
+             */
+            @DecimalMin(value = "0.00") @Digits(integer = 17, fraction = 2)
+            BigDecimal originalPrice,
             @NotNull @Min(0) Integer stock,
             @NotBlank String categorySlug,
             Boolean handmade,
@@ -32,6 +43,23 @@ public class ProductDtos {
             @Size(max = 10, message = "At most 10 tags")
             List<@NotBlank @Size(max = 30) String> tags
     ) {
+        /**
+         * A "was" price that is not above the selling price is not a
+         * discount. Rejecting it stops the two ways this goes wrong: equal
+         * prices render "0% off", and a lower one renders a negative
+         * discount, both of which look like a bug and read as a trick.
+         *
+         * @AssertTrue puts this in the same 400 response as every other
+         * field error, so the vendor form can show it inline rather than
+         * surfacing a 500 from the database constraint underneath.
+         */
+        @jakarta.validation.constraints.AssertTrue(
+                message = "The original price must be higher than the selling price")
+        public boolean isDiscountIsReal() {
+            if (originalPrice == null || price == null) return true;
+            return originalPrice.compareTo(price) > 0;
+        }
+
         public boolean handmadeOrFalse() {
             return Boolean.TRUE.equals(handmade);
         }
@@ -62,6 +90,13 @@ public class ProductDtos {
             String description,
             String sku,
             BigDecimal price,
+            /**
+             * The "was" price, or null when not on sale — which is almost
+             * always. The frontend renders a strikethrough and a percentage
+             * ONLY when this is present, so an absent value can never
+             * produce a discount badge.
+             */
+            BigDecimal originalPrice,
             int stock,
             Long vendorId,
             String vendorName,
@@ -106,8 +141,8 @@ public class ProductDtos {
         /** Records have no withers, and the alternative is repeating twenty
          *  fields at the one call site that needs this. */
         public ProductResponse withSimilarityReason(String reason) {
-            return new ProductResponse(id, name, description, sku, price, stock,
-                    vendorId, vendorName, avgRating, reviewCount, soldCount,
+            return new ProductResponse(id, name, description, sku, price, originalPrice,
+                    stock, vendorId, vendorName, avgRating, reviewCount, soldCount,
                     createdAt, categorySlug, categoryName, parentCategorySlug,
                     handmade, tags, imageUrl, deletedAt, variants, reason);
         }

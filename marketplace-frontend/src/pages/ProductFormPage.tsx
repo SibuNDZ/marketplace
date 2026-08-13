@@ -9,7 +9,7 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 const ACCEPTED_IMAGE_TYPES = 'image/jpeg,image/png,image/webp'
 
 const EMPTY: ProductRequest = {
-  name: '', description: '', sku: '', price: '', stock: 0,
+  name: '', description: '', sku: '', price: '', originalPrice: null, stock: 0,
   categorySlug: '', handmade: false, tags: [],
 }
 
@@ -67,6 +67,9 @@ export function ProductFormPage() {
         description: existing.description ?? '',
         sku: existing.sku ?? '',
         price: existing.price,
+        // Round-trips the current sale, so opening the form on a discounted
+        // listing and saving does not silently end the discount.
+        originalPrice: existing.originalPrice ?? null,
         stock: existing.stock,
         categorySlug: existing.categorySlug,
         handmade: existing.handmade,
@@ -409,6 +412,30 @@ export function ProductFormPage() {
                   onChange={e => set('stock', Number(e.target.value))} style={inputStyle(!!fieldErrors.stock)} />
               </Field>
             </div>
+          </div>
+
+          {/* Optional, and left blank by default. The helper text is not
+              boilerplate: under the Consumer Protection Act an advertised
+              former price is a representation that the goods were actually
+              offered at it, and the vendor is the only person who knows
+              whether that is true. The system can enforce the arithmetic and
+              nothing else, so it says so plainly here rather than letting a
+              vendor discover it later. */}
+          <div style={{ flex: 1 }}>
+            <Field label="Original price (R) — optional" error={fieldErrors.originalPrice}>
+              <input
+                type="number" min="0.01" step="0.01"
+                placeholder="Leave blank if not on sale"
+                value={form.originalPrice ?? ''}
+                onChange={e => set('originalPrice', e.target.value === '' ? null : e.target.value)}
+                style={inputStyle(!!fieldErrors.originalPrice)}
+              />
+              <span style={{ fontSize: 12, color: 'var(--ink-soft)', fontWeight: 400 }}>
+                Shows as a struck-through “was” price with a saving. Only use a
+                price you actually sold at — advertising a former price you did
+                not charge is prohibited under the Consumer Protection Act.
+              </span>
+            </Field>
           </div>
 
           {/* The review gate. Shown only while unedited AI text is still on

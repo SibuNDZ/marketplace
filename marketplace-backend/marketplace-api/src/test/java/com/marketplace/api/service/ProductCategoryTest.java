@@ -62,7 +62,9 @@ class ProductCategoryTest {
         String sku = "SKU-CAT-" + skuSuffix + "-" + UUID.randomUUID().toString().substring(0, 8);
         ProductRequest req = new ProductRequest(
                 "Category Test " + skuSuffix, "desc", sku,
-                new BigDecimal("20.00"), 5, categorySlug, handmade, tags);
+                // null originalPrice = not on sale, the default for every
+                // listing that has not been deliberately marked down.
+                new BigDecimal("20.00"), null, 5, categorySlug, handmade, tags);
         return productService.create(req, UserPrincipal.from(vendor));
     }
 

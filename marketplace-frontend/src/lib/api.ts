@@ -322,6 +322,10 @@ export interface ProductResponse {
   description?: string
   sku?: string
   price: string
+  // Present only when the vendor set a genuine markdown, and suppressed by
+  // the backend when a product has variants (the shown price is then the
+  // cheapest option, which this was never compared against).
+  originalPrice?: string | null
   stock: number
   vendorId?: number
   vendorName?: string
@@ -353,6 +357,10 @@ export interface ProductRequest {
   description?: string
   sku: string
   price: string
+  // The "was" price. Empty string or null means not on sale. Must exceed
+  // price — the backend rejects anything else, in the DTO and again with a
+  // database CHECK.
+  originalPrice?: string | null
   stock: number
   categorySlug: string
   handmade: boolean

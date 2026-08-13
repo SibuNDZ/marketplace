@@ -546,6 +546,11 @@ public class ProductService {
         product.setDescription(request.description());
         product.setSku(request.sku());
         product.setPrice(request.price());
+        // Null clears a sale, which is the only way to end one. Sending the
+        // field absent has to mean "no longer discounted" rather than "leave
+        // it as it was", or a vendor could never take a listing off sale
+        // through the form.
+        product.setOriginalPrice(request.originalPrice());
         product.setStock(request.stock());
         product.setCategory(categoryService.requireBySlug(request.categorySlug()));
         product.setHandmade(request.handmadeOrFalse());
@@ -639,6 +644,16 @@ public class ProductService {
                         .min(BigDecimal::compareTo).orElse(p.getPrice())
                 : p.getPrice();
 
+        // A "was" price is only meaningful against the price actually shown.
+        // With variants the shown price is the cheapest OPTION, which the
+        // product-level original_price was never compared against: a product
+        // at 100 marked down from 150, with options priced 200+, would
+        // display 150 struck through above 200 and advertise a price RISE as
+        // a saving. Suppressed rather than recomputed, because the honest
+        // fix is a per-variant compare-at price, and inventing one here
+        // would be guessing which option the vendor discounted.
+        BigDecimal effectiveOriginalPrice = hasVariants ? null : p.getOriginalPrice();
+
         List<ProductDtos.VariantResponse> variantResponses = variants.stream()
                 .map(v -> new ProductDtos.VariantResponse(
                         v.getId(), v.getLabel(), v.getSku(), v.getPrice(),
@@ -648,7 +663,7 @@ public class ProductService {
 
         return new ProductResponse(
                 p.getId(), p.getName(), p.getDescription(), p.getSku(),
-                effectivePrice, effectiveStock,
+                effectivePrice, effectiveOriginalPrice, effectiveStock,
                 vendor != null ? vendor.getId() : null,
                 // Storefront name, NOT the person's name: a listing is
                 // attributed to the business that sells it (V19).

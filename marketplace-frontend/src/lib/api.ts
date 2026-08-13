@@ -316,6 +316,12 @@ export interface VariantResponse {
   imageUrl: string | null
 }
 
+export interface ProductImage {
+  id: number
+  url: string
+  position: number
+}
+
 export interface ProductResponse {
   id: number
   name: string
@@ -330,6 +336,9 @@ export interface ProductResponse {
   vendorId?: number
   vendorName?: string
   deletedAt?: string | null  // null = live, string = soft-deleted timestamp
+  // The full gallery in display order (V24). imageUrl above is simply the
+  // first of these, derived server-side so the two cannot disagree.
+  images?: ProductImage[]
   // Present only on /similar responses. Deliberately NOT rendered: every card
   // on that shelf would carry the same words as the shelf's own heading, which
   // is the "New on 100% of cards" problem again. It exists so the API can say

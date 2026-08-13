@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError, CategoryOption, ProductRequest, ProductResponse, categories as categoriesApi, draftListingFromPhoto, fieldErrorsFrom, uploadProductImage } from '../lib/api'
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { ErrorSurface } from '../components/ui/ErrorSurface'
+import { imageUrlAt } from '../lib/productImage'
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 const ACCEPTED_IMAGE_TYPES = 'image/jpeg,image/png,image/webp'
@@ -14,6 +15,9 @@ const EMPTY: ProductRequest = {
 }
 
 const MAX_TAGS = 10
+// Mirrors ProductImageService.MAX_IMAGES. The backend is the enforcer; this
+// is only so the form can say the number out loud before a vendor hits it.
+const MAX_IMAGES = 8
 
 function Field({ label, error, children }: { label: string; error?: string[]; children: React.ReactNode }) {
   return (
@@ -177,6 +181,17 @@ export function ProductFormPage() {
     set(key, value)
   }
 
+  // Deleting a photo hits the API immediately rather than staging until
+  // save: the object is already uploaded, so there is no draft state for it
+  // to live in, and a vendor who removes a photo and then abandons the form
+  // would otherwise be surprised to find it still there.
+  const removeImage = useMutation({
+    mutationFn: (imageId: number) =>
+      api(`/api/v1/products/${id}/images/${imageId}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['product', id] }),
+    onError: (e) => { if (e instanceof ApiError) setGenericError(e) },
+  })
+
   const draft = useMutation({
     mutationFn: () => draftListingFromPhoto(imageFile!),
     onSuccess: (d) => {
@@ -275,14 +290,57 @@ export function ProductFormPage() {
           {/* Photo first in create mode: the drafter reads the photo, so
               asking for it up front is what makes "draft from photo" the
               natural next action rather than a feature buried mid-form. */}
-          <Field label="Photo" error={imageError ? [imageError] : undefined}>
-            {(imagePreview ?? existing?.imageUrl) && (
-              <img src={imagePreview ?? existing!.imageUrl!} alt="" style={{
+          <Field label="Photos" error={imageError ? [imageError] : undefined}>
+            {/* Existing gallery, editable in place. Only in edit mode: on a
+                new product there is nothing uploaded yet, and the file input
+                below is the whole story. */}
+            {isEdit && (existing?.images?.length ?? 0) > 0 && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                {existing!.images!.map((img, i) => (
+                  <div key={img.id} style={{ position: 'relative' }}>
+                    <img src={imageUrlAt(img.url, 240)} alt="" style={{
+                      width: 96, height: 96, objectFit: 'cover',
+                      borderRadius: 'var(--r-sm)', display: 'block',
+                      border: i === 0 ? '2px solid var(--ink)' : '1px solid var(--line)',
+                    }} />
+                    {/* The first photo is the one every card, cart row and
+                        rail shows, so say which one that is rather than
+                        leaving the vendor to discover it. */}
+                    {i === 0 && (
+                      <span style={{
+                        position: 'absolute', bottom: 4, left: 4, fontSize: 10, fontWeight: 700,
+                        background: 'var(--ink)', color: '#fff', padding: '1px 5px',
+                        borderRadius: 'var(--r-pill)',
+                      }}>Cover</span>
+                    )}
+                    <button
+                      type="button"
+                      aria-label={`Remove photo ${i + 1}`}
+                      disabled={removeImage.isPending}
+                      onClick={() => removeImage.mutate(img.id)}
+                      style={{
+                        position: 'absolute', top: -6, right: -6, width: 22, height: 22,
+                        borderRadius: '50%', border: '1px solid var(--line)',
+                        background: 'var(--card)', cursor: 'pointer', fontSize: 12, lineHeight: 1,
+                      }}
+                    >×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {imagePreview && (
+              <img src={imagePreview} alt="" style={{
                 width: 120, height: 90, objectFit: 'cover', borderRadius: 'var(--r-sm)', marginBottom: 6,
               }} />
             )}
             <input type="file" accept={ACCEPTED_IMAGE_TYPES} onChange={onImageChange}
               style={{ fontSize: 13 }} />
+            <span style={{ fontSize: 12, color: 'var(--ink-soft)', fontWeight: 400 }}>
+              {isEdit
+                ? `Adds another photo. The first one is the cover shown on cards. Up to ${MAX_IMAGES} per product.`
+                : `You can add more photos after saving. Up to ${MAX_IMAGES} per product.`}
+            </span>
           </Field>
 
           {!isEdit && (

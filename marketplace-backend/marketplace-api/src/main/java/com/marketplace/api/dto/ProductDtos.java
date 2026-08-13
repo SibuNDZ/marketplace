@@ -109,7 +109,22 @@ public class ProductDtos {
             String parentCategorySlug, // null when the product sits on a top-level category
             boolean handmade,
             List<String> tags,
-            String imageUrl,         // null until a vendor uploads one — frontend falls back to a placeholder
+            /**
+             * The FIRST photo's URL, or null when there are none. Derived
+             * from images below rather than stored, so it can never disagree
+             * with the gallery.
+             *
+             * Kept as a top-level field on purpose: cards, cart rows and the
+             * recommendation rails all want exactly one picture and should
+             * not each have to reach into an array and know that index 0 is
+             * the cover.
+             */
+            String imageUrl,
+            /**
+             * The full gallery in display order (V24). Empty for a product
+             * with no photos, which is normal.
+             */
+            List<ProductImageResponse> images,
             /**
              * Soft-delete timestamp. Always null on public catalog responses
              * (those queries filter deleted rows out); non-null only on the
@@ -144,9 +159,16 @@ public class ProductDtos {
             return new ProductResponse(id, name, description, sku, price, originalPrice,
                     stock, vendorId, vendorName, avgRating, reviewCount, soldCount,
                     createdAt, categorySlug, categoryName, parentCategorySlug,
-                    handmade, tags, imageUrl, deletedAt, variants, reason);
+                    handmade, tags, imageUrl, images, deletedAt, variants, reason);
         }
     }
+
+    /** One photo in a product's gallery. */
+    public record ProductImageResponse(
+            Long id,
+            String url,
+            int position
+    ) {}
 
     /** One purchasable option. Price is absolute, never a delta. */
     public record VariantResponse(

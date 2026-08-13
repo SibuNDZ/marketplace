@@ -171,11 +171,33 @@ public class ProductController {
                 productStockService.adjustStock(id, request.delta(), me));
     }
 
+    /**
+     * APPENDS a photo to the product's gallery (V24). One file per call: the
+     * vendor form uploads sequentially so a single rejected file fails on its
+     * own rather than taking a whole batch down with it.
+     *
+     * Path stays /image singular for the existing frontend upload helper.
+     * The behaviour changed underneath it — this used to replace the one
+     * photo a product could have.
+     */
     @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('VENDOR','ADMIN')")
     public Map<String, String> uploadImage(@PathVariable Long id,
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal UserPrincipal me) {
         return Map.of("imageUrl", productImageService.upload(id, file, me));
+    }
+
+    /**
+     * Removes one photo and closes the gap in the ordering. Ownership is
+     * checked in the service, same as every other product write.
+     */
+    @DeleteMapping("/{id}/images/{imageId}")
+    @PreAuthorize("hasAnyRole('VENDOR','ADMIN')")
+    public ResponseEntity<Void> deleteImage(@PathVariable Long id,
+            @PathVariable Long imageId,
+            @AuthenticationPrincipal UserPrincipal me) {
+        productImageService.delete(id, imageId, me);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 }

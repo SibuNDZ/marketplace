@@ -125,12 +125,10 @@ public class Product {
     @Column(name = "tags", nullable = false, columnDefinition = "text[]")
     private List<String> tags = new ArrayList<>();
 
-    // R2 object key (e.g. products/42/9f3a....webp), not the URL — the
-    // public URL is derived (base + key) so the serving domain can change
-    // without a data migration. Null means no image uploaded yet; the
-    // frontend's fallback chain is what makes that state presentable.
-    @Column(name = "image_key")
-    private String imageKey;
+    // Photos moved to the product_images table in V24. A product now has an
+    // ordered gallery rather than one picture, and image_key is gone from
+    // this table entirely so there is exactly one place a photo lives.
+    // ProductResponse.imageUrl is derived from the first image.
 
     // Constructors
     public Product() {}
@@ -274,8 +272,6 @@ public class Product {
     public List<String> getTags() { return tags; }
     public void setTags(List<String> tags) { this.tags = tags; }
 
-    public String getImageKey() { return imageKey; }
-    public void setImageKey(String imageKey) { this.imageKey = imageKey; }
 
     @Override
     public String toString() {

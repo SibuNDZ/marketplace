@@ -11,6 +11,13 @@ public class CartDtos {
 
     public record AddItemRequest(
             @NotNull Long productId,
+            /**
+             * Required for a product that HAS options, rejected for one that
+             * does not — VariantSelection.validate owns that rule. Optional
+             * here rather than @NotNull because most products have no options
+             * and the field is genuinely absent for them.
+             */
+            Long variantId,
             @NotNull @Min(1) @Max(999) Integer quantity
     ) {}
 
@@ -34,6 +41,10 @@ public class CartDtos {
                 int quantity,
                 BigDecimal lineTotal,
                 int availableStock, // lets the UI warn "only 2 left" pre-checkout
+            /** The chosen option, or null when the product has none (V25). */
+            Long variantId,
+            /** e.g. "Large". Null when there is no option. */
+            String variantLabel,
                 /**
                  * Null when the vendor has not uploaded a photo, exactly as on
                  * ProductResponse. Its absence is why both cart surfaces were

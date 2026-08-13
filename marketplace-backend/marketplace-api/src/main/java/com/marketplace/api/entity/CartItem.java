@@ -23,6 +23,17 @@ public class CartItem {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
+    /**
+     * The chosen option, or null for a product that has none (V25).
+     *
+     * Null is a permanent, meaningful state — "buy the product itself" — not
+     * a migration leftover. A cart line is identified by (product, variant),
+     * enforced by uq_cart_items_line.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "variant_id")
+    private ProductVariant variant;
+
     public CartItem() {}
 
     public Long getId() { return id; }
@@ -33,6 +44,9 @@ public class CartItem {
 
     public Cart getCart() { return cart; }
     public void setCart(Cart cart) { this.cart = cart; }
+
+    public ProductVariant getVariant() { return variant; }
+    public void setVariant(ProductVariant variant) { this.variant = variant; }
 
     public Product getProduct() { return product; }
     public void setProduct(Product product) { this.product = product; }

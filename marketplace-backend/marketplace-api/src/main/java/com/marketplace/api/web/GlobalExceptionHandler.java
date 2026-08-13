@@ -13,6 +13,8 @@ import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
 import com.marketplace.api.exception.ReviewExceptions.*;
 import com.marketplace.api.payment.PaymentExceptions.PaymentProviderException;
 import com.marketplace.api.service.ProductStockService.InsufficientAdjustmentException;
+import com.marketplace.api.service.VariantSelection.VariantNotApplicableException;
+import com.marketplace.api.service.VariantSelection.VariantRequiredException;
 import com.marketplace.api.storage.ProductImageService.ImageNotFoundException;
 import com.marketplace.api.storage.ProductImageService.TooManyImagesException;
 import com.marketplace.api.storage.ProductImageService.UnsupportedImageTypeException;
@@ -168,6 +170,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UnsupportedImageTypeException.class)
     public ProblemDetail unsupportedImageType(UnsupportedImageTypeException ex) {
         return problem(HttpStatus.BAD_REQUEST, "Unsupported image", ex.getMessage());
+    }
+
+    // Both are the shopper picking (or failing to pick) an option, so both
+    // are a 400 the buy box can render inline rather than a server fault.
+    @ExceptionHandler(VariantRequiredException.class)
+    public ProblemDetail variantRequired(VariantRequiredException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Option required", ex.getMessage());
+    }
+
+    @ExceptionHandler(VariantNotApplicableException.class)
+    public ProblemDetail variantNotApplicable(VariantNotApplicableException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Invalid option", ex.getMessage());
     }
 
     @ExceptionHandler(TooManyImagesException.class)

@@ -6,10 +6,13 @@ import com.marketplace.api.dto.CartDtos.CartResponse.CartLine;
 import com.marketplace.api.entity.Cart;
 import com.marketplace.api.entity.CartItem;
 import com.marketplace.api.entity.Product;
+import com.marketplace.api.entity.ProductVariant;
 import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
 import com.marketplace.api.repository.CartRepository;
 import com.marketplace.api.repository.ProductRepository;
+import com.marketplace.api.repository.ProductVariantRepository;
 import com.marketplace.api.repository.UserRepository;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,17 +35,20 @@ public class CartService {
     private final UserRepository userRepository;
     private final com.marketplace.api.storage.ObjectStorageService storage;
     private final com.marketplace.api.repository.ProductImageRepository imageRepository;
+    private final ProductVariantRepository variantRepository;
 
     public CartService(CartRepository cartRepository,
                        ProductRepository productRepository,
                        UserRepository userRepository,
                        com.marketplace.api.storage.ObjectStorageService storage,
-                       com.marketplace.api.repository.ProductImageRepository imageRepository) {
+                       com.marketplace.api.repository.ProductImageRepository imageRepository,
+                       ProductVariantRepository variantRepository) {
         this.cartRepository = cartRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.storage = storage;
         this.imageRepository = imageRepository;
+        this.variantRepository = variantRepository;
     }
 
     @Transactional(readOnly = true)
@@ -61,11 +67,23 @@ public class CartService {
         Product product = productRepository.findByIdAndDeletedAtIsNull(request.productId())
                 .orElseThrow(() -> new ProductNotFoundException(request.productId()));
 
+        // Resolve and validate the option BEFORE touching the cart, so a bad
+        // request never half-mutates it.
+        ProductVariant variant = request.variantId() == null ? null
+                : variantRepository.findById(request.variantId())
+                        .orElseThrow(() -> new VariantSelection.VariantNotApplicableException(product.getName()));
+        VariantSelection.validate(product, variant,
+                variantRepository.findByProductIdOrderByPositionAscIdAsc(product.getId()));
+
         Cart cart = cartRepository.findWithItemsByUserId(userId)
                 .orElseGet(() -> newCartFor(userId));
 
+        // A line is identified by (product, OPTION) now. Matching on product
+        // alone would merge Small into the Large line and quietly change what
+        // the shopper is buying.
         cart.getItems().stream()
-                .filter(ci -> ci.getProduct().getId().equals(product.getId()))
+                .filter(ci -> ci.getProduct().getId().equals(product.getId())
+                        && sameVariant(ci, variant))
                 .findFirst()
                 .ifPresentOrElse(
                         existing -> existing.setQuantity(
@@ -74,6 +92,7 @@ public class CartService {
                             CartItem item = new CartItem();
                             item.setCart(cart);
                             item.setProduct(product);
+                            item.setVariant(variant);
                             item.setQuantity(request.quantity());
                             cart.getItems().add(item);
                         });
@@ -81,11 +100,25 @@ public class CartService {
         return toResponse(cartRepository.save(cart));
     }
 
+    /** Null-safe identity for "the same line", where null means no option. */
+    private static boolean sameVariant(CartItem item, @Nullable ProductVariant variant) {
+        Long a = item.getVariant() == null ? null : item.getVariant().getId();
+        Long b = variant == null ? null : variant.getId();
+        return java.util.Objects.equals(a, b);
+    }
+
+    /**
+     * variantId identifies WHICH line when a product is in the cart more than
+     * once. Null means the line with no option — which is every line for a
+     * product that has none, and the only line that existed before V25.
+     */
     @Transactional
-    public CartResponse updateQuantity(Long userId, Long productId, int quantity) {
+    public CartResponse updateQuantity(Long userId, Long productId,
+                                       @Nullable Long variantId, int quantity) {
         Cart cart = requireCart(userId);
         CartItem item = cart.getItems().stream()
-                .filter(ci -> ci.getProduct().getId().equals(productId))
+                .filter(ci -> ci.getProduct().getId().equals(productId)
+                        && java.util.Objects.equals(variantIdOf(ci), variantId))
                 .findFirst()
                 .orElseThrow(() -> new ProductNotFoundException(productId));
         item.setQuantity(quantity);
@@ -93,11 +126,17 @@ public class CartService {
     }
 
     @Transactional
-    public CartResponse removeItem(Long userId, Long productId) {
+    public CartResponse removeItem(Long userId, Long productId, @Nullable Long variantId) {
         Cart cart = requireCart(userId);
-        // orphanRemoval on Cart.cartItems turns this removal into a DELETE
-        cart.getItems().removeIf(ci -> ci.getProduct().getId().equals(productId));
+        // orphanRemoval on Cart.cartItems turns this removal into a DELETE.
+        // Matching the option too, or removing Small would take Large with it.
+        cart.getItems().removeIf(ci -> ci.getProduct().getId().equals(productId)
+                && java.util.Objects.equals(variantIdOf(ci), variantId));
         return toResponse(cart);
+    }
+
+    private static Long variantIdOf(CartItem item) {
+        return item.getVariant() == null ? null : item.getVariant().getId();
     }
 
     @Transactional
@@ -126,10 +165,18 @@ public class CartService {
         List<CartLine> lines = cart.getItems().stream()
                 .map(ci -> {
                     Product p = ci.getProduct();
-                    BigDecimal lineTotal = p.getPrice()
+                    ProductVariant v = ci.getVariant();
+                    // Price and stock come from whichever side owns them.
+                    // Quoting the product's price for a variant line is how a
+                    // cart total stops matching what checkout charges.
+                    BigDecimal unitPrice = VariantSelection.priceOf(p, v);
+                    BigDecimal lineTotal = unitPrice
                             .multiply(BigDecimal.valueOf(ci.getQuantity()));
-                    return new CartLine(p.getId(), p.getName(), p.getPrice(),
-                            ci.getQuantity(), lineTotal, p.getStock(),
+                    return new CartLine(p.getId(), p.getName(), unitPrice,
+                            ci.getQuantity(), lineTotal,
+                            VariantSelection.stockOf(p, v),
+                            v == null ? null : v.getId(),
+                            v == null ? null : v.getLabel(),
                             // The product's FIRST photo (V24), matching what
                             // its card and the product page lead with, so a
                             // cart row shows the same picture the shopper

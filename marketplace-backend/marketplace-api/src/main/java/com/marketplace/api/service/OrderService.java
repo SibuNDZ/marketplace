@@ -7,6 +7,7 @@ import com.marketplace.api.exception.OrderExceptions.*;
 import com.marketplace.api.repository.CartRepository;
 import com.marketplace.api.repository.OrderRepository;
 import com.marketplace.api.repository.ProductRepository;
+import com.marketplace.api.repository.ProductVariantRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.hibernate.Session;
@@ -53,15 +54,18 @@ public class OrderService {
     private final CartRepository cartRepository;
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
+    private final ProductVariantRepository variantRepository;
     private final OrderStatusRecorder recorder;
 
     public OrderService(CartRepository cartRepository,
                         OrderRepository orderRepository,
                         ProductRepository productRepository,
+                        ProductVariantRepository variantRepository,
                         OrderStatusRecorder recorder) {
         this.cartRepository = cartRepository;
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
+        this.variantRepository = variantRepository;
         this.recorder = recorder;
     }
 
@@ -94,29 +98,63 @@ public class OrderService {
             throw new EmptyCartException();
         }
 
-        Map<Long, Integer> demandByProduct = cart.getItems().stream()
+        // Demand is per (product, OPTION) now, not per product. Two lines for
+        // the same product in different sizes draw down different stock.
+        record Line(Long productId, Long variantId) {}
+        Map<Line, Integer> demand = cart.getItems().stream()
                 .collect(Collectors.toMap(
-                        ci -> ci.getProduct().getId(),
+                        ci -> new Line(ci.getProduct().getId(),
+                                ci.getVariant() == null ? null : ci.getVariant().getId()),
                         CartItem::getQuantity,
                         Integer::sum));
 
-        List<Long> productIds = demandByProduct.keySet().stream().sorted().toList();
+        // Products are still locked, in ascending id order, INCLUDING the
+        // parents of variant lines. That is what makes the variant stock safe
+        // without a second lock ordering to reason about: every writer takes
+        // the product lock first, so two orders for the same option serialise
+        // on the parent row before either touches the option's count.
+        List<Long> productIds = demand.keySet().stream()
+                .map(Line::productId).distinct().sorted().toList();
         Map<Long, Product> productsById = lockAndRefresh(productIds);
+
+        // Variants re-read AFTER the product lock, and refreshed for the same
+        // reason lockAndRefresh refreshes products: an instance already in the
+        // session is a snapshot from before the lock, and a concurrent order
+        // may have committed a decrement against it in between.
+        List<Long> variantIds = demand.keySet().stream()
+                .map(Line::variantId).filter(java.util.Objects::nonNull).distinct().sorted().toList();
+        Map<Long, ProductVariant> variantsById = variantIds.isEmpty() ? Map.of()
+                : variantRepository.findAllById(variantIds).stream()
+                        .peek(entityManager::refresh)
+                        .collect(Collectors.toMap(ProductVariant::getId, Function.identity()));
 
         // Validate ALL lines before decrementing ANY stock.
         List<InsufficientStockException.StockShortage> shortages = new ArrayList<>();
-        for (Long productId : productIds) {
-            Product product = productsById.get(productId);
-            int requested = demandByProduct.get(productId);
+        for (Line line : demand.keySet().stream()
+                .sorted(Comparator.comparing(Line::productId)
+                        .thenComparing(l -> l.variantId() == null ? 0L : l.variantId()))
+                .toList()) {
+            Product product = productsById.get(line.productId());
+            ProductVariant variant = line.variantId() == null ? null
+                    : variantsById.get(line.variantId());
+            int requested = demand.get(line);
+
             if (product == null) {
                 shortages.add(new InsufficientStockException.StockShortage(
-                        productId, "(product no longer exists)", requested, 0));
+                        line.productId(), "(product no longer exists)", requested, 0));
             } else if (product.getDeletedAt() != null) {
                 shortages.add(new InsufficientStockException.StockShortage(
-                        productId, product.getName() + " (no longer available)", requested, 0));
-            } else if (product.getStock() < requested) {
+                        line.productId(), product.getName() + " (no longer available)", requested, 0));
+            } else if (line.variantId() != null && variant == null) {
+                // The option was deleted between add-to-cart and checkout.
+                // Treated as a shortage rather than a crash: the shopper needs
+                // to see which line is the problem, not a 500.
                 shortages.add(new InsufficientStockException.StockShortage(
-                        productId, product.getName(), requested, product.getStock()));
+                        line.productId(), product.getName() + " (option no longer available)", requested, 0));
+            } else if (VariantSelection.stockOf(product, variant) < requested) {
+                shortages.add(new InsufficientStockException.StockShortage(
+                        line.productId(), VariantSelection.describe(product, variant),
+                        requested, VariantSelection.stockOf(product, variant)));
             }
         }
         if (!shortages.isEmpty()) {
@@ -135,18 +173,31 @@ public class OrderService {
 
         for (CartItem cartItem : sortedItems) {
             Product product = productsById.get(cartItem.getProduct().getId());
-            product.setStock(product.getStock() - cartItem.getQuantity());
+            ProductVariant variant = cartItem.getVariant() == null ? null
+                    : variantsById.get(cartItem.getVariant().getId());
+
+            // Decrement whichever side owns the count. Before this, a variant
+            // product's order decremented products.stock_quantity — a column
+            // the shopper never saw, while the option's own stock, which IS
+            // what the page showed, never moved. That is an oversell.
+            VariantSelection.setStock(product, variant,
+                    VariantSelection.stockOf(product, variant) - cartItem.getQuantity());
+
+            BigDecimal unitPrice = VariantSelection.priceOf(product, variant);
 
             OrderItem orderItem = new OrderItem();
             orderItem.setOrder(order);
             orderItem.setProduct(product);
+            orderItem.setVariant(variant);
             orderItem.setQuantity(cartItem.getQuantity());
-            orderItem.setPriceAtPurchase(product.getPrice());
+            // Snapshots, not references: a receipt must still read correctly
+            // after the option is renamed or deleted.
+            orderItem.setPriceAtPurchase(unitPrice);
             orderItem.setProductNameAtPurchase(product.getName());
+            orderItem.setVariantLabelAtPurchase(variant == null ? null : variant.getLabel());
 
             order.getOrderItems().add(orderItem);
-            total = total.add(product.getPrice()
-                    .multiply(BigDecimal.valueOf(cartItem.getQuantity())));
+            total = total.add(unitPrice.multiply(BigDecimal.valueOf(cartItem.getQuantity())));
         }
 
         // One flat delivery fee per unique vendor in the cart, snapshotted
@@ -213,17 +264,40 @@ public class OrderService {
                     + " is " + order.getStatus());
         }
 
-        Map<Long, Integer> restoreByProduct = order.getOrderItems().stream()
+        // Restore to whichever side it came FROM. Giving a variant order's
+        // units back to the product's own count would leak stock: the option
+        // stays sold out while a number nobody displays quietly grows.
+        record Line(Long productId, Long variantId) {}
+        Map<Line, Integer> restore = order.getOrderItems().stream()
                 .filter(oi -> oi.getProduct() != null)
                 .collect(Collectors.toMap(
-                        oi -> oi.getProduct().getId(),
+                        oi -> new Line(oi.getProduct().getId(),
+                                oi.getVariant() == null ? null : oi.getVariant().getId()),
                         OrderItem::getQuantity,
                         Integer::sum));
 
-        List<Long> productIds = restoreByProduct.keySet().stream().sorted().toList();
+        List<Long> productIds = restore.keySet().stream()
+                .map(Line::productId).distinct().sorted().toList();
         Map<Long, Product> productsById = lockAndRefresh(productIds);
-        for (Product product : productsById.values()) {
-            product.setStock(product.getStock() + restoreByProduct.get(product.getId()));
+
+        List<Long> variantIds = restore.keySet().stream()
+                .map(Line::variantId).filter(java.util.Objects::nonNull).distinct().sorted().toList();
+        Map<Long, ProductVariant> variantsById = variantIds.isEmpty() ? Map.of()
+                : variantRepository.findAllById(variantIds).stream()
+                        .peek(entityManager::refresh)
+                        .collect(Collectors.toMap(ProductVariant::getId, Function.identity()));
+
+        for (Map.Entry<Line, Integer> entry : restore.entrySet()) {
+            Product product = productsById.get(entry.getKey().productId());
+            if (product == null) continue;
+            Long variantId = entry.getKey().variantId();
+            ProductVariant variant = variantId == null ? null : variantsById.get(variantId);
+            // A deleted option has nowhere to give the units back to. Skipped
+            // rather than credited to the product, which would be inventing
+            // stock of something that no longer exists.
+            if (variantId != null && variant == null) continue;
+            VariantSelection.setStock(product, variant,
+                    VariantSelection.stockOf(product, variant) + entry.getValue());
         }
 
         order.setStatus(OrderStatus.CANCELLED);
@@ -315,6 +389,7 @@ public class OrderService {
                 .map(oi -> new OrderResponse.OrderItemResponse(
                         oi.getProduct() != null ? oi.getProduct().getId() : null,
                         oi.getProductNameAtPurchase(),
+                        oi.getVariantLabelAtPurchase(),
                         oi.getPriceAtPurchase(),
                         oi.getQuantity(),
                         oi.getPriceAtPurchase()

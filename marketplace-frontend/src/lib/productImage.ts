@@ -91,6 +91,28 @@ export const IMAGE_SIZES = {
   thumb: '44px',
 } as const
 
+/**
+ * Transform a bare image URL, for callers holding a URL rather than a whole
+ * ProductResponse — cart lines carry `imageUrl` and nothing else.
+ *
+ * Returns the input untouched when it is not one of ours, and undefined for
+ * a missing image so a caller can decide what to render instead of being
+ * handed a broken src.
+ */
+export function imageUrlAt(url: string | null | undefined, width: number): string | undefined {
+  if (!url) return undefined
+  return isTransformable(url) ? transform(url, width) : url
+}
+
+/** srcset from a bare URL. Same undefined-means-nothing contract as above. */
+export function imageSrcSetAt(
+  url: string | null | undefined,
+  widths: readonly number[],
+): string | undefined {
+  if (!url || !isTransformable(url)) return undefined
+  return widths.map(w => `${transform(url, w)} ${w}w`).join(', ')
+}
+
 /** The plain src. Still needed: it is what a browser without srcset support
  *  uses, and what everything falls back to for placeholder images. */
 export function productImageUrl(product: ProductResponse, width: number, height: number): string {

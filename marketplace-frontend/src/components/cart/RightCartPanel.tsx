@@ -9,6 +9,7 @@ import { bargains, topSelling, useProductPool } from '../../hooks/useProductPool
 import { productImageUrl, productImageSrcSet, IMAGE_WIDTHS, IMAGE_SIZES } from '../../lib/productImage'
 import { RatingLine } from '../product/RatingLine'
 import { QUICK_FILTERS, QuickFilterKey } from '../../data/quickFilters'
+import { CartLineImage } from './CartLineImage'
 
 /**
  * Minimum-order indicator only — the backend enforces no minimum, so this
@@ -229,12 +230,13 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
                         onChange={() => toggleItem(line.productId)}
                       />
                       <Link to={`/products/${line.productId}`} className="rc-item__main" onClick={closeDrawer}>
-                        <img
-                          src={`https://picsum.photos/seed/mk-${line.productId}/96/96`}
-                          alt=""
-                          width={44} height={44}
-                          loading="lazy"
-                        />
+                        {/* The vendor's real photo. This used to be a picsum
+                            stock image keyed on product id, so a shopper
+                            reviewing their own cart saw pictures of things
+                            they had not chosen. A missing photo now renders
+                            the empty well rather than a confident wrong
+                            image. */}
+                        <CartLineImage line={line} size={44} />
                         <span className="rc-item__name">{line.productName}</span>
                         <span className="num rc-item__price">est. R{Number(line.lineTotal).toFixed(2)}</span>
                       </Link>

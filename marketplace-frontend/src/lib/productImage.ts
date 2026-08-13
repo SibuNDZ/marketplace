@@ -71,19 +71,23 @@ export const IMAGE_WIDTHS = {
 export const IMAGE_SIZES = {
   card: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 260px',
   /**
-   * Derived from the product page's ACTUAL layout, which has no breakpoint:
-   * `grid-template-columns: 1fr 420px` with a 48px gap inside a shell with
-   * 24px gutters, so the image column is always 100vw - 24 - 24 - 420 - 48.
+   * Tracks .pdp-main in tokens.css exactly. Three regimes, because the page
+   * now has a breakpoint and a max-width where it previously had neither:
    *
-   * Written as a percentage-of-viewport guess first, and a browser probe
-   * caught it: a "100vw below 900px" rule made Chrome fetch the 1600w
-   * variant for an element rendering at 457px. `sizes` is a promise about
-   * layout, and an over-generous promise ships exactly the waste this whole
-   * change exists to remove.
+   *   <= 900px   stacked, image spans the shell: 100vw - 48 gutters
+   *   <= 1328px  two columns, container is 100vw - 48, 40px gap, 55% share
+   *    > 1328px  container pinned at 1280, so the column is a fixed 682px
    *
-   * Revisit this the moment the two-column proportions change.
+   * 1328 is 1280 + the 48px of gutters, the width at which the container
+   * stops growing. Written with media queries rather than a min() inside
+   * calc() so it parses everywhere: an unparseable `sizes` silently falls
+   * back to 100vw, which is the over-fetch this exists to prevent.
+   *
+   * A browser probe already caught one wrong version of this attribute,
+   * where a declared 846px against a 330px element pulled the 1600w variant.
+   * If .pdp-main's proportions change, this changes with it.
    */
-  hero: 'calc(100vw - 516px)',
+  hero: '(max-width: 900px) calc(100vw - 48px), (max-width: 1328px) calc((100vw - 88px) * 0.55), 682px',
   thumb: '44px',
 } as const
 

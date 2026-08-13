@@ -13,6 +13,7 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { CatalogPage } from './pages/CatalogPage'
 import { ProductDetailPage } from './pages/ProductDetailPage'
 import { VendorShopPage } from './pages/VendorShopPage'
+import { SimilarItemsPage } from './pages/SimilarItemsPage'
 import { CartPage } from './pages/CartPage'
 import { CheckoutSuccessPage } from './pages/CheckoutSuccessPage'
 import { CheckoutCancelledPage } from './pages/CheckoutCancelledPage'
@@ -102,6 +103,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<CatalogPage />} />
           <Route path="/products/:id" element={<ProductDetailPage />} />
+          <Route path="/products/:id/similar" element={<SimilarItemsPage />} />
           {/* Public storefront. Declared before the auth-gated /vendor
               routes it sits beside; "shop" keeps it unambiguous. */}
           <Route path="/shop/:vendorId" element={<VendorShopPage />} />

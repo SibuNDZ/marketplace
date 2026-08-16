@@ -96,6 +96,15 @@ until the stated trigger has actually fired** — check, do not assume.
 | **Visual search** (search by uploading a photo) | 1,000+ product images |
 | **Conversational search** (natural-language query understanding) | 500+ products with failed search queries |
 
+**Static FAQ widget (shipped)** occupies the conversational assistant's future
+UI slot honestly. When the real trigger fires, this becomes the fallback /
+no-match state inside the real assistant, not a separate thing to remove. It
+has no input field and does no fuzzy matching, deliberately — a box that takes
+a typed question and returns nothing is worse than one that never asked, and a
+"closest guess" against unrelated canned answers is a wrong-answer machine.
+Its content lives in `frontend/src/data/faqContent.ts`, shared with `/help`, and
+nothing in it may be the first place a claim appears.
+
 ### What is already built, and why it is not these
 
 - **Full-text search with curated synonyms** (V21) — lexical matching on the

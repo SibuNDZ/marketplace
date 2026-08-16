@@ -12,6 +12,25 @@ import { CartDrawer } from '../cart/CartDrawer'
 import { RetailCategoryNav } from './RetailCategoryNav'
 import { LogoMark } from './LogoMark'
 
+/**
+ * The notifications bell is HIDDEN until a notification centre exists.
+ *
+ * Both bells (desktop and mobile) were rendered with no onClick, no handler
+ * and no destination while every neighbouring icon had one. That is a
+ * fabricated affordance: it makes an implicit promise — "tap me, something
+ * happens" — that was false for every visitor, which is the same class of
+ * problem as a fake rating or an unbacked shipping badge, just made with
+ * behaviour instead of a number.
+ *
+ * Gated rather than deleted, because notifications are plausibly near-term:
+ * the transactional-email infrastructure exists and the order state machine
+ * already emits exactly the events a feed would consume (paid, shipped,
+ * delivered, review posted). Flip this to true when that ships — the markup
+ * and styling are waiting, so the feature does not arrive with a header
+ * redesign attached.
+ */
+const NOTIFICATIONS_ENABLED = false
+
 export function SiteHeader() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
@@ -136,9 +155,11 @@ export function SiteHeader() {
             <Link to="/" className="wordmark-group"><LogoMark size={26} /><span className="wordmark">eRestyu</span></Link>
             {searchForm()}
             <nav className="main-actions" aria-label="Account and cart">
-              <button className="main-action notification-action" aria-label="Notifications" title="Notifications">
-                <Bell size={20} strokeWidth={1.75} />
-              </button>
+              {NOTIFICATIONS_ENABLED && (
+                <button className="main-action notification-action" aria-label="Notifications" title="Notifications">
+                  <Bell size={20} strokeWidth={1.75} />
+                </button>
+              )}
               <div className="account-action">
                 <button className="main-action" onClick={() => setAccountOpen(open => !open)} aria-expanded={accountOpen}>
                   <UserRound size={20} strokeWidth={1.75} /><span>Account</span><ChevronDown size={14} strokeWidth={1.75} aria-hidden />
@@ -177,7 +198,9 @@ export function SiteHeader() {
             <button ref={drawerTriggerRef} className="mobile-icon" onClick={() => setDrawerOpen(true)} aria-label="Open menu"><Menu size={23} strokeWidth={1.75} /></button>
             <Link to="/" className="wordmark-group"><LogoMark size={22} /><span className="wordmark">eRestyu</span></Link>
             <div className="mobile-actions">
-              <button className="mobile-icon" aria-label="Notifications" title="Notifications"><Bell size={21} strokeWidth={1.75} /></button>
+              {NOTIFICATIONS_ENABLED && (
+                <button className="mobile-icon" aria-label="Notifications" title="Notifications"><Bell size={21} strokeWidth={1.75} /></button>
+              )}
               {/* Persistent account entry: field-tested gap. A vendor at a
                   market stall could not find where to register because
                   account access only existed inside the hamburger drawer.

@@ -1129,3 +1129,97 @@ button { cursor: pointer; font: inherit; }
 @media (max-width: 900px) {
   .pdp-main { grid-template-columns: 1fr; gap: 24px; }
 }
+
+/* ---- FAQ widget ------------------------------------------------------
+   Bottom-right, but NOT on top of the cart FAB, which already owns
+   right:16px / bottom:18px at 54px square below 1280px. The default
+   position stacks above it; at >=1280px the cart FAB is hidden (the panel
+   becomes a sticky column) so this drops into the corner it vacated.
+
+   z-index 140 sits BELOW the cart FAB (150) and far below the drawers
+   (320): if a drawer is open it must win, and this must never cover it. */
+.faq-fab {
+  position: fixed;
+  right: 16px;
+  bottom: 84px;              /* 18 (FAB bottom) + 54 (FAB height) + 12 gap */
+  z-index: 140;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--aloe);
+  color: #fff;
+  box-shadow: var(--shadow-lift);
+  cursor: pointer;
+}
+.faq-fab:focus-visible { outline: 3px solid var(--aloe-deep); outline-offset: 2px; }
+
+.faq-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 140px;
+  /* ABOVE the cart FAB (150), which otherwise punches through the open
+     bottom sheet on mobile — caught on a 390px pass, invisible in the
+     rect maths because the FAB does not overlap the CLOSED bubble.
+     Still far below the drawers (320), which must always win. */
+  z-index: 160;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  max-height: min(60vh, 520px);
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-lift);
+  overflow: hidden;
+}
+.faq-panel__bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border-bottom: 1px solid var(--line); flex-shrink: 0;
+}
+.faq-panel__title { font-weight: 700; font-size: 14px; }
+.faq-panel__close { background: none; border: 0; cursor: pointer; color: var(--ink-soft); display: grid; place-items: center; }
+.faq-panel__list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
+.faq-panel__list li { border-bottom: 1px solid var(--line); }
+.faq-item__q {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 12px 14px; background: none; border: 0; cursor: pointer;
+  font-size: 13.5px; font-weight: 600; color: var(--ink); text-align: left;
+  font-family: var(--body);
+}
+.faq-item__q:hover { background: var(--paper); }
+.faq-item__chevron { color: var(--ink-soft); font-size: 16px; flex-shrink: 0; }
+.faq-item__a { padding: 0 14px 12px; font-size: 13px; line-height: 1.55; color: var(--ink-soft); display: flex; flex-direction: column; gap: 8px; }
+.faq-item__a a { color: var(--trust-blue); font-weight: 600; }
+.faq-panel__fallback {
+  padding: 12px 14px; border-top: 1px solid var(--line); background: var(--paper);
+  font-size: 13px; color: var(--ink-soft); flex-shrink: 0;
+}
+.faq-panel__fallback a { color: var(--trust-blue); font-weight: 600; }
+
+/* The cart FAB is hidden at >=1280px, so the corner is free. */
+@media (min-width: 1280px) {
+  .faq-fab   { bottom: 18px; }
+  .faq-panel { bottom: 76px; }
+}
+
+/* Mobile: bottom sheet, matching the account menu and drawer pattern
+   rather than floating a small panel over a small screen. */
+@media (max-width: 600px) {
+  .faq-panel {
+    left: 0; right: 0; bottom: 0;
+    width: auto; max-width: none;
+    max-height: 72vh;
+    border-radius: var(--r) var(--r) 0 0;
+    border-left: 0; border-right: 0; border-bottom: 0;
+  }
+}
+
+/* No slide animation to suppress — open/close is a plain show/hide — but
+   keep hover/focus transitions honest for reduced-motion users. */
+@media (prefers-reduced-motion: reduce) {
+  .faq-fab, .faq-item__q { transition: none; }
+}

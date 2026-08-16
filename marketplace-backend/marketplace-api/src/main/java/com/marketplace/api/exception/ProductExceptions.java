@@ -18,5 +18,16 @@ public class ProductExceptions {
         }
     }
 
+    /**
+     * Compare-at pricing is paused — see ProductService.applyRequest.
+     * Mapped to 400 in GlobalExceptionHandler.
+     */
+    public static class CompareAtPricingPausedException extends RuntimeException {
+        public CompareAtPricingPausedException() {
+            super("Compare-at pricing is temporarily unavailable while we build a verified-history "
+                    + "version. Your other changes were not saved — remove the original price and try again.");
+        }
+    }
+
     private ProductExceptions() {}
 }

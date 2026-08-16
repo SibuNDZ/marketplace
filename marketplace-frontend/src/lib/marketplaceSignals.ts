@@ -8,9 +8,17 @@
 // Everything else this module once fabricated is gone:
 //   - ratings / review counts / sold counts → real, from ProductResponse
 //     (product_popularity read model) and the live /reviews/summary endpoint.
-//   - discount % / was-prices / countdown / flash sale / verified badge /
-//     free shipping / MOQ / shipping origin → deleted outright, no
-//     replacement (see the honest-signals slice commit).
+//   - countdown / flash sale / verified badge / free shipping / MOQ /
+//     shipping origin → deleted outright, no replacement (see the
+//     honest-signals slice commit).
+//   - discount % / was-prices → deleted in that same slice, then a real
+//     vendor-set model was added in V23 (products.original_price) and
+//     PAUSED on 2026-08-13 before any vendor used it. The guardrail only
+//     checked that the "was" price exceeded the price, which says nothing
+//     about whether it was ever charged — the one trust-sensitive number
+//     here that was self-reported rather than derived. Nothing renders a
+//     strikethrough today; a price-history-derived version is the intended
+//     replacement.
 //   - category assignment → real, ProductResponse.categorySlug. Categories
 //     are a table since V14, served as a two-level tree by
 //     GET /api/v1/categories with subtree product counts included, so the

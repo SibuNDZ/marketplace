@@ -291,9 +291,10 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
 
             {deals.length > 0 && (
               <section className="rc-section" aria-label="Bargain finds">
-                {/* No fake strikethroughs: the backend has no discount model
-                    (fabricated was-prices were deliberately removed), so this
-                    shelf ranks by real lowest price instead. */}
+                {/* Ranks by real lowest price, not by markdown. A discount
+                    model exists (V23) but vendor-set "was" prices are paused
+                    as of 2026-08-13 pending a price-history-derived version,
+                    so there is nothing to rank a genuine saving by. */}
                 <h3>💰 Bargain finds</h3>
                 <div className="rc-list">{deals.map(miniRow)}</div>
               </section>

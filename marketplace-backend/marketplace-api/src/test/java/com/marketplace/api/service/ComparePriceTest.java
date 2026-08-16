@@ -5,6 +5,7 @@ import com.marketplace.api.dto.ProductDtos.ProductResponse;
 import com.marketplace.api.entity.Product;
 import com.marketplace.api.entity.ProductVariant;
 import com.marketplace.api.entity.User;
+import com.marketplace.api.exception.ProductExceptions.CompareAtPricingPausedException;
 import com.marketplace.api.repository.ProductRepository;
 import com.marketplace.api.repository.ProductVariantRepository;
 import com.marketplace.api.security.UserPrincipal;
@@ -29,10 +30,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Compare-at pricing is the one feature on this site where getting it wrong
- * is not just a UI bug. An advertised former price is a legal representation
- * under the CPA, so the tests here are mostly about what the system REFUSES
- * to store.
+ * Compare-at pricing, PAUSED on 2026-08-13 before any vendor set one.
+ *
+ * The validation below is retained and still correct — it is what the
+ * feature will need again — but the service now refuses any NEW or CHANGED
+ * originalPrice outright, so the acceptance tests assert the pause instead
+ * of a successful write.
+ *
+ * Why it was paused: the guardrail only proved originalPrice > price, which
+ * says nothing about whether that price was ever charged. Every other
+ * trust-sensitive number on this platform is DERIVED from something the
+ * system recorded (sold count from kept orders, reviews gated on delivery,
+ * ratings excluding refunds); this was the sole exception, taken on the
+ * self-report of the party with an incentive to inflate it. The replacement
+ * is a price-history-derived "was" price — a real recorded drop, eligible
+ * only after a genuine minimum duration, in the shape the EU Omnibus
+ * Directive mandates for exactly this abuse pattern.
  */
 @Testcontainers
 @SpringBootTest
@@ -98,22 +111,22 @@ class ComparePriceTest {
     // ── what it allows ───────────────────────────────────────────────────
 
     @Test
-    @DisplayName("a genuine markdown is stored and returned")
-    void genuineDiscountAccepted() {
+    @DisplayName("PAUSED: even an arithmetically valid markdown is refused")
+    void genuineDiscountNowRefused() {
+        // Still passes bean validation — the rule is sound and stays for the
+        // derived version. The service is what stops it now.
         assertThat(validator.validate(request(new BigDecimal("80.00"), new BigDecimal("100.00"))))
                 .isEmpty();
 
         User vendor = fixtures.vendor(uniq("cp-vendor"));
-        ProductResponse created = productService.create(
+        assertThatThrownBy(() -> productService.create(
                 request(new BigDecimal("80.00"), new BigDecimal("100.00")),
-                UserPrincipal.from(vendor));
-
-        assertThat(created.price()).isEqualByComparingTo("80.00");
-        assertThat(created.originalPrice()).isEqualByComparingTo("100.00");
+                UserPrincipal.from(vendor)))
+                .isInstanceOf(CompareAtPricingPausedException.class);
     }
 
     @Test
-    @DisplayName("omitting the field is normal and means 'not on sale'")
+    @DisplayName("omitting the field is normal, and the pause costs it nothing")
     void nullMeansNoSale() {
         assertThat(validator.validate(request(new BigDecimal("80.00"), null))).isEmpty();
 

@@ -11,6 +11,7 @@ import com.marketplace.api.entity.Product;
 import com.marketplace.api.entity.ProductVariant;
 import com.marketplace.api.entity.Category;
 import com.marketplace.api.entity.User;
+import com.marketplace.api.exception.ProductExceptions.CompareAtPricingPausedException;
 import com.marketplace.api.exception.ProductExceptions.DuplicateSkuException;
 import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
 import com.marketplace.api.repository.ProductRepository;
@@ -549,10 +550,30 @@ public class ProductService {
         product.setDescription(request.description());
         product.setSku(request.sku());
         product.setPrice(request.price());
-        // Null clears a sale, which is the only way to end one. Sending the
-        // field absent has to mean "no longer discounted" rather than "leave
-        // it as it was", or a vendor could never take a listing off sale
-        // through the form.
+        // PAUSED 2026-08-13. The CHECK in V23 only proves originalPrice is
+        // arithmetically bigger than price — it proves nothing about whether
+        // the number was ever real. Every other trust-sensitive figure on
+        // this platform (sold count, verified-purchase reviews, ratings) is
+        // DERIVED from something the system recorded; this was the one
+        // exception, taken on vendor self-report with a direct financial
+        // incentive to inflate it and nobody else in the flow positioned to
+        // catch it. Held here until it is replaced by a price-history-
+        // derived version (real recorded price drops, eligible only after a
+        // genuine minimum duration — see the EU Omnibus Directive's
+        // lowest-price-in-30-days shape for precedent).
+        //
+        // Comparing against the CURRENT value, not just null-checking the
+        // request, is what makes this a pause rather than a wipe: an
+        // unchanged resubmission (the vendor form round-trips whatever is
+        // already stored) passes through untouched. Only a NEW or CHANGED
+        // value is refused. Production holds zero rows with this set, so
+        // today that distinction is inactive — but it means this gate does
+        // not also have to be reverted before anyone can edit a product that
+        // already carries one.
+        if (request.originalPrice() != null
+                && !request.originalPrice().equals(product.getOriginalPrice())) {
+            throw new CompareAtPricingPausedException();
+        }
         product.setOriginalPrice(request.originalPrice());
         product.setStock(request.stock());
         product.setCategory(categoryService.requireBySlug(request.categorySlug()));

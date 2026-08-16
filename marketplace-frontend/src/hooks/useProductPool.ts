@@ -28,9 +28,11 @@ export function topSelling(pool: ProductResponse[], limit: number): ProductRespo
 }
 
 /**
- * Lowest real prices. The backend has no discount/was-price model (fabricated
- * strikethroughs were deliberately removed in the honest-signals slice), so
- * "bargain" means cheapest, not "marked down".
+ * Lowest real prices. A discount model exists (originalPrice) but vendor
+ * self-report of it is paused as of 2026-08-13 — the arithmetic guardrail
+ * proved nothing about whether the "was" price was ever real, unlike every
+ * other trust-sensitive figure here. So "bargain" means cheapest, not
+ * "marked down", until a price-history-derived version replaces it.
  */
 export function bargains(pool: ProductResponse[], limit: number): ProductResponse[] {
   return pool

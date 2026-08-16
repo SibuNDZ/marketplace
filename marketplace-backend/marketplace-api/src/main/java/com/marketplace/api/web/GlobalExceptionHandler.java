@@ -8,6 +8,7 @@ import com.marketplace.api.ai.DraftExceptions.DraftRateLimitExceededException;
 import com.marketplace.api.auth.UserTokenService;
 import com.marketplace.api.exception.CategoryExceptions.CategoryNotFoundException;
 import com.marketplace.api.exception.OrderExceptions.*;
+import com.marketplace.api.exception.ProductExceptions.CompareAtPricingPausedException;
 import com.marketplace.api.exception.ProductExceptions.DuplicateSkuException;
 import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
 import com.marketplace.api.exception.ReviewExceptions.*;
@@ -76,6 +77,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DuplicateSkuException.class)
     public ProblemDetail duplicateSku(DuplicateSkuException ex) {
         return problem(HttpStatus.CONFLICT, "Duplicate SKU", ex.getMessage());
+    }
+
+    @ExceptionHandler(CompareAtPricingPausedException.class)
+    public ProblemDetail compareAtPricingPaused(CompareAtPricingPausedException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Compare-at pricing paused", ex.getMessage());
     }
 
     @ExceptionHandler(InsufficientStockException.class)

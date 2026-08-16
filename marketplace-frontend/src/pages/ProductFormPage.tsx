@@ -472,29 +472,15 @@ export function ProductFormPage() {
             </div>
           </div>
 
-          {/* Optional, and left blank by default. The helper text is not
-              boilerplate: under the Consumer Protection Act an advertised
-              former price is a representation that the goods were actually
-              offered at it, and the vendor is the only person who knows
-              whether that is true. The system can enforce the arithmetic and
-              nothing else, so it says so plainly here rather than letting a
-              vendor discover it later. */}
-          <div style={{ flex: 1 }}>
-            <Field label="Original price (R) — optional" error={fieldErrors.originalPrice}>
-              <input
-                type="number" min="0.01" step="0.01"
-                placeholder="Leave blank if not on sale"
-                value={form.originalPrice ?? ''}
-                onChange={e => set('originalPrice', e.target.value === '' ? null : e.target.value)}
-                style={inputStyle(!!fieldErrors.originalPrice)}
-              />
-              <span style={{ fontSize: 12, color: 'var(--ink-soft)', fontWeight: 400 }}>
-                Shows as a struck-through “was” price with a saving. Only use a
-                price you actually sold at — advertising a former price you did
-                not charge is prohibited under the Consumer Protection Act.
-              </span>
-            </Field>
-          </div>
+          {/* PAUSED 2026-08-13, input removed rather than left visible and
+              broken. The arithmetic guardrail (must exceed price) proved
+              nothing about whether the vendor's number was ever real, unlike
+              every other trust-sensitive figure on the site, which is
+              derived from something the system recorded rather than
+              self-reported. Held until a price-history-derived version
+              replaces it — see ProductService.applyRequest. The backend
+              still refuses a non-null value, so this is not merely
+              cosmetic: even a direct API call is blocked. */}
 
           {/* The review gate. Shown only while unedited AI text is still on
               screen; editing any drafted field clears it on its own, so a

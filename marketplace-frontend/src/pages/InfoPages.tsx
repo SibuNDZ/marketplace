@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
+import { FAQ_ENTRIES } from '../data/faqContent'
 
 /**
  * The footer's content pages, in one file: each is a short prose page on the
@@ -168,19 +169,17 @@ export function ShippingInfoPage() {
 }
 
 export function HelpPage() {
-  const faqs: Array<[string, React.ReactNode]> = [
-    ['How do I pay?', 'Checkout runs through our secure payment provider. Your card details are processed by the payment provider directly; eRestyu never sees or stores them. All prices are in South African rand.'],
-    ['Where is my order?', <>Your <Link to="/orders">orders page</Link> shows every order and its status: pending, paid, shipped, delivered. Shipped orders show a tracking number when the vendor provided one, and you get an email at each step.</>],
-    ['Can I cancel an order?', 'Unpaid orders: yes, instantly, from the order page. Paid orders: reply to your confirmation email and we handle it case by case.'],
-    ['Why did my order expire?', 'Unpaid orders hold stock. If payment does not arrive within 30 minutes, the order cancels itself and the stock goes back on sale.'],
-    ['What is a delivery fee?', 'Each vendor charges one flat delivery fee per order, shown as its own line at checkout. Multiple items from the same vendor still cost one fee.'],
-    ['How do I become a vendor?', <>Register an account and start listing: see <Link to="/how-it-works">how to buy and sell</Link>.</>],
-  ]
+  // Renders FAQ_ENTRIES, the same array the corner FAQ widget uses. Two
+  // hand-maintained copies of these answers would drift, and which version a
+  // shopper got would depend on which surface they opened.
   return (
     <InfoPage title="Help center & FAQ">
-      {faqs.map(([q, a]) => (
-        <Section key={q as string} heading={q as string}>
-          <p>{a}</p>
+      {FAQ_ENTRIES.map(entry => (
+        <Section key={entry.question} heading={entry.question}>
+          <p>
+            {entry.answer}
+            {entry.link && <> <Link to={entry.link.to}>{entry.link.label}</Link>.</>}
+          </p>
         </Section>
       ))}
     </InfoPage>

@@ -4,6 +4,7 @@ import { useAuth } from './context/AuthContext'
 import { CartDrawerProvider } from './context/CartDrawerContext'
 import { RightPanelProvider } from './context/RightPanelContext'
 import { Footer } from './components/layout/Footer'
+import { FaqWidget } from './components/support/FaqWidget'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { CheckEmailPage } from './pages/CheckEmailPage'
@@ -49,6 +50,13 @@ function ChromeFooter() {
   const { pathname } = useLocation()
   if (AUTH_ROUTES.has(pathname)) return null
   return <Footer />
+}
+
+/** Same rule as the footer: a help bubble is clutter on a login form. */
+function ChromeFaq() {
+  const { pathname } = useLocation()
+  if (AUTH_ROUTES.has(pathname)) return null
+  return <FaqWidget />
 }
 
 /**
@@ -139,6 +147,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <ChromeFooter />
+        <ChromeFaq />
         </RightPanelProvider>
       </CartDrawerProvider>
     </BrowserRouter>

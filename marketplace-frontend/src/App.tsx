@@ -114,9 +114,30 @@ function ScrollToTop() {
   return null
 }
 
+function SkipToContent() {
+  return (
+    <a
+      href="#main-content"
+      className="skip-link"
+      onClick={(event) => {
+        const main = document.querySelector('main')
+        if (!(main instanceof HTMLElement)) return
+        event.preventDefault()
+        main.id = 'main-content'
+        main.tabIndex = -1
+        main.focus({ preventScroll: true })
+        main.scrollIntoView({ block: 'start' })
+      }}
+    >
+      Skip to content
+    </a>
+  )
+}
+
 export default function App() {
   return (
     <BrowserRouter>
+      <SkipToContent />
       <CartDrawerProvider>
         <RightPanelProvider>
         <ScrollToTop />

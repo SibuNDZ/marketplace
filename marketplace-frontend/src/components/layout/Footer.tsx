@@ -22,16 +22,6 @@ function Column({ title, children }: { title: string; children: React.ReactNode 
   )
 }
 
-const SOCIALS = [
-  { label: 'Instagram', glyph: 'IG' },
-  { label: 'Facebook', glyph: 'FB' },
-  { label: 'X (Twitter)', glyph: 'X' },
-  { label: 'TikTok', glyph: 'TT' },
-  { label: 'YouTube', glyph: 'YT' },
-  { label: 'Pinterest', glyph: 'PN' },
-  { label: 'LinkedIn', glyph: 'IN' },
-]
-
 export function Footer() {
   const sellerEntry = useSellerEntry()
   return (
@@ -64,24 +54,6 @@ export function Footer() {
                 used to send a signed-in seller to a signup form. */}
             {sellerEntry && <LinkItem to={sellerEntry.to}>{sellerEntry.label}</LinkItem>}
             <LinkItem to="/orders">Check Order Status</LinkItem>
-          </Column>
-
-          <Column title="Stay Connected">
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {SOCIALS.map(s => (
-                <button key={s.label} aria-label={s.label} title={s.label} tabIndex={0} style={{
-                  width: 28, height: 28, borderRadius: '50%',
-                  border: '1px solid var(--footer-line)', background: 'transparent',
-                  color: 'var(--footer-text)', fontSize: 10, fontWeight: 700,
-                  transition: 'background 0.15s, color 0.15s',
-                }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--flame)'; (e.currentTarget as HTMLButtonElement).style.color = '#fff' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--footer-text)' }}
-                >
-                  {s.glyph}
-                </button>
-              ))}
-            </div>
           </Column>
         </div>
 
@@ -123,18 +95,10 @@ export function Footer() {
             </span>
             <span style={{ fontSize: 13 }}>Deliver to: South Africa</span>
           </div>
-          <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
-            Language
-            <select style={{
-              background: 'transparent', color: 'var(--footer-text)', border: '1px solid var(--footer-line)',
-              borderRadius: 6, padding: '5px 8px', fontSize: 13,
-            }}>
-              <option>English</option>
-              <option>isiZulu</option>
-              <option>Afrikaans</option>
-              <option>isiXhosa</option>
-            </select>
-          </label>
+          {/* English only, until the strings are actually translated.
+              A select listing isiZulu / Afrikaans / isiXhosa that all render
+              English is a broken promise, not localisation. */}
+          <span style={{ fontSize: 13 }}>English</span>
         </div>
 
         {/* Legal bottom bar */}

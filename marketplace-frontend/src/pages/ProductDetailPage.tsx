@@ -307,9 +307,19 @@ export function ProductDetailPage() {
 
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid var(--line)', borderRadius: 'var(--r-sm)', overflow: 'hidden' }}>
-                <button onClick={() => setQty(q => Math.max(1, q - 1))} style={{ padding: '8px 14px', background: 'none', border: 'none', fontSize: 18 }}>−</button>
+                <button
+                  type="button"
+                  className="qty-btn"
+                  aria-label="Decrease quantity"
+                  onClick={() => setQty(q => Math.max(1, q - 1))}
+                >−</button>
                 <span className="num" style={{ padding: '0 12px', minWidth: 32, textAlign: 'center' }}>{qty}</span>
-                <button onClick={() => setQty(q => Math.min(shownStock, q + 1))} style={{ padding: '8px 14px', background: 'none', border: 'none', fontSize: 18 }}>+</button>
+                <button
+                  type="button"
+                  className="qty-btn"
+                  aria-label="Increase quantity"
+                  onClick={() => setQty(q => Math.min(shownStock, q + 1))}
+                >+</button>
               </div>
               <button disabled={!canAdd || addToCart.isPending} onClick={() => addToCart.mutate()} style={{
                 flex: 1, padding: '11px 20px', background: canAdd ? 'var(--flame-gradient)' : 'var(--line)',

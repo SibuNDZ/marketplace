@@ -30,6 +30,7 @@ export function CatalogPage() {
   const name = searchParams.get('name')?.trim() ?? ''
   const [page, setPage] = useState(0)
   const PAGE_SIZE = 20
+  const [loaded, setLoaded] = useState<ProductResponse[]>([])
 
   // Quick filters live in the URL (?filters=handmade,bestSelling) so the
   // chip row and the right panel's Highlights chips share one source of
@@ -72,6 +73,7 @@ export function CatalogPage() {
 
   useEffect(() => {
     setPage(0)
+    setLoaded([])
   }, [category, name, handmadeOnly])
 
   // Category AND handmade are both server-side. Category is a slug now, and
@@ -87,7 +89,19 @@ export function CatalogPage() {
     ),
   })
 
-  const products = data?.content ?? []
+  useEffect(() => {
+    if (!data) return
+    if (page === 0) {
+      setLoaded(data.content)
+      return
+    }
+    setLoaded(prev => {
+      const seen = new Set(prev.map(p => p.id))
+      return [...prev, ...data.content.filter(p => !seen.has(p.id))]
+    })
+  }, [data, page])
+
+  const products = loaded
 
   // Real signal: rated well by actual reviewers. Hidden entirely until
   // review data exists — an empty shelf is not filled with guesses.
@@ -162,7 +176,7 @@ export function CatalogPage() {
               })}
             </div>
 
-            {isLoading ? (
+            {isLoading && loaded.length === 0 ? (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16, marginTop: 24 }}>
                 {Array.from({ length: 8 }).map((_, i) => (
                   <div key={i} style={{ background: 'var(--line)', borderRadius: 'var(--r)', height: 320, animation: 'pulse 1.5s infinite' }} />

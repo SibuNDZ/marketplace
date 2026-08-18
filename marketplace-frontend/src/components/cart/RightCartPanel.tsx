@@ -234,6 +234,7 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
                 <label className="rc-select-all">
                   <input
                     type="checkbox"
+                    aria-label="Select all"
                     checked={allSelected}
                     onChange={() => allSelected ? deselectAll(items.map(l => cartLineKey(l.productId, l.variantId))) : selectAll()}
                   />

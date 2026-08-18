@@ -131,8 +131,8 @@ app:
   yoco:
     # Blank defaults, NOT sandbox defaults: Yoco test keys are per-merchant
     # (Yoco app -> Checkout API integration -> Test keys), so there is no
-    # public pair to ship like PayFast's. Blank + PaymentsConfigValidator means
-    # an unset key fails the boot ONLY on a deploy that selects yoco, and never
+    # public pair to ship. Blank + PaymentsConfigValidator means an unset
+    # key fails the boot ONLY on a deploy that selects yoco, and never
     # breaks a Stripe deploy that has no Yoco vars at all.
     secret-key: ${YOCO_SECRET_KEY:}
     webhook-secret: ${YOCO_WEBHOOK_SECRET:}
@@ -147,11 +147,12 @@ app:
     # Yoco's docs recommend "up to 3 minutes" for replay defence.
     webhook-tolerance-seconds: ${YOCO_WEBHOOK_TOLERANCE_SECONDS:180}
   payfast:
-    # Defaults are PayFast's PUBLIC sandbox demo pair, safe to ship: they can
-    # only ever create sandbox transactions. Production overrides all of
-    # these via Railway env vars once the merchant account is approved.
-    merchant-id: ${PAYFAST_MERCHANT_ID:10000100}
-    merchant-key: ${PAYFAST_MERCHANT_KEY:46f0cd694581a}
+    # Blank merchant id/key, same fail-fast as Yoco/Stripe: the public
+    # sandbox demo pair must not ship in defaults. PaymentsConfigValidator
+    # refuses a payfast boot when these are empty. Tests stub keys in
+    # src/test/resources/application.yml.
+    merchant-id: ${PAYFAST_MERCHANT_ID:}
+    merchant-key: ${PAYFAST_MERCHANT_KEY:}
     passphrase: ${PAYFAST_PASSPHRASE:}
     process-url: ${PAYFAST_PROCESS_URL:https://sandbox.payfast.co.za/eng/process}
     validate-url: ${PAYFAST_VALIDATE_URL:https://sandbox.payfast.co.za/eng/query/validate}

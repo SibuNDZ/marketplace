@@ -18,7 +18,7 @@ public class CorsOrigins {
 
     private final List<String> origins;
 
-    public CorsOrigins(@Value("${app.cors.allowed-origins:http://localhost:5173}") String allowedOrigins) {
+    public CorsOrigins(@Value("${app.cors.allowed-origins}") String allowedOrigins) {
         this.origins = List.of(allowedOrigins.split(","));
     }
 

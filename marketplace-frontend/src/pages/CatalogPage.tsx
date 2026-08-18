@@ -71,23 +71,29 @@ export function CatalogPage() {
   }
 
   const handmadeOnly = activeFilters.has('handmade')
+  const fiveStar = activeFilters.has('fiveStar')
+  const bestSelling = activeFilters.has('bestSelling')
 
   useEffect(() => {
     setPage(0)
     setLoaded([])
-  }, [category, name, handmadeOnly])
+  }, [category, name, handmadeOnly, fiveStar, bestSelling])
 
-  // Category AND handmade are both server-side. Category is a slug now, and
-  // a top-level slug also matches its subcategories on the backend, so
-  // selecting Fashion returns the jewellery filed one level down.
+  // Category, handmade, rating floor and sales rank are all server-side.
+  // Client-side filter of the loaded page would only search the 20 products
+  // already fetched, which silently lies once there is more than one page.
   const { data, isLoading } = useQuery<Page<ProductResponse>>({
-    queryKey: ['products', category, name, handmadeOnly, page, PAGE_SIZE],
-    queryFn: () => api(
-      `/api/v1/products?page=${page}&size=${PAGE_SIZE}&sort=createdAt,desc`
-      + (category === ALL_SLUG ? '' : `&category=${category}`)
-      + (name ? `&name=${encodeURIComponent(name)}` : '')
-      + (handmadeOnly ? '&handmade=true' : ''),
-    ),
+    queryKey: ['products', category, name, handmadeOnly, fiveStar, bestSelling, page, PAGE_SIZE],
+    queryFn: () => {
+      let q = `/api/v1/products?page=${page}&size=${PAGE_SIZE}`
+        + (category === ALL_SLUG ? '' : `&category=${category}`)
+        + (name ? `&name=${encodeURIComponent(name)}` : '')
+        + (handmadeOnly ? '&handmade=true' : '')
+      if (bestSelling) q += '&minSold=1&rank=sales'
+      else if (fiveStar) q += '&minRating=4.5&rank=rating'
+      else q += '&sort=createdAt,desc'
+      return api(q)
+    },
   })
 
   useEffect(() => {
@@ -104,9 +110,13 @@ export function CatalogPage() {
 
   const products = loaded
 
-  // Real signal: rated well by actual reviewers. Hidden entirely until
-  // review data exists — an empty shelf is not filled with guesses.
-  const recommended = products.filter(p => p.reviewCount > 0 && Number(p.avgRating) >= 4.0)
+  const { data: recommendedPage } = useQuery<Page<ProductResponse>>({
+    queryKey: ['products', 'recommended'],
+    queryFn: () => api('/api/v1/products?page=0&size=8&minRating=4.0&rank=rating'),
+    enabled: category === ALL_SLUG && !name && !fiveStar && !bestSelling,
+    staleTime: 5 * 60 * 1000,
+  })
+  const recommended = recommendedPage?.content ?? []
 
   const toggleFilter = (key: QuickFilterKey) => {
     const nextFilters = new Set(activeFilters)
@@ -115,14 +125,9 @@ export function CatalogPage() {
     if (nextFilters.size > 0) next.set('filters', [...nextFilters].join(','))
     else next.delete('filters')
     setSearchParams(next)
-    // handmade changes the QUERY, not just the client-side view, so the
-    // current page number no longer means anything (the effect above resets
-    // it). The other two filter what is already loaded.
   }
 
-  let mainList = products
-  if (activeFilters.has('fiveStar')) mainList = mainList.filter(p => p.reviewCount > 0 && Number(p.avgRating) >= 4.5)
-  if (activeFilters.has('bestSelling')) mainList = [...mainList].filter(p => p.soldCount > 0).sort((a, b) => b.soldCount - a.soldCount)
+  const mainList = products
 
   const found = category === ALL_SLUG ? undefined : findBySlug(categoryTree, category)
   const categoryLabel = category === ALL_SLUG

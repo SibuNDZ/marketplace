@@ -17,10 +17,12 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;import org.springframework.security.core.annotation.AuthenticationPrincipal;import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -79,9 +81,16 @@ public class ProductController {
             // (see ProductRepository.findFiltered) so it can never enumerate
             // someone's archived products.
             @RequestParam(required = false) Long vendorId,
+            @RequestParam(required = false) BigDecimal minRating,
+            @RequestParam(required = false) Long minSold,
+            @RequestParam(required = false) Boolean inStock,
+            // Whitelist: created (default) | sales | rating | price.
+            // Never a raw column name — ProductService sanitises it.
+            @RequestParam(required = false) String rank,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
             Pageable pageable) {
-        return productService.list(category, handmade, name, vendorId, pageable);
+        return productService.list(category, handmade, name, vendorId,
+                minRating, minSold, inStock, rank, pageable);
     }
 
     /**

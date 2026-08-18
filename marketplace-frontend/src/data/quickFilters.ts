@@ -2,15 +2,9 @@
 // so both render the same filters and stay in sync through the ?filters=
 // search param (single source of truth, like ?category=).
 //
-// bestSelling and fiveStar run on REAL aggregates from the popularity read
-// model. On a fresh catalog with no activity they simply match nothing —
-// the truthful result, not a bug.
-//
-// handmade is different in kind and that difference is deliberate: it is a
-// SERVER-side filter on a product column, so it goes in the query rather
-// than filtering the current page client-side. Filtering handmade in the
-// browser would only ever search the 20 products already loaded, which
-// silently lies once there is more than one page.
+// handmade is a server-side filter on a product column. bestSelling and
+// fiveStar are also server-side now (minSold / minRating + rank), so they
+// search the whole catalogue rather than the page already on screen.
 export const QUICK_FILTERS = [
   { key: 'handmade', label: '🧵 Handmade' },
   { key: 'bestSelling', label: '🔥 Best-Selling' },

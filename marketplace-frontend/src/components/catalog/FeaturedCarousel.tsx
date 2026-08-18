@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ProductCard } from '../product/ProductCard'
-import { featured, useProductPool } from '../../hooks/useProductPool'
+import { usePopular } from '../../hooks/useProductPool'
 
 const AUTOPLAY_MS = 5000
 const FEATURED_LIMIT = 8
@@ -12,13 +12,12 @@ const FEATURED_LIMIT = 8
  * CSS (4 desktop / 2 tablet / 1 mobile), arrows, dots, and ~5s autoplay
  * that pauses on hover/focus and never runs under prefers-reduced-motion.
  *
- * "Featured" = most sold, then best rated, then newest — real aggregates
- * only, matching the catalogue's honest-signals rule. Renders nothing when
- * the pool is empty rather than padding the shelf with guesses.
+ * "Featured" = most sold (server popularity shelf). Renders nothing when
+ * the shelf is empty rather than padding it with guesses.
  */
 export function FeaturedCarousel() {
-  const { data } = useProductPool()
-  const items = featured(data?.content ?? [], FEATURED_LIMIT)
+  const { data } = usePopular('sales', FEATURED_LIMIT)
+  const items = data ?? []
 
   const trackRef = useRef<HTMLDivElement>(null)
   const [pages, setPages] = useState(1)

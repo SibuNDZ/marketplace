@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, ShoppingCart, X } from 'lucide-react'
 import { ApiError, api, CartResponse, ProductResponse } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import { useRightPanel } from '../../context/RightPanelContext'
-import { bargains, topSelling, useProductPool } from '../../hooks/useProductPool'
+import { useBargains, usePopular } from '../../hooks/useProductPool'
 import { productImageUrl, productImageSrcSet, IMAGE_WIDTHS, IMAGE_SIZES } from '../../lib/productImage'
 import { RatingLine } from '../product/RatingLine'
 import { QUICK_FILTERS, QuickFilterKey } from '../../data/quickFilters'
@@ -50,7 +50,9 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
     queryFn: () => api('/api/v1/cart'),
     enabled: !!user,
   })
-  const { data: pool } = useProductPool()
+  const { data: sellers = [] } = usePopular('sales', 4)
+  const { data: bargainPage } = useBargains(4)
+  const deals = bargainPage?.content ?? []
 
   const items = cart?.items ?? []
   const itemCount = items.reduce((n, l) => n + l.quantity, 0)
@@ -102,9 +104,6 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
       cartBtn?.focus()
     }
   }, [drawerOpen, closeDrawer])
-
-  const sellers = topSelling(pool?.content ?? [], 4)
-  const deals = bargains(pool?.content ?? [], 4)
 
   const miniRow = (p: ProductResponse) => {
     const src = productImageUrl(p, 88, 88)

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { ProductResponse } from '../../lib/api'
 import {
   productImageUrl, productImageSrcSet, imageUrlAt, imageSrcSetAt,
@@ -21,6 +21,7 @@ import {
 export function ProductGallery({ product }: { product: ProductResponse }) {
   const images = product.images ?? []
   const [selected, setSelected] = useState(0)
+  const tablistRef = useRef<HTMLDivElement>(null)
 
   // A different product means a different gallery. Without this, navigating
   // between two product pages that share a route keeps the old index, so
@@ -39,16 +40,42 @@ export function ProductGallery({ product }: { product: ProductResponse }) {
     ? imageSrcSetAt(active.url, IMAGE_WIDTHS.hero)
     : productImageSrcSet(product, IMAGE_WIDTHS.hero)
 
+  const mainId = 'pdp-gallery-main'
+
   return (
     <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
       {hasRail && (
         <div
           role="tablist"
           aria-label="Product photos"
+          aria-controls={mainId}
+          ref={tablistRef}
+          onKeyDown={event => {
+            if (!hasRail) return
+            const last = images.length - 1
+            let next = selected
+            if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+              event.preventDefault()
+              next = (selected + 1) % images.length
+            } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+              event.preventDefault()
+              next = (selected - 1 + images.length) % images.length
+            } else if (event.key === 'Home') {
+              event.preventDefault()
+              next = 0
+            } else if (event.key === 'End') {
+              event.preventDefault()
+              next = last
+            } else {
+              return
+            }
+            setSelected(next)
+            requestAnimationFrame(() => {
+              tablistRef.current?.querySelectorAll<HTMLElement>('[role="tab"]')[next]?.focus()
+            })
+          }}
           style={{
             display: 'flex', flexDirection: 'column', gap: 8,
-            // Caps the rail so a product with eight photos cannot make the
-            // gallery taller than the buy box beside it.
             maxHeight: 600, overflowY: 'auto', flexShrink: 0,
           }}
         >
@@ -57,12 +84,11 @@ export function ProductGallery({ product }: { product: ProductResponse }) {
               key={img.id}
               role="tab"
               aria-selected={i === selected}
+              aria-controls={mainId}
               aria-label={`Photo ${i + 1} of ${images.length}`}
+              tabIndex={i === selected ? 0 : -1}
               onClick={() => setSelected(i)}
-              // Hover as well as click. On a gallery the pointer is already
-              // the pointing device, and requiring a click to preview is a
-              // step that earns nothing.
-              onMouseEnter={() => setSelected(i)}
+              onFocus={() => setSelected(i)}
               style={{
                 width: 60, height: 60, padding: 0, flexShrink: 0,
                 borderRadius: 'var(--r-sm)', overflow: 'hidden', cursor: 'pointer',
@@ -89,13 +115,11 @@ export function ProductGallery({ product }: { product: ProductResponse }) {
         maxHeight: 600, overflow: 'hidden', background: '#EAEEED',
       }}>
         <img
+          id={mainId}
           src={mainSrc}
           srcSet={mainSrcSet}
           sizes={IMAGE_SIZES.hero}
           alt={product.name}
-          // The page's LCP element. High priority only matters for the photo
-          // that loads first, so it stays on the main image and never on the
-          // thumbnails.
           fetchPriority="high"
           decoding="async"
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}

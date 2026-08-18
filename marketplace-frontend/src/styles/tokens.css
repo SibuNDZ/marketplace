@@ -1223,3 +1223,25 @@ button { cursor: pointer; font: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .faq-fab, .faq-item__q { transition: none; }
 }
+
+/* Cart / checkout: two columns on tablet+, stacked below 768px so a 375px
+   phone can finish shipping instead of overflowing the summary. */
+.cart-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 40px;
+  align-items: start;
+}
+.cart-line {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+@media (max-width: 767px) {
+  .cart-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}

@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, CartResponse, ApiError, PayResponse, ShippingAddress, fieldErrorsFrom } from '../lib/api'
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { ErrorSurface } from '../components/ui/ErrorSurface'
+import { CartLineImage } from '../components/cart/CartLineImage'
 
 const EMPTY_SHIPPING: ShippingAddress = {
   recipientName: '', phone: '', addressLine1: '', addressLine2: '',
@@ -47,13 +48,18 @@ export function CartPage() {
   })
 
   const updateQty = useMutation({
-    mutationFn: ({ productId, quantity }: { productId: number; quantity: number }) =>
-      api(`/api/v1/cart/items/${productId}`, { method: 'PUT', body: { quantity } }),
+    mutationFn: ({ productId, variantId, quantity }: { productId: number; variantId?: number | null; quantity: number }) =>
+      // variantId identifies WHICH line: a product can now appear twice in
+      // one cart under different options. Same contract as RightCartPanel.
+      api(`/api/v1/cart/items/${productId}${variantId != null ? `?variantId=${variantId}` : ''}`,
+        { method: 'PUT', body: { quantity } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cart'] }),
   })
 
   const removeItem = useMutation({
-    mutationFn: (productId: number) => api(`/api/v1/cart/items/${productId}`, { method: 'DELETE' }),
+    mutationFn: ({ productId, variantId }: { productId: number; variantId?: number | null }) =>
+      api(`/api/v1/cart/items/${productId}${variantId != null ? `?variantId=${variantId}` : ''}`,
+        { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cart'] }),
   })
 
@@ -199,16 +205,19 @@ export function CartPage() {
         )}
 
         {!isEmpty && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 40, alignItems: 'start' }}>
+          <div className="cart-layout">
             {/* Lines */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {lines.map(line => (
-                <div key={line.productId} style={{
-                  display: 'flex', alignItems: 'center', gap: 16,
-                  padding: '16px 0', borderBottom: '1px solid var(--line)',
-                }}>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontWeight: 600, marginBottom: 2 }}>{line.productName}</p>
+                <div key={`${line.productId}:${line.variantId ?? 'base'}`} className="cart-line">
+                  <CartLineImage line={line} size={56} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontWeight: 600, marginBottom: 2 }}>
+                      {line.productName}
+                      {line.variantLabel && (
+                        <span style={{ color: 'var(--ink-soft)', fontWeight: 400 }}> · {line.variantLabel}</span>
+                      )}
+                    </p>
                     <p className="num" style={{ fontSize: 13, color: 'var(--ink-soft)' }}>R{Number(line.unitPrice).toFixed(2)} each</p>
                     {line.availableStock < line.quantity && (
                       <p style={{ fontSize: 12, color: 'var(--clay)', marginTop: 2 }}>
@@ -217,16 +226,16 @@ export function CartPage() {
                     )}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <button onClick={() => updateQty.mutate({ productId: line.productId, quantity: line.quantity - 1 })}
+                    <button onClick={() => updateQty.mutate({ productId: line.productId, variantId: line.variantId, quantity: line.quantity - 1 })}
                       style={{ width: 28, height: 28, border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', background: 'none', fontSize: 16 }}>−</button>
                     <span className="num" style={{ minWidth: 28, textAlign: 'center', fontWeight: 600 }}>{line.quantity}</span>
-                    <button onClick={() => updateQty.mutate({ productId: line.productId, quantity: line.quantity + 1 })}
+                    <button onClick={() => updateQty.mutate({ productId: line.productId, variantId: line.variantId, quantity: line.quantity + 1 })}
                       style={{ width: 28, height: 28, border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', background: 'none', fontSize: 16 }}>+</button>
                   </div>
                   <p className="num" style={{ fontWeight: 700, minWidth: 80, textAlign: 'right' }}>
                     R{Number(line.lineTotal).toFixed(2)}
                   </p>
-                  <button onClick={() => removeItem.mutate(line.productId)}
+                  <button onClick={() => removeItem.mutate({ productId: line.productId, variantId: line.variantId })}
                     style={{ color: 'var(--ink-soft)', background: 'none', border: 'none', fontSize: 18, lineHeight: 1 }}>×</button>
                 </div>
               ))}

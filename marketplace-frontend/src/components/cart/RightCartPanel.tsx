@@ -29,8 +29,9 @@ interface Props {
 /**
  * The persistent cart-plus-discovery column: sticky third column of the
  * catalogue grid on ≥1280px screens, and a right-hand slide-in drawer
- * behind a floating cart button below that. One component, both modes —
+ * opened from the header cart button below that. One component, both modes —
  * CSS switches the presentation, the context keeps state across routes.
+ * The header is the only cart control on the home page at every breakpoint.
  */
 export function RightCartPanel({ activeFilters, onHighlight }: Props) {
   const { user } = useAuth()
@@ -38,12 +39,11 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
   const location = useLocation()
   const qc = useQueryClient()
   const {
-    collapsed, setCollapsed, drawerOpen, openDrawer, closeDrawer,
+    collapsed, setCollapsed, drawerOpen, closeDrawer,
     deselected, toggleItem, selectAll, deselectAll,
   } = useRightPanel()
 
   const panelRef = useRef<HTMLElement>(null)
-  const fabRef = useRef<HTMLButtonElement>(null)
 
   const { data: cart } = useQuery<CartResponse>({
     queryKey: ['cart'],
@@ -84,7 +84,7 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
   })
 
   // Drawer mode: ESC closes, body scroll locks, focus moves in on open and
-  // back to the floating button on close.
+  // back to the header cart button on close (the only cart control left).
   useEffect(() => {
     if (!drawerOpen) return
     const previousOverflow = document.body.style.overflow
@@ -97,7 +97,9 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
     return () => {
       document.removeEventListener('keydown', onKeyDown)
       document.body.style.overflow = previousOverflow
-      fabRef.current?.focus()
+      const cartBtn = Array.from(document.querySelectorAll<HTMLElement>('.js-site-cart'))
+        .find(el => el.offsetParent !== null)
+      cartBtn?.focus()
     }
   }, [drawerOpen, closeDrawer])
 
@@ -147,19 +149,6 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
 
   return (
     <>
-      {/* Floating toggle — small screens only (CSS hides it at ≥1280px). */}
-      <button
-        ref={fabRef}
-        className="right-panel-fab"
-        aria-label={`Open cart panel${itemCount > 0 ? `, ${itemCount} items` : ''}`}
-        onClick={openDrawer}
-      >
-        <span className="cart-action__icon">
-          <ShoppingCart size={22} strokeWidth={1.75} />
-          {itemCount > 0 && <span className="cart-count num">{itemCount}</span>}
-        </span>
-      </button>
-
       {drawerOpen && (
         <button className="right-panel-backdrop" aria-label="Close cart panel" onClick={closeDrawer} />
       )}

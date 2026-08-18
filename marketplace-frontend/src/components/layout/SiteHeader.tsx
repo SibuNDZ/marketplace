@@ -5,10 +5,9 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
 import { api, CartResponse } from '../../lib/api'
 import { useCategoryTree } from '../../hooks/useCategoryTree'
-import { useCartDrawer } from '../../context/CartDrawerContext'
+import { useRightPanel } from '../../context/RightPanelContext'
 import { useSellerEntry } from '../../hooks/useSellerEntry'
 import { ALL_SLUG } from '../../data/categories'
-import { CartDrawer } from '../cart/CartDrawer'
 import { RetailCategoryNav } from './RetailCategoryNav'
 import { LogoMark } from './LogoMark'
 
@@ -35,7 +34,7 @@ export function SiteHeader() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const cartDrawer = useCartDrawer()
+  const { openDrawer, setCollapsed } = useRightPanel()
   const sellerEntry = useSellerEntry()
   const [accountOpen, setAccountOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -121,6 +120,19 @@ export function SiteHeader() {
     navigate('/login')
   }
 
+  const openCart = () => {
+    setDrawerOpen(false)
+    setAccountOpen(false)
+    // Catalogue already has RightCartPanel mounted — open it. Everywhere
+    // else the header cart is a link to the full cart page.
+    if (location.pathname === '/') {
+      setCollapsed(false)
+      openDrawer()
+    } else {
+      navigate('/cart')
+    }
+  }
+
   const roleDestination = user?.role === 'ADMIN' ? '/admin' : user?.role === 'VENDOR' ? '/vendor' : '/orders'
   const roleLabel = user?.role === 'ADMIN' ? 'Admin' : user?.role === 'VENDOR' ? 'Dashboard' : 'Orders'
 
@@ -186,7 +198,7 @@ export function SiteHeader() {
                   </div>
                 )}
               </div>
-              <button className="main-action cart-action" onClick={cartDrawer.open}>
+              <button className="main-action cart-action js-site-cart" onClick={openCart}>
                 <span className="cart-action__icon"><ShoppingCart size={20} strokeWidth={1.75} />
                   {itemCount > 0 && <span className="cart-count num">{itemCount}</span>}
                 </span><span>Cart</span>
@@ -212,7 +224,7 @@ export function SiteHeader() {
                 <UserRound size={22} strokeWidth={1.75} />
               </button>
               <button className="mobile-icon" onClick={() => setDrawerOpen(true)} aria-label="Open search"><Search size={22} strokeWidth={1.75} /></button>
-              <button className="mobile-icon cart-action__icon" onClick={cartDrawer.open} aria-label="Open cart">
+              <button className="mobile-icon cart-action__icon js-site-cart" onClick={openCart} aria-label="Open cart">
                 <ShoppingCart size={22} strokeWidth={1.75} />{itemCount > 0 && <span className="cart-count num">{itemCount}</span>}
               </button>
             </div>
@@ -289,7 +301,6 @@ export function SiteHeader() {
           </div>
         </div>
       )}
-      <CartDrawer />
     </>
   )
 }

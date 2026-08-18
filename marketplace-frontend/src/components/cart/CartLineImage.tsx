@@ -11,8 +11,8 @@ interface Props {
 /**
  * The thumbnail on a cart row.
  *
- * Shared by the right panel and the drawer because they had the same bug in
- * two places: both rendered `picsum.photos/seed/mk-{productId}`, a stock
+ * Shared by the right panel and the cart page because they had the same bug
+ * in two places: both rendered `picsum.photos/seed/mk-{productId}`, a stock
  * photo keyed on the product id. Every cart row showed a confident,
  * completely unrelated image, which is worse than showing none — a shopper
  * checking what they are about to pay for was being shown someone else's

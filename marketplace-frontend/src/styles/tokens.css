@@ -1057,7 +1057,6 @@ button { cursor: pointer; font: inherit; }
     padding: 10px 0;
     border-bottom: 0;
   }
-  .right-panel-fab,
   .right-panel-backdrop,
   .right-cart-panel__close { display: none; }
 }
@@ -1080,22 +1079,6 @@ button { cursor: pointer; font: inherit; }
   }
   .right-cart-panel.is-open { transform: none; visibility: visible; transition: transform 0.2s ease; }
   .right-cart-panel__collapse { display: none; }
-  .right-panel-fab {
-    position: fixed;
-    right: 16px;
-    bottom: 18px;
-    z-index: 150;
-    display: grid;
-    place-items: center;
-    width: 54px;
-    height: 54px;
-    border: 0;
-    border-radius: var(--r-pill);
-    background: var(--flame-gradient);
-    color: white;
-    box-shadow: var(--shadow-lift);
-  }
-  .right-panel-fab .cart-count { border-color: var(--flame); background: white; color: var(--flame-deep); }
   .right-panel-backdrop {
     position: fixed;
     inset: 0;
@@ -1131,17 +1114,15 @@ button { cursor: pointer; font: inherit; }
 }
 
 /* ---- FAQ widget ------------------------------------------------------
-   Bottom-right, but NOT on top of the cart FAB, which already owns
-   right:16px / bottom:18px at 54px square below 1280px. The default
-   position stacks above it; at >=1280px the cart FAB is hidden (the panel
-   becomes a sticky column) so this drops into the corner it vacated.
+   Bottom-right corner. The catalogue cart FAB is gone (header cart is the
+   only control), so this sits in the corner at every breakpoint.
 
-   z-index 140 sits BELOW the cart FAB (150) and far below the drawers
-   (320): if a drawer is open it must win, and this must never cover it. */
+   z-index 140 sits far below the drawers (320): if a drawer is open it
+   must win, and this must never cover it. */
 .faq-fab {
   position: fixed;
   right: 16px;
-  bottom: 84px;              /* 18 (FAB bottom) + 54 (FAB height) + 12 gap */
+  bottom: 18px;
   z-index: 140;
   display: grid;
   place-items: center;
@@ -1159,11 +1140,7 @@ button { cursor: pointer; font: inherit; }
 .faq-panel {
   position: fixed;
   right: 16px;
-  bottom: 140px;
-  /* ABOVE the cart FAB (150), which otherwise punches through the open
-     bottom sheet on mobile — caught on a 390px pass, invisible in the
-     rect maths because the FAB does not overlap the CLOSED bubble.
-     Still far below the drawers (320), which must always win. */
+  bottom: 76px;
   z-index: 160;
   width: 360px;
   max-width: calc(100vw - 32px);
@@ -1199,12 +1176,6 @@ button { cursor: pointer; font: inherit; }
   font-size: 13px; color: var(--ink-soft); flex-shrink: 0;
 }
 .faq-panel__fallback a { color: var(--trust-blue); font-weight: 600; }
-
-/* The cart FAB is hidden at >=1280px, so the corner is free. */
-@media (min-width: 1280px) {
-  .faq-fab   { bottom: 18px; }
-  .faq-panel { bottom: 76px; }
-}
 
 /* Mobile: bottom sheet, matching the account menu and drawer pattern
    rather than floating a small panel over a small screen. */

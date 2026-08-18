@@ -1,7 +1,6 @@
 import React, { useLayoutEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigationType } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
-import { CartDrawerProvider } from './context/CartDrawerContext'
 import { RightPanelProvider } from './context/RightPanelContext'
 import { Footer } from './components/layout/Footer'
 import { FaqWidget } from './components/support/FaqWidget'
@@ -105,8 +104,7 @@ function ScrollToTop() {
 export default function App() {
   return (
     <BrowserRouter>
-      <CartDrawerProvider>
-        <RightPanelProvider>
+      <RightPanelProvider>
         <ScrollToTop />
         <Routes>
           <Route path="/" element={<CatalogPage />} />
@@ -148,8 +146,7 @@ export default function App() {
         </Routes>
         <ChromeFooter />
         <ChromeFaq />
-        </RightPanelProvider>
-      </CartDrawerProvider>
+      </RightPanelProvider>
     </BrowserRouter>
   )
 }

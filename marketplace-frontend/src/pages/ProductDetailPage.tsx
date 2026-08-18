@@ -15,7 +15,7 @@ import { PriceBlock } from '../components/product/PriceBlock'
 import { ProductGallery } from '../components/product/ProductGallery'
 import { VariantSelector } from '../components/product/VariantSelector'
 
-/** Matches the loaded product page's chrome so a new tab does not paint the footer first. */
+/** Matches the loaded product page's chrome so a short stub does not paint the footer first. */
 function ProductPageSkeleton() {
   return (
     <>

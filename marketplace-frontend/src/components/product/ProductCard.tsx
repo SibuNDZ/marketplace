@@ -77,17 +77,11 @@ export function ProductCard({ product }: Props) {
       onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow-lift)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)' }}
       onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow)'; (e.currentTarget as HTMLDivElement).style.transform = '' }}
     >
-      {/* Product image.
-          Opens in a NEW TAB, like every product tile on the site. A shopper
-          scanning a grid is comparing, not committing, and taking the grid
-          away on each look costs them their place, their filters and their
-          scroll position. rel="noopener" is not optional with target blank:
-          without it the new page holds a window.opener handle back to this
-          one. */}
+      {/* Product image. Same tab: Back restores the catalogue's offset
+          (ScrollToTop leaves POP alone), so a new tab is not needed to keep
+          the shopper's place, filters or scroll. */}
       <Link
         to={`/products/${product.id}`}
-        target="_blank"
-        rel="noopener"
         style={{ position: 'relative', display: 'block', height: 180, flexShrink: 0, background: '#EAEEED' }}
       >
         <img
@@ -120,8 +114,6 @@ export function ProductCard({ product }: Props) {
         {/* Name */}
         <Link
           to={`/products/${product.id}`}
-          target="_blank"
-          rel="noopener"
           style={{ fontWeight: 600, fontSize: 14, color: 'var(--ink)', lineHeight: 1.3, minHeight: 36 }}
         >
           {product.name}
@@ -149,8 +141,6 @@ export function ProductCard({ product }: Props) {
           {needsOptions ? (
             <Link
               to={`/products/${product.id}`}
-              target="_blank"
-              rel="noopener"
               style={{
                 padding: '7px 14px', background: 'var(--card)', color: 'var(--ink)',
                 border: '1.5px solid var(--line)', borderRadius: 'var(--r-pill)',

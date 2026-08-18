@@ -48,9 +48,8 @@ export function ProductRailSkeleton({ cardWidth, count = 6 }: { cardWidth: numbe
  * that scrolls keeps the page's vertical rhythm no matter how many items
  * come back.
  *
- * The "See more" link navigates in the SAME tab, unlike the cards. Clicking
- * a specific product is a side-quest worth preserving this page for;
- * choosing to browse the full list is a decision to leave.
+ * The "See more" link is the same tab as the cards: both leave this page
+ * on purpose, and Back brings you back.
  */
 export function ProductRail({ title, products, cardWidth, seeMoreTo, seeMoreLabel = 'See more' }: Props) {
   if (products.length === 0) return null

@@ -12,7 +12,11 @@ import com.marketplace.api.exception.ProductExceptions.CompareAtPricingPausedExc
 import com.marketplace.api.exception.ProductExceptions.DuplicateSkuException;
 import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
 import com.marketplace.api.exception.ReviewExceptions.*;
+import com.marketplace.api.payment.PaymentExceptions;
 import com.marketplace.api.payment.PaymentExceptions.PaymentProviderException;
+import com.marketplace.api.payment.PaymentExceptions.PaymentProviderMisconfiguredException;
+import com.marketplace.api.payment.PaymentExceptions.PaymentProviderUnavailableException;
+import com.marketplace.api.payment.PaymentHealth;
 import com.marketplace.api.service.ProductStockService.InsufficientAdjustmentException;
 import com.marketplace.api.service.VariantSelection.VariantNotApplicableException;
 import com.marketplace.api.service.VariantSelection.VariantRequiredException;
@@ -35,6 +39,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
+import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +58,12 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    private final PaymentHealth paymentHealth;
+
+    public GlobalExceptionHandler(PaymentHealth paymentHealth) {
+        this.paymentHealth = paymentHealth;
+    }
 
     @ExceptionHandler({OrderNotFoundException.class, CartNotFoundException.class,
             ProductNotFoundException.class, ReviewNotFoundException.class,
@@ -284,11 +295,37 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.NOT_FOUND, "Feedback not found", ex.getMessage());
     }
 
+    @ExceptionHandler(PaymentProviderMisconfiguredException.class)
+    public ProblemDetail paymentProviderMisconfigured(PaymentProviderMisconfiguredException ex) {
+        log.error("Payment provider misconfigured", ex);
+        paymentHealth.recordErrorType(PaymentExceptions.CODE_MISCONFIGURED);
+        return paymentProblem(PaymentExceptions.TYPE_MISCONFIGURED, PaymentExceptions.CODE_MISCONFIGURED);
+    }
+
+    @ExceptionHandler(PaymentProviderUnavailableException.class)
+    public ProblemDetail paymentProviderUnavailable(PaymentProviderUnavailableException ex) {
+        log.error("Payment provider unavailable", ex);
+        paymentHealth.recordErrorType(PaymentExceptions.CODE_UNAVAILABLE);
+        return paymentProblem(PaymentExceptions.TYPE_UNAVAILABLE, PaymentExceptions.CODE_UNAVAILABLE);
+    }
+
+    /**
+     * Fallback if a caller still throws the untyped base. Treated as an
+     * outage: we cannot tell keys from upstream from the type alone.
+     */
     @ExceptionHandler(PaymentProviderException.class)
     public ProblemDetail paymentProviderError(PaymentProviderException ex) {
         log.error("Payment provider error", ex);
-        return problem(HttpStatus.BAD_GATEWAY, "Payment provider unavailable",
+        paymentHealth.recordErrorType(PaymentExceptions.CODE_UNAVAILABLE);
+        return paymentProblem(PaymentExceptions.TYPE_UNAVAILABLE, PaymentExceptions.CODE_UNAVAILABLE);
+    }
+
+    private ProblemDetail paymentProblem(String type, String code) {
+        ProblemDetail pd = problem(HttpStatus.BAD_GATEWAY, "Payment provider unavailable",
                 "Payment provider unavailable");
+        pd.setType(URI.create(type));
+        pd.setProperty("code", code);
+        return pd;
     }
 
     @ExceptionHandler(AccessDeniedException.class)

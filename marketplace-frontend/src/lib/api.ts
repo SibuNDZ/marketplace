@@ -44,6 +44,9 @@ export class ApiError extends Error {
     // login could be several things, and the UI has to tell that one apart
     // to offer a resend rather than a dead end.
     public code?: string,
+    // RFC 7807 type URI. Payment 502s use
+    // payments:provider-misconfigured vs payments:provider-unavailable.
+    public type?: string,
   ) {
     super(detail || title)
   }
@@ -80,6 +83,7 @@ async function toApiError(res: Response): Promise<ApiError> {
       body.shortages,
       body.errors,
       body.code,
+      body.type,
     )
   } catch {
     return new ApiError(res.status, 'Request failed', res.statusText, requestId)

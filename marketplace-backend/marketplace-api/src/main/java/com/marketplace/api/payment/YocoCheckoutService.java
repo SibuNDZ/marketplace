@@ -105,7 +105,7 @@ public class YocoCheckoutService {
         try {
             json = objectMapper.writeValueAsString(body);
         } catch (Exception e) {
-            throw new PaymentExceptions.PaymentProviderException(
+            throw PaymentExceptions.unavailable(
                     "Failed to serialise Yoco checkout request for order " + orderId, e);
         }
 
@@ -148,15 +148,15 @@ public class YocoCheckoutService {
             try {
                 response = send(request);
             } catch (Exception retryFailed) {
-                throw new PaymentExceptions.PaymentProviderException(
+                throw PaymentExceptions.unavailable(
                         "Failed to reach Yoco for order " + orderId, retryFailed);
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new PaymentExceptions.PaymentProviderException(
+            throw PaymentExceptions.unavailable(
                     "Interrupted creating Yoco checkout for order " + orderId, e);
         } catch (Exception e) {
-            throw new PaymentExceptions.PaymentProviderException(
+            throw PaymentExceptions.unavailable(
                     "Failed to create Yoco checkout for order " + orderId, e);
         }
 
@@ -164,8 +164,9 @@ public class YocoCheckoutService {
             // Body may name the field Yoco rejected; it carries no card data.
             log.error("Yoco checkout creation failed for order {}: HTTP {} body '{}'",
                     orderId, response.statusCode(), response.body());
-            throw new PaymentExceptions.PaymentProviderException(
-                    "Yoco returned HTTP " + response.statusCode() + " for order " + orderId, null);
+            throw PaymentExceptions.fromHttpStatus(
+                    "Yoco returned HTTP " + response.statusCode() + " for order " + orderId,
+                    response.statusCode());
         }
 
         String redirectUrl;
@@ -173,11 +174,11 @@ public class YocoCheckoutService {
             JsonNode root = objectMapper.readTree(response.body());
             redirectUrl = root.path("redirectUrl").asText(null);
         } catch (Exception e) {
-            throw new PaymentExceptions.PaymentProviderException(
+            throw PaymentExceptions.unavailable(
                     "Unparseable Yoco checkout response for order " + orderId, e);
         }
         if (redirectUrl == null || redirectUrl.isBlank()) {
-            throw new PaymentExceptions.PaymentProviderException(
+            throw PaymentExceptions.unavailable(
                     "Yoco checkout response had no redirectUrl for order " + orderId, null);
         }
         return redirectUrl;

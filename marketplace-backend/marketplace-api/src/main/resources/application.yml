@@ -116,8 +116,11 @@ app:
       # Per authenticated vendor, not per IP. Each call costs real money.
       per-hour: ${DRAFT_RATE_LIMIT_PER_HOUR:10}
   stripe:
-    secret-key: ${STRIPE_SECRET_KEY}
-    webhook-secret: ${STRIPE_WEBHOOK_SECRET}
+    # Blank defaults: PaymentsConfigValidator fail-fastes ONLY when
+    # PAYMENTS_PROVIDER=stripe. A PayFast/Yoco deploy must not die because
+    # STRIPE_SECRET_KEY is unset.
+    secret-key: ${STRIPE_SECRET_KEY:}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
     success-url: ${APP_FRONTEND_URL:http://localhost:5173}/checkout/success
     cancel-url: ${APP_FRONTEND_URL:http://localhost:5173}/checkout/cancelled
   payments:
@@ -128,8 +131,8 @@ app:
   yoco:
     # Blank defaults, NOT sandbox defaults: Yoco test keys are per-merchant
     # (Yoco app -> Checkout API integration -> Test keys), so there is no
-    # public pair to ship like PayFast's. Blank + YocoConfigValidator means an
-    # unset key fails the boot ONLY on a deploy that selects yoco, and never
+    # public pair to ship like PayFast's. Blank + PaymentsConfigValidator means
+    # an unset key fails the boot ONLY on a deploy that selects yoco, and never
     # breaks a Stripe deploy that has no Yoco vars at all.
     secret-key: ${YOCO_SECRET_KEY:}
     webhook-secret: ${YOCO_WEBHOOK_SECRET:}

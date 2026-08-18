@@ -46,6 +46,11 @@ export function ErrorSurface({ error, onDismiss }: Props) {
           ))}
         </div>
       )}
+      {error.type && (
+        <p className="num" style={{ fontSize: 11, color: 'var(--ink-soft)', marginTop: 4 }}>
+          type · {error.type}
+        </p>
+      )}
       {error.requestId && (
         <p className="num" style={{ fontSize: 11, color: 'var(--ink-soft)', marginTop: 4 }}>
           request id · {error.requestId}

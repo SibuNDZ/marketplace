@@ -52,7 +52,7 @@ public class StripeCheckoutService {
 
     public StripeCheckoutService(OrderRepository orderRepository,
                                  CheckoutPreparation checkoutPreparation,
-                                 @Value("${app.stripe.secret-key}") String secretKey,
+                                 @Value("${app.stripe.secret-key:}") String secretKey,
                                  @Value("${app.stripe.success-url}") String successUrl,
                                  @Value("${app.stripe.cancel-url}") String cancelUrl) {
         this.orderRepository = orderRepository;
@@ -126,10 +126,15 @@ public class StripeCheckoutService {
                             .build());
         }
 
+        if (secretKey == null || secretKey.isBlank()) {
+            throw PaymentExceptions.misconfigured(
+                    "Stripe is not configured for order " + orderId, null);
+        }
+
         try {
             return Session.create(params.build()).getUrl();
         } catch (StripeException e) {
-            throw new PaymentExceptions.PaymentProviderException(
+            throw PaymentExceptions.fromStripe(
                     "Failed to create checkout session for order " + orderId, e);
         }
     }

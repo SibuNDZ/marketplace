@@ -65,7 +65,7 @@ public class PaymentController {
                              YocoCheckoutService yocoCheckoutService,
                              PaymentEventService eventService,
                              ObjectMapper objectMapper,
-                             @Value("${app.stripe.webhook-secret}") String webhookSecret,
+                             @Value("${app.stripe.webhook-secret:}") String webhookSecret,
                              @Value("${app.payments.provider:stripe}") String provider) {
         this.checkoutService = checkoutService;
         this.payfastCheckoutService = payfastCheckoutService;

@@ -57,6 +57,24 @@ export function SiteHeader() {
   }, [location.search])
 
   useEffect(() => {
+    if (!accountOpen) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setAccountOpen(false)
+    }
+    const onPointer = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null
+      if (target?.closest('.js-account')) return
+      setAccountOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onPointer)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', onPointer)
+    }
+  }, [accountOpen])
+
+  useEffect(() => {
     if (!drawerOpen) return
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -172,7 +190,7 @@ export function SiteHeader() {
                   <Bell size={20} strokeWidth={1.75} />
                 </button>
               )}
-              <div className="account-action">
+              <div className="account-action js-account">
                 <button className="main-action" onClick={() => setAccountOpen(open => !open)} aria-expanded={accountOpen}>
                   <UserRound size={20} strokeWidth={1.75} /><span>Account</span><ChevronDown size={14} strokeWidth={1.75} aria-hidden />
                 </button>
@@ -198,7 +216,8 @@ export function SiteHeader() {
                   </div>
                 )}
               </div>
-              <button className="main-action cart-action js-site-cart" onClick={openCart}>
+              <button className="main-action cart-action js-site-cart" onClick={openCart}
+                aria-label={itemCount > 0 ? `Cart, ${itemCount} items` : 'Cart'}>
                 <span className="cart-action__icon"><ShoppingCart size={20} strokeWidth={1.75} />
                   {itemCount > 0 && <span className="cart-count num">{itemCount}</span>}
                 </span><span>Cart</span>
@@ -218,7 +237,7 @@ export function SiteHeader() {
                   account access only existed inside the hamburger drawer.
                   Signed out this goes straight to sign-in; signed in it
                   opens the same menu as desktop, full-width under the bar. */}
-              <button className="mobile-icon" aria-label="Account"
+              <button className="mobile-icon js-account" aria-label="Account"
                 onClick={() => user ? setAccountOpen(open => !open) : navigate('/login')}
                 aria-expanded={user ? accountOpen : undefined}>
                 <UserRound size={22} strokeWidth={1.75} />
@@ -229,7 +248,7 @@ export function SiteHeader() {
               </button>
             </div>
             {accountOpen && user && (
-              <div className="account-menu account-menu--mobile">
+              <div className="account-menu account-menu--mobile js-account">
                 <span>{user.email}</span>
                 <Link to="/orders" onClick={() => setAccountOpen(false)}>Orders</Link>
                 {user.role !== 'CUSTOMER' && <Link to={roleDestination} onClick={() => setAccountOpen(false)}>{roleLabel}</Link>}

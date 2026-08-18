@@ -1,6 +1,9 @@
 # Product variants (colour / size)
 
-Status: **spec, ready to build.** Not started in code — deliberately, see §6.
+Status: **Shipped** (V20 table + vendor CRUD, V25 variant-aware cart, PDP
+selector, right panel and `/cart` line identity). Two-axis size×colour
+matrices are **out of scope** — a vendor who needs both enters `"Black / XL"`
+as one label. See §8 for remaining gaps.
 
 ## 1. Why this is not a normal feature slice
 
@@ -119,3 +122,10 @@ Do not ship step 3's buyer selector before step 2 is green.
    (Yes, but existing order lines keep `variant_id = NULL` and their
    snapshot label stays empty — history is not rewritten.)
 3. Delivery fees are per vendor, unaffected. Confirmed, no change needed.
+
+## 8. Remaining gaps (do not rebuild the money path)
+
+- Per-variant gallery photos (open question §7.1) — not shipped.
+- Two-axis size×colour picker — rejected for stall vendors; do not add.
+- `/cart` qty/remove must keep passing `?variantId=` (fixed in audit 0.2).
+- Compact recommendation tiles do not need a variant picker; they link to PDP.

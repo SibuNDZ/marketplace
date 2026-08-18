@@ -299,17 +299,18 @@ export interface CategoryOption {
 }
 
 /**
- * A purchasable option on a product (backend V20).
+ * A purchasable option on a product (backend V20, cart-aware since V25).
  *
  * ONE axis, not two: `label` is a single flat choice ("Black", "XL",
  * "2pcs black"), deliberately not colour x size as a matrix — see
  * product-variants.md §2 for why. Price is ABSOLUTE, not a delta off the
  * product price.
  *
- * These are still INERT on the buy path: the cart and order endpoints take
- * a productId only, so nothing can be added to a cart per-variant yet.
- * Render them as information; do not build a buy flow on them until
- * product-variants.md step 2 lands.
+ * Buy path: POST /api/v1/cart/items with `{ productId, variantId, quantity }`.
+ * Update/remove the line with PUT/DELETE
+ * `/api/v1/cart/items/{productId}?variantId={id}`. Omit `variantId` only for
+ * products that have no options (the pre-V25 row). A product can appear
+ * twice in one cart under different options; the query param is which row.
  */
 export interface VariantResponse {
   id: number

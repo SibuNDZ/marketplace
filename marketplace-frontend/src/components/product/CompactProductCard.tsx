@@ -1,6 +1,7 @@
 import React from 'react'
 import { ProductResponse } from '../../lib/api'
 import { productImageUrl, productImageSrcSet, IMAGE_WIDTHS, IMAGE_SIZES } from '../../lib/productImage'
+import { RatingLine } from './RatingLine'
 
 interface Props {
   product: ProductResponse
@@ -15,7 +16,7 @@ interface Props {
  * vendor line, rating, sold count, stock badge, add-to-cart button — and at
  * 220px+ it dominates whatever it sits under. A rail below the thing you are
  * already reading needs to stay subordinate to it, so this is image, one
- * line of title, and a price. Nothing else.
+ * line of title, a compact rating, and a price.
  *
  * Opens in a NEW TAB. The whole point of a rail is that you are part-way
  * through evaluating the product you are on; sending that page away to show
@@ -55,12 +56,11 @@ export function CompactProductCard({ product, width }: Props) {
       </div>
       <span style={{
         fontSize: 12, lineHeight: 1.35, color: 'var(--ink)',
-        // One line, clipped. A rail's rhythm depends on every card being the
-        // same height, and a two-line title on one card staggers the row.
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
         {product.name}
       </span>
+      <RatingLine product={product} compact />
       <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)' }}>
         <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 400, color: 'var(--ink-soft)' }}>R</span>
         <span className="num">{Number(product.price).toFixed(2)}</span>

@@ -20,6 +20,11 @@ export const CHECKOUT_MIN_RAND = 200
 
 const QTY_CAP = 10
 
+/** Same line identity as /cart: a product can appear twice under different options. */
+function cartLineKey(productId: number, variantId?: number | null) {
+  return `${productId}:${variantId ?? 'base'}`
+}
+
 interface Props {
   activeFilters: Set<QuickFilterKey>
   /** Toggles a quick filter on the main grid and scrolls to it. */
@@ -56,7 +61,7 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
 
   const items = cart?.items ?? []
   const itemCount = items.reduce((n, l) => n + l.quantity, 0)
-  const selected = items.filter(l => !deselected.has(l.productId))
+  const selected = items.filter(l => !deselected.has(cartLineKey(l.productId, l.variantId)))
   const subtotal = selected.reduce((sum, l) => sum + Number(l.lineTotal), 0)
   const allSelected = items.length > 0 && selected.length === items.length
   const progress = Math.min(subtotal / CHECKOUT_MIN_RAND, 1)
@@ -230,18 +235,18 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
                   <input
                     type="checkbox"
                     checked={allSelected}
-                    onChange={() => allSelected ? deselectAll(items.map(l => l.productId)) : selectAll()}
+                    onChange={() => allSelected ? deselectAll(items.map(l => cartLineKey(l.productId, l.variantId))) : selectAll()}
                   />
                   Select all (<span className="num">{items.length}</span>)
                 </label>
                 <div className="rc-items">
                   {items.map(line => (
-                    <div key={line.productId} className="rc-item">
+                    <div key={cartLineKey(line.productId, line.variantId)} className="rc-item">
                       <input
                         type="checkbox"
-                        checked={!deselected.has(line.productId)}
-                        aria-label={`Select ${line.productName}`}
-                        onChange={() => toggleItem(line.productId)}
+                        checked={!deselected.has(cartLineKey(line.productId, line.variantId))}
+                        aria-label={`Select ${line.productName}${line.variantLabel ? ` · ${line.variantLabel}` : ''}`}
+                        onChange={() => toggleItem(cartLineKey(line.productId, line.variantId))}
                       />
                       <Link to={`/products/${line.productId}`} className="rc-item__main" onClick={closeDrawer}>
                         {/* The vendor's real photo. This used to be a picsum
@@ -265,7 +270,7 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
                       <select
                         className="rc-item__qty num"
                         value={line.quantity}
-                        aria-label={`Quantity for ${line.productName}`}
+                        aria-label={`Quantity for ${line.productName}${line.variantLabel ? ` · ${line.variantLabel}` : ''}`}
                         onChange={e => updateQty.mutate({ productId: line.productId, variantId: line.variantId, quantity: Number(e.target.value) })}
                       >
                         {Array.from(

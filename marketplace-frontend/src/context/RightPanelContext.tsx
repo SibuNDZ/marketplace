@@ -13,10 +13,10 @@ interface RightPanelCtx {
   drawerOpen: boolean
   openDrawer: () => void
   closeDrawer: () => void
-  deselected: Set<number>
-  toggleItem: (productId: number) => void
+  deselected: Set<string>
+  toggleItem: (lineKey: string) => void
   selectAll: () => void
-  deselectAll: (productIds: number[]) => void
+  deselectAll: (lineKeys: string[]) => void
 }
 
 const Ctx = createContext<RightPanelCtx>({
@@ -28,11 +28,11 @@ const Ctx = createContext<RightPanelCtx>({
 export function RightPanelProvider({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [deselected, setDeselected] = useState<Set<number>>(new Set())
+  const [deselected, setDeselected] = useState<Set<string>>(new Set())
 
-  const toggleItem = (productId: number) => setDeselected(prev => {
+  const toggleItem = (lineKey: string) => setDeselected(prev => {
     const next = new Set(prev)
-    next.has(productId) ? next.delete(productId) : next.add(productId)
+    next.has(lineKey) ? next.delete(lineKey) : next.add(lineKey)
     return next
   })
 
@@ -42,7 +42,7 @@ export function RightPanelProvider({ children }: { children: React.ReactNode }) 
       drawerOpen, openDrawer: () => setDrawerOpen(true), closeDrawer: () => setDrawerOpen(false),
       deselected, toggleItem,
       selectAll: () => setDeselected(new Set()),
-      deselectAll: (ids: number[]) => setDeselected(new Set(ids)),
+      deselectAll: (keys: string[]) => setDeselected(new Set(keys)),
     }}>
       {children}
     </Ctx.Provider>

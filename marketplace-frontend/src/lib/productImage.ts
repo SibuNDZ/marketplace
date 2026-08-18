@@ -1,7 +1,4 @@
 import { ProductResponse } from './api'
-import { getImageSeed } from './marketplaceSignals'
-
-const HONEY_IMAGE = 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop'
 
 /**
  * Only OUR images can be transformed. Cloudflare image transformations are
@@ -9,10 +6,10 @@ const HONEY_IMAGE = 'https://images.unsplash.com/photo-1587049352846-4a222e784d3
  * its subdomains, so R2 assets on images.erestyu.com qualify and nothing
  * else does.
  *
- * Matching on the host suffix rather than an exact string is what keeps the
- * placeholder services (picsum, unsplash) and a local MinIO bucket out of
- * the transform path — prefixing /cdn-cgi/image/ onto any of those produces
- * a 404, because the prefix is only meaningful to Cloudflare.
+ * Matching on the host suffix rather than an exact string is what keeps
+ * third-party URLs out of the transform path — prefixing /cdn-cgi/image/
+ * onto any of those produces a 404, because the prefix is only meaningful
+ * to Cloudflare.
  */
 function isTransformable(url: string): boolean {
   try {
@@ -113,20 +110,13 @@ export function imageSrcSetAt(
   return widths.map(w => `${transform(url, w)} ${w}w`).join(', ')
 }
 
-/** The plain src. Still needed: it is what a browser without srcset support
- *  uses, and what everything falls back to for placeholder images. */
-export function productImageUrl(product: ProductResponse, width: number, height: number): string {
-  if (product.imageUrl) {
-    return isTransformable(product.imageUrl)
-      ? transform(product.imageUrl, width)
-      : product.imageUrl
-  }
-
-  if (/\bhoney\b/i.test(product.name)) {
-    return `${HONEY_IMAGE}&w=${width}&h=${height}&q=85`
-  }
-
-  return `https://picsum.photos/seed/${getImageSeed(product.id)}/${width}/${height}`
+/** The plain src. Missing vendor photos return undefined so callers render
+ *  the branded empty well instead of a stock photo of something else. */
+export function productImageUrl(product: ProductResponse, width: number, _height?: number): string | undefined {
+  if (!product.imageUrl) return undefined
+  return isTransformable(product.imageUrl)
+    ? transform(product.imageUrl, width)
+    : product.imageUrl
 }
 
 /**

@@ -360,7 +360,7 @@ export interface ProductResponse {
   parentCategorySlug: string | null  // null when filed directly on a top-level category
   handmade: boolean
   tags: string[]
-  imageUrl: string | null    // null until a vendor uploads one — frontend falls back to a placeholder
+  imageUrl: string | null    // null until a vendor uploads one — frontend renders the empty well
   /** Empty for products the vendor has not given options; never null. */
   variants: VariantResponse[]
 }

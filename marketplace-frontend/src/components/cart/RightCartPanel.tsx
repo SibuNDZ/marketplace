@@ -106,19 +106,25 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
   const sellers = topSelling(pool?.content ?? [], 4)
   const deals = bargains(pool?.content ?? [], 4)
 
-  const miniRow = (p: ProductResponse) => (
+  const miniRow = (p: ProductResponse) => {
+    const src = productImageUrl(p, 88, 88)
+    return (
     <div key={p.id} className="mini-product">
       {/* New tab, same as every other recommendation tile. Only the
           suggestion rows below get this — the cart's own line items stay
           same-tab, because those are things you already chose rather than
           things being pitched at you. */}
       <Link to={`/products/${p.id}`} target="_blank" rel="noopener" className="mini-product__main" onClick={closeDrawer}>
-        <img
-          src={productImageUrl(p, 88, 88)}
-          srcSet={productImageSrcSet(p, IMAGE_WIDTHS.thumb)}
-          sizes={IMAGE_SIZES.thumb}
-          alt="" width={44} height={44} loading="lazy" decoding="async"
-        />
+        {src ? (
+          <img
+            src={src}
+            srcSet={productImageSrcSet(p, IMAGE_WIDTHS.thumb)}
+            sizes={IMAGE_SIZES.thumb}
+            alt="" width={44} height={44} loading="lazy" decoding="async"
+          />
+        ) : (
+          <span className="image-well image-well--thumb" aria-hidden />
+        )}
         <span className="mini-product__text">
           <span className="mini-product__name">{p.name}</span>
           <RatingLine product={p} compact />
@@ -145,7 +151,8 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
         >+</button>
       )}
     </div>
-  )
+    )
+  }
 
   return (
     <>

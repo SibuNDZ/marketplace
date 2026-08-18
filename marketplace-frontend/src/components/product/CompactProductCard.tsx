@@ -24,6 +24,7 @@ interface Props {
  * without it the opened page gets a window.opener handle back to this one.
  */
 export function CompactProductCard({ product, width }: Props) {
+  const src = productImageUrl(product, width * 2, width * 2)
   return (
     <a
       href={`/products/${product.id}`}
@@ -42,17 +43,19 @@ export function CompactProductCard({ product, width }: Props) {
         width: '100%', aspectRatio: '1/1', borderRadius: 'var(--r-sm)',
         overflow: 'hidden', background: '#EAEEED',
       }}>
-        <img
-          src={productImageUrl(product, width * 2, width * 2)}
-          srcSet={productImageSrcSet(product, IMAGE_WIDTHS.card)}
-          // The rail is a fixed pixel width at every breakpoint, so `sizes`
-          // can state it exactly rather than guessing from the viewport.
-          sizes={`${width}px`}
-          alt={product.name}
-          loading="lazy"
-          decoding="async"
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-        />
+        {src ? (
+          <img
+            src={src}
+            srcSet={productImageSrcSet(product, IMAGE_WIDTHS.card)}
+            sizes={`${width}px`}
+            alt={product.name}
+            loading="lazy"
+            decoding="async"
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        ) : (
+          <span className="image-well" aria-hidden />
+        )}
       </div>
       <span style={{
         fontSize: 12, lineHeight: 1.35, color: 'var(--ink)',

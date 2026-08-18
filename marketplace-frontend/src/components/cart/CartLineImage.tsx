@@ -29,15 +29,7 @@ export function CartLineImage({ line, size }: Props) {
   const src = imageUrlAt(line.imageUrl, size * 2)
 
   if (!src) {
-    return (
-      <span
-        aria-hidden
-        style={{
-          width: size, height: size, flexShrink: 0,
-          borderRadius: 'var(--r-sm)', background: '#EAEEED', display: 'block',
-        }}
-      />
-    )
+    return <span aria-hidden className="image-well image-well--thumb" style={{ width: size, height: size }} />
   }
 
   return (

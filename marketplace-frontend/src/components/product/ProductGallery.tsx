@@ -31,8 +31,8 @@ export function ProductGallery({ product }: { product: ProductResponse }) {
   const active = images[selected]
   const hasRail = images.length > 1
 
-  // No images at all: fall through to productImageUrl, which owns the
-  // placeholder chain for products a vendor has not photographed.
+  // No images at all: fall through to productImageUrl, which returns
+  // undefined so the branded empty well renders instead of a stock photo.
   const mainSrc = active
     ? imageUrlAt(active.url, 1280)
     : productImageUrl(product, 1280, 960)
@@ -114,16 +114,20 @@ export function ProductGallery({ product }: { product: ProductResponse }) {
         flex: 1, minWidth: 0, borderRadius: 'var(--r)', aspectRatio: '4/3',
         maxHeight: 600, overflow: 'hidden', background: '#EAEEED',
       }}>
-        <img
-          id={mainId}
-          src={mainSrc}
-          srcSet={mainSrcSet}
-          sizes={IMAGE_SIZES.hero}
-          alt={product.name}
-          fetchPriority="high"
-          decoding="async"
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-        />
+        {mainSrc ? (
+          <img
+            id={mainId}
+            src={mainSrc}
+            srcSet={mainSrcSet}
+            sizes={IMAGE_SIZES.hero}
+            alt={product.name}
+            fetchPriority="high"
+            decoding="async"
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        ) : (
+          <span id={mainId} className="image-well" aria-hidden />
+        )}
       </div>
     </div>
   )

@@ -62,7 +62,7 @@ export function ProductCard({ product }: Props) {
   const needsOptions = (product.variants?.length ?? 0) > 0
   const canAdd = product.stock > 0 && !product.deletedAt && !needsOptions
   const isOutOfStock = product.stock === 0 && !product.deletedAt
-  const rating = Number(product.avgRating)
+  const imgSrc = productImageUrl(product, 640, 480)
 
   return (
     <div style={{
@@ -90,15 +90,19 @@ export function ProductCard({ product }: Props) {
         rel="noopener"
         style={{ position: 'relative', display: 'block', height: 180, flexShrink: 0, background: '#EAEEED' }}
       >
-        <img
-          src={productImageUrl(product, 640, 480)}
-          srcSet={productImageSrcSet(product, IMAGE_WIDTHS.card)}
-          sizes={IMAGE_SIZES.card}
-          alt={product.name}
-          loading="lazy"
-          decoding="async"
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-        />
+        {imgSrc ? (
+          <img
+            src={imgSrc}
+            srcSet={productImageSrcSet(product, IMAGE_WIDTHS.card)}
+            sizes={IMAGE_SIZES.card}
+            alt={product.name}
+            loading="lazy"
+            decoding="async"
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        ) : (
+          <span className="image-well" aria-hidden />
+        )}
         {isNewIn(product) && (
           <span style={{
             position: 'absolute', top: 8, left: 8,

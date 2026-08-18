@@ -1,9 +1,7 @@
-// REMAINING FABRICATION: placeholder product photography, and ONLY for
-// products a vendor hasn't uploaded a real photo for yet (V11 added
-// ProductResponse.imageUrl + the upload pipeline — ProductCard and
-// ProductDetailPage both try the real image first: `product.imageUrl ??
-// picsum placeholder`). imageSeed stays alive as the fallback for
-// pending-first-real-photo inventory, not because the pipeline is missing.
+// Fabricated product photography is gone. Missing vendor photos render the
+// branded empty well (see CartLineImage / .image-well), never picsum or
+// Unsplash. This module stays as the historical note for what used to live
+// here so V10 and the honest-signals commits still have a place to point.
 //
 // Everything else this module once fabricated is gone:
 //   - ratings / review counts / sold counts → real, from ProductResponse
@@ -13,18 +11,7 @@
 //     honest-signals slice commit).
 //   - discount % / was-prices → deleted in that same slice, then a real
 //     vendor-set model was added in V23 (products.original_price) and
-//     PAUSED on 2026-08-13 before any vendor used it. The guardrail only
-//     checked that the "was" price exceeded the price, which says nothing
-//     about whether it was ever charged — the one trust-sensitive number
-//     here that was self-reported rather than derived. Nothing renders a
-//     strikethrough today; a price-history-derived version is the intended
-//     replacement.
-//   - category assignment → real, ProductResponse.categorySlug. Categories
-//     are a table since V14, served as a two-level tree by
-//     GET /api/v1/categories with subtree product counts included, so the
-//     sidebar no longer needs a separate count request. Catalog filtering
-//     is GET /api/v1/products?category=<slug>&handmade=<bool>.
+//     PAUSED on 2026-08-13 before any vendor used it.
+//   - category assignment → real, ProductResponse.categorySlug.
 
-export function getImageSeed(productId: number): string {
-  return `mk-${productId}`
-}
+export {}

@@ -6,6 +6,7 @@ import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { ProductCard } from '../components/product/ProductCard'
 import { CategoryPane } from '../components/product/CategoryPane'
 import { PromoCarousel } from '../components/promo/PromoCarousel'
+import { CategoryBannerRow } from '../components/catalog/CategoryBannerRow'
 import { ExpandedCategories } from '../components/catalog/ExpandedCategories'
 import { FeaturedCarousel } from '../components/catalog/FeaturedCarousel'
 import { RightCartPanel } from '../components/cart/RightCartPanel'
@@ -137,7 +138,8 @@ export function CatalogPage() {
     <>
       <Topbar />
       <main className="page-shell">
-        <PromoCarousel onSelect={browseCategory} />
+        <PromoCarousel />
+        <CategoryBannerRow onSelect={browseCategory} />
 
         {/* Mobile-only seller strip (hidden on desktop via .seller-strip).
             One line, below the hero, nothing louder: vendor acquisition is

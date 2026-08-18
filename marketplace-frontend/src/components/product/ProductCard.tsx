@@ -27,7 +27,7 @@ function isNewIn(p: ProductResponse): boolean {
   return ageMs < NEW_IN_DAYS * 86400_000 && p.soldCount === 0
 }
 
-export function ProductCard({ product }: Props) {
+export const ProductCard = React.memo(function ProductCard({ product }: Props) {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const location = useLocation()
@@ -143,4 +143,4 @@ export function ProductCard({ product }: Props) {
       </div>
     </div>
   )
-}
+})

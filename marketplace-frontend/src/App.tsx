@@ -1,15 +1,9 @@
-import React, { useLayoutEffect } from 'react'
+import React, { lazy, Suspense, useLayoutEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigationType } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import { RightPanelProvider } from './context/RightPanelContext'
 import { Footer } from './components/layout/Footer'
 import { FaqWidget } from './components/support/FaqWidget'
-import { LoginPage } from './pages/LoginPage'
-import { RegisterPage } from './pages/RegisterPage'
-import { CheckEmailPage } from './pages/CheckEmailPage'
-import { VerifyEmailPage } from './pages/VerifyEmailPage'
-import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
-import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { CatalogPage } from './pages/CatalogPage'
 import { ProductDetailPage } from './pages/ProductDetailPage'
 import { VendorShopPage } from './pages/VendorShopPage'
@@ -19,17 +13,24 @@ import { CheckoutSuccessPage } from './pages/CheckoutSuccessPage'
 import { CheckoutCancelledPage } from './pages/CheckoutCancelledPage'
 import { OrdersPage } from './pages/OrdersPage'
 import { OrderDetailPage } from './pages/OrderDetailPage'
-import { VendorDashboardPage } from './pages/VendorDashboardPage'
-import { VendorOrdersPage } from './pages/VendorOrdersPage'
 import { AccountSettingsPage } from './pages/AccountSettingsPage'
 import { FeedbackPage } from './pages/FeedbackPage'
-import { ProductFormPage } from './pages/ProductFormPage'
-import { AdminPage } from './pages/AdminPage'
-import { AdminFeedbackPage } from './pages/AdminFeedbackPage'
-import { AdminOrderDetailPage } from './pages/AdminOrderDetailPage'
 import { PrivacyPolicyPage } from './pages/legal/PrivacyPolicyPage'
 import { TermsPage } from './pages/legal/TermsPage'
 import { AboutPage, CareersPage, ContactPage, ReturnsPage, ShippingInfoPage, HelpPage, HowItWorksPage } from './pages/InfoPages'
+
+const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })))
+const RegisterPage = lazy(() => import('./pages/RegisterPage').then(m => ({ default: m.RegisterPage })))
+const CheckEmailPage = lazy(() => import('./pages/CheckEmailPage').then(m => ({ default: m.CheckEmailPage })))
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage').then(m => ({ default: m.VerifyEmailPage })))
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })))
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })))
+const VendorDashboardPage = lazy(() => import('./pages/VendorDashboardPage').then(m => ({ default: m.VendorDashboardPage })))
+const VendorOrdersPage = lazy(() => import('./pages/VendorOrdersPage').then(m => ({ default: m.VendorOrdersPage })))
+const ProductFormPage = lazy(() => import('./pages/ProductFormPage').then(m => ({ default: m.ProductFormPage })))
+const AdminPage = lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })))
+const AdminFeedbackPage = lazy(() => import('./pages/AdminFeedbackPage').then(m => ({ default: m.AdminFeedbackPage })))
+const AdminOrderDetailPage = lazy(() => import('./pages/AdminOrderDetailPage').then(m => ({ default: m.AdminOrderDetailPage })))
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -106,6 +107,7 @@ export default function App() {
     <BrowserRouter>
       <RightPanelProvider>
         <ScrollToTop />
+        <Suspense fallback={<div className="page-shell">Loading…</div>}>
         <Routes>
           <Route path="/" element={<CatalogPage />} />
           <Route path="/products/:id" element={<ProductDetailPage />} />
@@ -144,6 +146,7 @@ export default function App() {
           <Route path="/how-it-works" element={<HowItWorksPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
         <ChromeFooter />
         <ChromeFaq />
       </RightPanelProvider>

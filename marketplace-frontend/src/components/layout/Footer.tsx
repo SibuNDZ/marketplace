@@ -35,7 +35,7 @@ const SOCIALS = [
 export function Footer() {
   const sellerEntry = useSellerEntry()
   return (
-    <footer aria-label="Site footer" style={{ background: 'var(--footer-bg)', marginTop: 48, color: 'var(--footer-text)' }}>
+    <footer className="site-footer" aria-label="Site footer" style={{ background: 'var(--footer-bg)', marginTop: 48, color: 'var(--footer-text)' }}>
       <div style={{ maxWidth: 'var(--content-max)', margin: '0 auto', padding: '48px var(--gutter) 32px' }}>
 
         {/* Main column grid */}

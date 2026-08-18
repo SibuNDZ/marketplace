@@ -48,6 +48,8 @@ export function CompactProductCard({ product, width }: Props) {
           // can state it exactly rather than guessing from the viewport.
           sizes={`${width}px`}
           alt={product.name}
+          width={width}
+          height={width}
           loading="lazy"
           decoding="async"
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}

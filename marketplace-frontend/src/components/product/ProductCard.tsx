@@ -95,6 +95,8 @@ export function ProductCard({ product }: Props) {
           srcSet={productImageSrcSet(product, IMAGE_WIDTHS.card)}
           sizes={IMAGE_SIZES.card}
           alt={product.name}
+          width={640}
+          height={480}
           loading="lazy"
           decoding="async"
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}

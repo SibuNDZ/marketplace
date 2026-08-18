@@ -457,6 +457,30 @@ button { cursor: pointer; font: inherit; }
   max-width: var(--content-max);
   margin: 0 auto;
   padding: calc(var(--header-height) + 24px) var(--gutter) 48px;
+  /* The header is position:fixed, so it contributes no document height.
+     Without a floor here a page that has not yet fetched its body is a
+     one-line "Loading…" and the footer — always mounted as a sibling —
+     sits in the first viewport. A new tab then opens onto the bottom of
+     the site; when the real content arrives the browser's scroll-anchor
+     keeps that footer in view, then lets go, and the product jumps up. */
+  min-height: 100vh;
+}
+
+.site-footer {
+  /* The footer is a large, late-in-the-document block. If the browser
+     picks it as the scroll anchor while a product page is still a stub,
+     growing the <main> above it holds the footer on screen. Opt it out
+     so added content pushes it down instead of dragging the viewport. */
+  overflow-anchor: none;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.skeleton {
+  background: var(--line);
+  animation: pulse 1.5s ease-in-out infinite;
 }
 
 /* pages without the category rail (cart, orders, admin, vendor, auth) */

@@ -88,10 +88,22 @@ function ChromeFaq() {
  * Keyed on pathname only, NOT search. Filter and pagination changes on the
  * catalogue rewrite the query string, and whether those should jump to the
  * top is a separate product decision from "links are broken".
+ *
+ * history.scrollRestoration is set to manual. This is an SPA: the document
+ * 'load' event fires before React has fetched the page body, so Chrome's
+ * default 'auto' restoration can apply a remembered offset to a stub
+ * "Loading…" document — which, with the footer already mounted, is the
+ * bottom of the site. We own scroll from that point (this component on
+ * route change; the product page again once its body arrives).
  */
 function ScrollToTop() {
   const { pathname, hash } = useLocation()
   const navigationType = useNavigationType()
+
+  useLayoutEffect(() => {
+    if (!('scrollRestoration' in history)) return
+    history.scrollRestoration = 'manual'
+  }, [])
 
   useLayoutEffect(() => {
     if (hash) return

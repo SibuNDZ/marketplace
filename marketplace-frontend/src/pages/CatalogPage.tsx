@@ -17,10 +17,10 @@ import { useSellerEntry } from '../hooks/useSellerEntry'
 
 function SectionDivider({ icon, label }: { icon: string; label: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '32px 0 16px' }}>
-      <span style={{ fontSize: 18 }} aria-hidden>{icon}</span>
-      <h2 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 18 }}>{label}</h2>
-      <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
+    <div className="section-divider">
+      <span className="section-divider__icon" aria-hidden>{icon}</span>
+      <h2>{label}</h2>
+      <div className="section-divider__rule" />
     </div>
   )
 }
@@ -161,17 +161,12 @@ export function CatalogPage() {
 
           <div className="catalog-results">
             {/* Quick filter chips */}
-            <div className="scroll-rail" style={{ display: 'flex', gap: 8, whiteSpace: 'nowrap' }}>
+            <div className="scroll-rail filter-row">
               {QUICK_FILTERS.map(f => {
                 const isActive = activeFilters.has(f.key)
                 return (
-                  <button key={f.key} onClick={() => toggleFilter(f.key)} style={{
-                    flexShrink: 0, padding: '7px 14px', borderRadius: 'var(--r-pill)',
-                    border: isActive ? '1.5px solid var(--flame)' : '1.5px solid var(--line)',
-                    background: isActive ? 'var(--flame-tint)' : 'var(--card)',
-                    color: isActive ? 'var(--flame-deep)' : 'var(--ink)',
-                    fontWeight: isActive ? 700 : 500, fontSize: 13,
-                  }}>
+                  <button key={f.key} onClick={() => toggleFilter(f.key)}
+                    className={`filter-chip${isActive ? ' is-active' : ''}`}>
                     {f.label}
                   </button>
                 )
@@ -179,9 +174,9 @@ export function CatalogPage() {
             </div>
 
             {isLoading && loaded.length === 0 ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16, marginTop: 24 }}>
+              <div className="product-grid product-grid--skeletons">
                 {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} style={{ background: 'var(--line)', borderRadius: 'var(--r)', height: 320, animation: 'pulse 1.5s infinite' }} />
+                  <div key={i} className="skeleton-card" />
                 ))}
               </div>
             ) : (
@@ -189,7 +184,7 @@ export function CatalogPage() {
                 {category === ALL_SLUG && recommended.length > 0 && (
                   <>
                     <SectionDivider icon="⭐" label="Highly rated" />
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
+                    <div className="product-grid">
                       {recommended.map(p => <ProductCard key={`rec-${p.id}`} product={p} />)}
                     </div>
                   </>
@@ -197,20 +192,16 @@ export function CatalogPage() {
 
                 <SectionDivider icon="🛍️" label={name ? `Results for “${name}”` : categoryLabel} />
                 {mainList.length === 0 ? (
-                  <p style={{ color: 'var(--ink-soft)', fontSize: 14, padding: '20px 0' }}>No products match right now. Try a different category or filter.</p>
+                  <p className="muted-copy">No products match right now. Try a different category or filter.</p>
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
+                  <div className="product-grid">
                     {mainList.map(p => <ProductCard key={p.id} product={p} />)}
                   </div>
                 )}
 
                 {data && page + 1 < data.totalPages && (
-                  <div style={{ textAlign: 'center', marginTop: 32 }}>
-                    <button onClick={() => setPage(p => p + 1)} style={{
-                      padding: '11px 28px', border: '1.5px solid var(--ink)',
-                      borderRadius: 'var(--r-pill)', background: 'transparent',
-                      fontWeight: 600, fontSize: 14,
-                    }}>
+                  <div className="load-more">
+                    <button onClick={() => setPage(p => p + 1)} className="btn-outline">
                       Load more · <span className="num">{products.length}</span> of <span className="num">{data.totalElements}</span>
                     </button>
                   </div>

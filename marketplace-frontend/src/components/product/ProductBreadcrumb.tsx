@@ -26,22 +26,15 @@ export function ProductBreadcrumb({ product }: { product: ProductResponse }) {
   const parentLabel = parent?.name
     ?? (product.parentCategorySlug ? product.parentCategorySlug.replace(/-/g, ' ') : undefined)
 
-  const sep = <span aria-hidden style={{ color: 'var(--line)' }}>›</span>
+  const sep = <span aria-hidden className="crumb__sep">›</span>
 
   return (
-    <nav
-      aria-label="Breadcrumb"
-      style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        gap: 8, fontSize: 13, color: 'var(--ink-soft)', marginBottom: 20,
-        flexWrap: 'wrap',
-      }}
-    >
-      <Link to="/" style={{ color: 'var(--ink-soft)' }}>Home</Link>
+    <nav aria-label="Breadcrumb" className="crumb">
+      <Link to="/">Home</Link>
       {parentLabel && product.parentCategorySlug && (
         <>
           {sep}
-          <Link to={`/?category=${product.parentCategorySlug}`} style={{ color: 'var(--ink-soft)' }}>
+          <Link to={`/?category=${product.parentCategorySlug}`}>
             {parentLabel}
           </Link>
         </>
@@ -49,7 +42,7 @@ export function ProductBreadcrumb({ product }: { product: ProductResponse }) {
       {product.categorySlug && (
         <>
           {sep}
-          <Link to={`/?category=${product.categorySlug}`} style={{ color: 'var(--ink)' }}>
+          <Link to={`/?category=${product.categorySlug}`} className="crumb__here">
             {product.categoryName ?? product.categorySlug}
           </Link>
         </>

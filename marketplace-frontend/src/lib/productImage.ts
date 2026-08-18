@@ -66,17 +66,18 @@ export const IMAGE_WIDTHS = {
  * waste you were trying to remove, too small and it looks soft.
  */
 export const IMAGE_SIZES = {
-  card: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 260px',
+  card: '(max-width: 767px) 100vw, (max-width: 1024px) 50vw, 260px',
   /**
    * Tracks .pdp-main in tokens.css exactly. Three regimes, because the page
    * now has a breakpoint and a max-width where it previously had neither:
    *
-   *   <= 900px   stacked, image spans the shell: 100vw - 48 gutters
+   *   <= 767px   stacked, image spans the shell: 100vw - 48 gutters
    *   <= 1328px  two columns, container is 100vw - 48, 40px gap, 55% share
    *    > 1328px  container pinned at 1280, so the column is a fixed 682px
    *
    * 1328 is 1280 + the 48px of gutters, the width at which the container
-   * stops growing. Written with media queries rather than a min() inside
+   * stops growing — derived from the 1280 layout step, not a fifth
+   * breakpoint. Written with media queries rather than a min() inside
    * calc() so it parses everywhere: an unparseable `sizes` silently falls
    * back to 100vw, which is the over-fetch this exists to prevent.
    *
@@ -84,7 +85,7 @@ export const IMAGE_SIZES = {
    * where a declared 846px against a 330px element pulled the 1600w variant.
    * If .pdp-main's proportions change, this changes with it.
    */
-  hero: '(max-width: 900px) calc(100vw - 48px), (max-width: 1328px) calc((100vw - 88px) * 0.55), 682px',
+  hero: '(max-width: 767px) calc(100vw - 48px), (max-width: 1328px) calc((100vw - 88px) * 0.55), 682px',
   thumb: '44px',
 } as const
 

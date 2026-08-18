@@ -65,18 +65,7 @@ export function ProductCard({ product }: Props) {
   const imgSrc = productImageUrl(product, 640, 480)
 
   return (
-    <div style={{
-      background: 'var(--card)',
-      borderRadius: 'var(--r)',
-      boxShadow: 'var(--shadow)',
-      overflow: 'hidden',
-      display: 'flex',
-      flexDirection: 'column',
-      transition: 'box-shadow 0.2s, transform 0.2s',
-    }}
-      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow-lift)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)' }}
-      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow)'; (e.currentTarget as HTMLDivElement).style.transform = '' }}
-    >
+    <div className="product-card">
       {/* Product image.
           Opens in a NEW TAB, like every product tile on the site. A shopper
           scanning a grid is comparing, not committing, and taking the grid
@@ -88,7 +77,7 @@ export function ProductCard({ product }: Props) {
         to={`/products/${product.id}`}
         target="_blank"
         rel="noopener"
-        style={{ position: 'relative', display: 'block', height: 180, flexShrink: 0, background: '#EAEEED' }}
+        className="product-card__media"
       >
         {imgSrc ? (
           <img
@@ -98,66 +87,42 @@ export function ProductCard({ product }: Props) {
             alt={product.name}
             loading="lazy"
             decoding="async"
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
         ) : (
           <span className="image-well" aria-hidden />
         )}
-        {isNewIn(product) && (
-          <span style={{
-            position: 'absolute', top: 8, left: 8,
-            background: 'var(--aloe)', color: '#fff',
-            fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 'var(--r-sm)',
-          }}>
-            New in
-          </span>
-        )}
+        {isNewIn(product) && <span className="product-card__new">New in</span>}
         {isOutOfStock && <OutOfStockOverlay />}
       </Link>
 
-      <div style={{ padding: '12px 14px 14px', display: 'flex', flexDirection: 'column', gap: 5, flex: 1 }}>
-        {/* Vendor */}
-        <span style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{product.vendorName ?? 'Vendor'}</span>
+      <div className="product-card__body">
+        <span className="product-card__vendor">{product.vendorName ?? 'Vendor'}</span>
 
-        {/* Name */}
         <Link
           to={`/products/${product.id}`}
           target="_blank"
           rel="noopener"
-          style={{ fontWeight: 600, fontSize: 14, color: 'var(--ink)', lineHeight: 1.3, minHeight: 36 }}
+          className="product-card__name"
         >
           {product.name}
         </Link>
 
-        {/* Always present, never blank: a rated product shows its score, an
-            unrated one says "New" rather than leaving a gap that reads as a
-            missing element. */}
         <RatingLine product={product} />
 
         {product.soldCount > 0 && (
-          <span className="num" style={{ fontSize: 11, color: 'var(--ink-soft)' }}>
-            {formatSold(product.soldCount)}
-          </span>
+          <span className="num product-card__sold">{formatSold(product.soldCount)}</span>
         )}
 
-        {/* Urgency — real stock only. The true out-of-stock case moved to
-            the image overlay above; this inline row still carries "No
-            longer available" (soft-deleted) and the low/in-stock states. */}
         {!isOutOfStock && <StockBadge product={product} />}
 
-        {/* Price + Add */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 6 }}>
+        <div className="product-card__row">
           <PriceBlock price={product.price} originalPrice={product.originalPrice} size={18} />
           {needsOptions ? (
             <Link
               to={`/products/${product.id}`}
               target="_blank"
               rel="noopener"
-              style={{
-                padding: '7px 14px', background: 'var(--card)', color: 'var(--ink)',
-                border: '1.5px solid var(--line)', borderRadius: 'var(--r-pill)',
-                fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
-              }}
+              className="product-card__cta product-card__cta--options"
             >
               Choose options
             </Link>
@@ -165,15 +130,7 @@ export function ProductCard({ product }: Props) {
             <button
               disabled={!canAdd || addToCart.isPending}
               onClick={() => addToCart.mutate()}
-              style={{
-                padding: '7px 14px',
-                background: canAdd ? 'var(--flame-gradient)' : 'var(--line)',
-                color: canAdd ? '#fff' : 'var(--ink-soft)',
-                border: 'none',
-                borderRadius: 'var(--r-pill)',
-                fontSize: 12, fontWeight: 700,
-                cursor: canAdd ? 'pointer' : 'not-allowed',
-              }}
+              className="product-card__cta product-card__cta--add"
             >
               {added ? '✓ Added' : 'Add to cart'}
             </button>

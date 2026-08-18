@@ -43,13 +43,14 @@ export function ProductGallery({ product }: { product: ProductResponse }) {
   const mainId = 'pdp-gallery-main'
 
   return (
-    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+    <div className="gallery">
       {hasRail && (
         <div
           role="tablist"
           aria-label="Product photos"
           aria-controls={mainId}
           ref={tablistRef}
+          className="gallery__rail"
           onKeyDown={event => {
             if (!hasRail) return
             const last = images.length - 1
@@ -74,10 +75,6 @@ export function ProductGallery({ product }: { product: ProductResponse }) {
               tablistRef.current?.querySelectorAll<HTMLElement>('[role="tab"]')[next]?.focus()
             })
           }}
-          style={{
-            display: 'flex', flexDirection: 'column', gap: 8,
-            maxHeight: 600, overflowY: 'auto', flexShrink: 0,
-          }}
         >
           {images.map((img, i) => (
             <button
@@ -89,12 +86,7 @@ export function ProductGallery({ product }: { product: ProductResponse }) {
               tabIndex={i === selected ? 0 : -1}
               onClick={() => setSelected(i)}
               onFocus={() => setSelected(i)}
-              style={{
-                width: 60, height: 60, padding: 0, flexShrink: 0,
-                borderRadius: 'var(--r-sm)', overflow: 'hidden', cursor: 'pointer',
-                border: i === selected ? '2px solid var(--ink)' : '1px solid var(--line)',
-                background: '#EAEEED',
-              }}
+              className={`gallery__thumb${i === selected ? ' is-selected' : ''}`}
             >
               <img
                 src={imageUrlAt(img.url, 120)}
@@ -103,17 +95,13 @@ export function ProductGallery({ product }: { product: ProductResponse }) {
                 height={60}
                 loading="lazy"
                 decoding="async"
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
               />
             </button>
           ))}
         </div>
       )}
 
-      <div style={{
-        flex: 1, minWidth: 0, borderRadius: 'var(--r)', aspectRatio: '4/3',
-        maxHeight: 600, overflow: 'hidden', background: '#EAEEED',
-      }}>
+      <div className="gallery__main">
         {mainSrc ? (
           <img
             id={mainId}
@@ -123,7 +111,6 @@ export function ProductGallery({ product }: { product: ProductResponse }) {
             alt={product.name}
             fetchPriority="high"
             decoding="async"
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
         ) : (
           <span id={mainId} className="image-well" aria-hidden />

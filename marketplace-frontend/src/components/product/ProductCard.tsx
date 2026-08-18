@@ -70,13 +70,13 @@ export const ProductCard = React.memo(function ProductCard({ product }: Props) {
           Opens in a NEW TAB, like every product tile on the site. A shopper
           scanning a grid is comparing, not committing, and taking the grid
           away on each look costs them their place, their filters and their
-          scroll position. rel="noopener" is not optional with target blank:
+          scroll position. rel="noopener noreferrer" is not optional with target blank:
           without it the new page holds a window.opener handle back to this
           one. */}
       <Link
         to={`/products/${product.id}`}
         target="_blank"
-        rel="noopener"
+        rel="noopener noreferrer"
         className="product-card__media"
       >
         {imgSrc ? (
@@ -101,7 +101,7 @@ export const ProductCard = React.memo(function ProductCard({ product }: Props) {
         <Link
           to={`/products/${product.id}`}
           target="_blank"
-          rel="noopener"
+          rel="noopener noreferrer"
           className="product-card__name"
         >
           {product.name}
@@ -121,7 +121,7 @@ export const ProductCard = React.memo(function ProductCard({ product }: Props) {
             <Link
               to={`/products/${product.id}`}
               target="_blank"
-              rel="noopener"
+              rel="noopener noreferrer"
               className="product-card__cta product-card__cta--options"
             >
               Choose options
@@ -135,10 +135,8 @@ export const ProductCard = React.memo(function ProductCard({ product }: Props) {
               {added ? '✓ Added' : 'Add to cart'}
             </button>
           )}
-          {/* TODO(notify-me): "Notify me when available" for isOutOfStock
-              products belongs here, gated behind the transactional-email
-              slice (no email infra to fire the notification yet). Deferred,
-              not rejected — see UI polish pass spec. */}
+          {/* TODO(notify-me): waitlist button — docs/tickets/notify-me-waitlist.md.
+              Gated behind transactional email; do not render a dead control. */}
         </div>
       </div>
     </div>

@@ -113,7 +113,7 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
           suggestion rows below get this — the cart's own line items stay
           same-tab, because those are things you already chose rather than
           things being pitched at you. */}
-      <Link to={`/products/${p.id}`} target="_blank" rel="noopener" className="mini-product__main" onClick={closeDrawer}>
+      <Link to={`/products/${p.id}`} target="_blank" rel="noopener noreferrer" className="mini-product__main" onClick={closeDrawer}>
         {src ? (
           <img
             src={src}
@@ -138,7 +138,7 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
           className="mini-product__add"
           to={`/products/${p.id}`}
           target="_blank"
-          rel="noopener"
+          rel="noopener noreferrer"
           aria-label={`Choose options for ${p.name}`}
         >›</Link>
       ) : (

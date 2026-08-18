@@ -20,7 +20,7 @@ interface Props {
  *
  * Opens in a NEW TAB. The whole point of a rail is that you are part-way
  * through evaluating the product you are on; sending that page away to show
- * a maybe is the wrong trade. rel="noopener" is mandatory with target blank:
+ * a maybe is the wrong trade. rel="noopener noreferrer" is mandatory with target blank:
  * without it the opened page gets a window.opener handle back to this one.
  */
 export function CompactProductCard({ product, width }: Props) {
@@ -29,7 +29,7 @@ export function CompactProductCard({ product, width }: Props) {
     <a
       href={`/products/${product.id}`}
       target="_blank"
-      rel="noopener"
+      rel="noopener noreferrer"
       style={{
         flex: `0 0 ${width}px`,
         width,

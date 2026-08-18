@@ -190,7 +190,10 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
             </div>
 
             <div className="rc-signals">
-              <span className="rc-freeship">✓ Free shipping</span>
+              {/* Derived free-shipping badge belongs here once delivery
+                  fees on the selected lines actually sum to zero. ROADMAP.md
+                  forbids an unconditional "✓ Free shipping" chip — it is a
+                  commercial promise with no system behind it. */}
               <span className="rc-min-pill num">R{CHECKOUT_MIN_RAND} Min. to checkout</span>
             </div>
             <div

@@ -89,7 +89,6 @@ export function FeaturedCarousel() {
         <button
           className="featured-carousel__arrow featured-carousel__arrow--prev"
           aria-label="Previous featured products"
-          disabled={page === 0}
           onClick={() => goTo(page - 1)}
         >
           <ChevronLeft size={19} strokeWidth={1.75} />
@@ -109,7 +108,6 @@ export function FeaturedCarousel() {
         <button
           className="featured-carousel__arrow featured-carousel__arrow--next"
           aria-label="Next featured products"
-          disabled={page >= pages - 1}
           onClick={() => goTo(page + 1)}
         >
           <ChevronRight size={19} strokeWidth={1.75} />

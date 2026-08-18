@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { ProductResponse } from '../../lib/api'
+import { findBySlug, useCategoryTree } from '../../hooks/useCategoryTree'
 
 /**
  * Home > [Parent] > Category, above the product.
@@ -18,6 +19,13 @@ import { ProductResponse } from '../../lib/api'
  * shopper with two tabs and no sense of having moved.
  */
 export function ProductBreadcrumb({ product }: { product: ProductResponse }) {
+  const { data: tree = [] } = useCategoryTree(true)
+  const parent = product.parentCategorySlug
+    ? findBySlug(tree, product.parentCategorySlug)?.node
+    : undefined
+  const parentLabel = parent?.name
+    ?? (product.parentCategorySlug ? product.parentCategorySlug.replace(/-/g, ' ') : undefined)
+
   const sep = <span aria-hidden style={{ color: 'var(--line)' }}>›</span>
 
   return (
@@ -30,11 +38,11 @@ export function ProductBreadcrumb({ product }: { product: ProductResponse }) {
       }}
     >
       <Link to="/" style={{ color: 'var(--ink-soft)' }}>Home</Link>
-      {product.parentCategorySlug && (
+      {parentLabel && product.parentCategorySlug && (
         <>
           {sep}
           <Link to={`/?category=${product.parentCategorySlug}`} style={{ color: 'var(--ink-soft)' }}>
-            {product.parentCategorySlug.replace(/-/g, ' ')}
+            {parentLabel}
           </Link>
         </>
       )}

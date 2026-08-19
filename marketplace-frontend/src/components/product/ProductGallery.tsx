@@ -109,6 +109,11 @@ export function ProductGallery({ product }: { product: ProductResponse }) {
             srcSet={mainSrcSet}
             sizes={IMAGE_SIZES.hero}
             alt={product.name}
+            width={1280}
+            height={960}
+            // The page's LCP element. High priority only matters for the photo
+            // that loads first, so it stays on the main image and never on the
+            // thumbnails.
             fetchPriority="high"
             decoding="async"
           />

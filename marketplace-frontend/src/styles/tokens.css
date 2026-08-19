@@ -90,6 +90,67 @@ body {
   min-width: 320px;
 }
 
+/* First focusable control for keyboard users. Off-screen until Tab, then
+   sits above the fixed header so it is not painted under it. */
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: 8px;
+  z-index: 400;
+  padding: 8px 14px;
+  border-radius: var(--r-sm);
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  transform: translateY(-150%);
+}
+.skip-link:focus {
+  transform: none;
+}
+
+/* Quantity steppers (product page, cart). Visual chrome can be small;
+   the hit area is the 44px WCAG 2.2 target. */
+.qty-btn {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 18px;
+  line-height: 1;
+  color: inherit;
+}
+.qty-btn--boxed {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+}
+
+/* Promo carousel dots: the painted pill is 7px, the button is 44px. */
+.carousel-dot {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.carousel-dot::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.5);
+  transition: width 0.2s, background 0.2s;
+}
+.carousel-dot.is-active::after {
+  width: 20px;
+  background: #fff;
+}
+
 /* Three-tier retail header */
 .site-header {
   position: fixed;
@@ -463,6 +524,30 @@ button { cursor: pointer; font: inherit; }
   max-width: var(--content-max);
   margin: 0 auto;
   padding: calc(var(--header-height) + 24px) var(--gutter) 48px;
+  /* The header is position:fixed, so it contributes no document height.
+     Without a floor here a page that has not yet fetched its body is a
+     one-line "Loading…" and the footer — always mounted as a sibling —
+     sits in the first viewport. A new tab then opens onto the bottom of
+     the site; when the real content arrives the browser's scroll-anchor
+     keeps that footer in view, then lets go, and the product jumps up. */
+  min-height: 100vh;
+}
+
+.site-footer {
+  /* The footer is a large, late-in-the-document block. If the browser
+     picks it as the scroll anchor while a product page is still a stub,
+     growing the <main> above it holds the footer on screen. Opt it out
+     so added content pushes it down instead of dragging the viewport. */
+  overflow-anchor: none;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.skeleton {
+  background: var(--line);
+  animation: pulse 1.5s ease-in-out infinite;
 }
 
 /* pages without the category rail (cart, orders, admin, vendor, auth) */
@@ -829,8 +914,8 @@ button { cursor: pointer; font: inherit; }
   z-index: 2;
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   border: 1px solid var(--line);
   border-radius: var(--r-pill);
   background: var(--card);
@@ -842,16 +927,25 @@ button { cursor: pointer; font: inherit; }
 .featured-carousel__arrow:disabled { opacity: 0.35; cursor: default; }
 .featured-carousel__arrow--prev { left: -8px; }
 .featured-carousel__arrow--next { right: -8px; }
-.featured-carousel__dots { display: flex; justify-content: center; gap: 6px; margin-top: 12px; }
+.featured-carousel__dots { display: flex; justify-content: center; gap: 0; margin-top: 8px; }
 .featured-carousel__dots button {
-  width: 7px;
-  height: 7px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
   border: 0;
+  background: transparent;
+}
+.featured-carousel__dots button::after {
+  content: '';
+  width: 8px;
+  height: 8px;
   border-radius: var(--r-pill);
   background: var(--line);
-  transition: width 0.2s;
+  transition: width 0.2s, background 0.2s;
 }
-.featured-carousel__dots button.is-active { width: 20px; background: var(--flame); }
+.featured-carousel__dots button.is-active::after { width: 20px; background: var(--flame); }
 .featured-badge {
   position: absolute;
   top: 8px;
@@ -1400,15 +1494,8 @@ button { cursor: pointer; font: inherit; }
   border-radius: var(--r-pill);
   font-weight: 600;
 }
+/* .qty-btn / .qty-btn--boxed are the 44px targets defined near the top. */
 .qty-stepper { display: flex; align-items: center; gap: 8px; }
-.qty-btn {
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  background: none;
-  font-size: 16px;
-}
 .qty-value { min-width: 28px; text-align: center; font-weight: 600; }
 .cart-summary {
   background: var(--card);
@@ -1466,7 +1553,8 @@ button { cursor: pointer; font: inherit; }
   border-radius: var(--r-sm);
   overflow: hidden;
 }
-.qty-box button { padding: 8px 14px; background: none; border: none; font-size: 18px; }
+/* Buttons inside are .qty-btn (44px targets); only the horizontal padding is local. */
+.qty-box .qty-btn { padding: 0 14px; }
 .qty-box .qty-value { padding: 0 12px; min-width: 32px; font-weight: 400; }
 .btn-add {
   flex: 1;

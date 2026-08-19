@@ -59,13 +59,16 @@ export function PromoCarousel() {
         <div style={{ fontSize: 96, opacity: 0.35, lineHeight: 1, pointerEvents: 'none' }} aria-hidden>{slide.icon}</div>
       </div>
 
-      <div style={{ position: 'absolute', bottom: 14, left: 40, display: 'flex', gap: 6, zIndex: 1 }}>
+      <div style={{ position: 'absolute', bottom: 8, left: 24, display: 'flex', zIndex: 1 }}>
         {SLIDES.map((_, i) => (
-          <button key={i} onClick={() => setIndex(i)} aria-label={`Slide ${i + 1}`} style={{
-            width: i === index ? 20 : 7, height: 7, borderRadius: 'var(--r-pill)',
-            background: i === index ? '#fff' : 'rgba(255,255,255,0.5)', border: 'none',
-            transition: reducedMotion ? 'none' : 'width 0.2s',
-          }} />
+          <button
+            key={i}
+            type="button"
+            className={`carousel-dot${i === index ? ' is-active' : ''}`}
+            onClick={() => setIndex(i)}
+            aria-label={`Slide ${i + 1} of ${SLIDES.length}`}
+            aria-current={i === index || undefined}
+          />
         ))}
       </div>
     </div>

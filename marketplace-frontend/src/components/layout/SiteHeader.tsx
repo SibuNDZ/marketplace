@@ -145,7 +145,14 @@ export function SiteHeader() {
     // else the header cart is a link to the full cart page.
     if (location.pathname === '/') {
       setCollapsed(false)
-      openDrawer()
+      // Below 1280px the panel is a slide-in drawer with a backdrop and a
+      // close button; at desktop widths it is a sticky column that is
+      // already on screen and whose drawer chrome is display:none. Opening
+      // the "drawer" there only locks body scroll with no visible way out.
+      const drawerMode = typeof window !== 'undefined'
+        && typeof window.matchMedia === 'function'
+        && window.matchMedia('(max-width: 1279px)').matches
+      if (drawerMode) openDrawer()
     } else {
       navigate('/cart')
     }
@@ -191,7 +198,12 @@ export function SiteHeader() {
                 </button>
               )}
               <div className="account-action js-account">
-                <button className="main-action" onClick={() => setAccountOpen(open => !open)} aria-expanded={accountOpen}>
+                <button
+                  className="main-action"
+                  onClick={() => setAccountOpen(open => !open)}
+                  aria-expanded={accountOpen}
+                  aria-haspopup="true"
+                >
                   <UserRound size={20} strokeWidth={1.75} /><span>Account</span><ChevronDown size={14} strokeWidth={1.75} aria-hidden />
                 </button>
                 {accountOpen && (
@@ -216,8 +228,11 @@ export function SiteHeader() {
                   </div>
                 )}
               </div>
-              <button className="main-action cart-action js-site-cart" onClick={openCart}
-                aria-label={itemCount > 0 ? `Cart, ${itemCount} items` : 'Cart'}>
+              <button
+                className="main-action cart-action js-site-cart"
+                onClick={openCart}
+                aria-label={itemCount > 0 ? `Open cart, ${itemCount} items` : 'Open cart'}
+              >
                 <span className="cart-action__icon"><ShoppingCart size={20} strokeWidth={1.75} />
                   {itemCount > 0 && <span className="cart-count num">{itemCount}</span>}
                 </span><span>Cart</span>

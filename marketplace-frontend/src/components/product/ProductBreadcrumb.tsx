@@ -14,9 +14,9 @@ import { findBySlug, useCategoryTree } from '../../hooks/useCategoryTree'
  * The parent step only renders for a nested category, because
  * parentCategorySlug is null on top-level ones — no invented hierarchy.
  *
- * Same-tab links. Cards on this page open new tabs, but a breadcrumb is a
- * deliberate "take me back out", and opening that in a tab would leave the
- * shopper with two tabs and no sense of having moved.
+ * Same-tab links. A breadcrumb is a deliberate "take me back out", and
+ * opening that in a tab would leave the shopper with two tabs and no sense
+ * of having moved.
  */
 export function ProductBreadcrumb({ product }: { product: ProductResponse }) {
   const { data: tree = [] } = useCategoryTree(true)

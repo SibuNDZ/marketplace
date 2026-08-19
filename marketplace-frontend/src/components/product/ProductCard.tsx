@@ -66,17 +66,11 @@ export const ProductCard = React.memo(function ProductCard({ product }: Props) {
 
   return (
     <div className="product-card">
-      {/* Product image.
-          Opens in a NEW TAB, like every product tile on the site. A shopper
-          scanning a grid is comparing, not committing, and taking the grid
-          away on each look costs them their place, their filters and their
-          scroll position. rel="noopener noreferrer" is not optional with target blank:
-          without it the new page holds a window.opener handle back to this
-          one. */}
+      {/* Product image. Same tab: Back restores the catalogue's offset
+          (ScrollToTop leaves POP alone), so a new tab is not needed to keep
+          the shopper's place, filters or scroll. */}
       <Link
         to={`/products/${product.id}`}
-        target="_blank"
-        rel="noopener noreferrer"
         className="product-card__media"
       >
         {imgSrc ? (
@@ -85,6 +79,8 @@ export const ProductCard = React.memo(function ProductCard({ product }: Props) {
             srcSet={productImageSrcSet(product, IMAGE_WIDTHS.card)}
             sizes={IMAGE_SIZES.card}
             alt={product.name}
+            width={640}
+            height={480}
             loading="lazy"
             decoding="async"
           />
@@ -100,8 +96,6 @@ export const ProductCard = React.memo(function ProductCard({ product }: Props) {
 
         <Link
           to={`/products/${product.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
           className="product-card__name"
         >
           {product.name}
@@ -120,8 +114,6 @@ export const ProductCard = React.memo(function ProductCard({ product }: Props) {
           {needsOptions ? (
             <Link
               to={`/products/${product.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
               className="product-card__cta product-card__cta--options"
             >
               Choose options

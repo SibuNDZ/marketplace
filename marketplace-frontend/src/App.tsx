@@ -88,6 +88,12 @@ function ChromeFaq() {
  * Keyed on pathname only, NOT search. Filter and pagination changes on the
  * catalogue rewrite the query string, and whether those should jump to the
  * top is a separate product decision from "links are broken".
+ *
+ * history.scrollRestoration is deliberately left at 'auto'. Setting it to
+ * 'manual' would stop the browser restoring the catalogue offset on Back,
+ * and this component skips POP precisely because the browser handles it.
+ * The refresh-on-a-stub-document case is covered by the product page's own
+ * loading→loaded scroll reset and its layout-matching skeleton instead.
  */
 function ScrollToTop() {
   const { pathname, hash } = useLocation()
@@ -102,9 +108,30 @@ function ScrollToTop() {
   return null
 }
 
+function SkipToContent() {
+  return (
+    <a
+      href="#main-content"
+      className="skip-link"
+      onClick={(event) => {
+        const main = document.querySelector('main')
+        if (!(main instanceof HTMLElement)) return
+        event.preventDefault()
+        main.id = 'main-content'
+        main.tabIndex = -1
+        main.focus({ preventScroll: true })
+        main.scrollIntoView({ block: 'start' })
+      }}
+    >
+      Skip to content
+    </a>
+  )
+}
+
 export default function App() {
   return (
     <BrowserRouter>
+      <SkipToContent />
       <RightPanelProvider>
         <ScrollToTop />
         <Suspense fallback={<div className="page-shell">Loading…</div>}>

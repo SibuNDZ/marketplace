@@ -1,4 +1,5 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
 import { ProductResponse } from '../../lib/api'
 import { productImageUrl, productImageSrcSet, IMAGE_WIDTHS, IMAGE_SIZES } from '../../lib/productImage'
 import { RatingLine } from './RatingLine'
@@ -18,18 +19,15 @@ interface Props {
  * already reading needs to stay subordinate to it, so this is image, one
  * line of title, a compact rating, and a price.
  *
- * Opens in a NEW TAB. The whole point of a rail is that you are part-way
- * through evaluating the product you are on; sending that page away to show
- * a maybe is the wrong trade. rel="noopener noreferrer" is mandatory with target blank:
- * without it the opened page gets a window.opener handle back to this one.
+ * Same tab as the rest of the site. Back restores the product you were
+ * evaluating, which is the same trade a new tab was trying to make, without
+ * the extra window.
  */
 export function CompactProductCard({ product, width }: Props) {
   const src = productImageUrl(product, width * 2, width * 2)
   return (
-    <a
-      href={`/products/${product.id}`}
-      target="_blank"
-      rel="noopener noreferrer"
+    <Link
+      to={`/products/${product.id}`}
       style={{
         flex: `0 0 ${width}px`,
         width,
@@ -47,8 +45,12 @@ export function CompactProductCard({ product, width }: Props) {
           <img
             src={src}
             srcSet={productImageSrcSet(product, IMAGE_WIDTHS.card)}
+            // The rail is a fixed pixel width at every breakpoint, so `sizes`
+            // can state it exactly rather than guessing from the viewport.
             sizes={`${width}px`}
             alt={product.name}
+            width={width}
+            height={width}
             loading="lazy"
             decoding="async"
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
@@ -68,7 +70,7 @@ export function CompactProductCard({ product, width }: Props) {
         <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 400, color: 'var(--ink-soft)' }}>R</span>
         <span className="num">{Number(product.price).toFixed(2)}</span>
       </span>
-    </a>
+    </Link>
   )
 }
 

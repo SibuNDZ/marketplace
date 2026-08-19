@@ -52,7 +52,9 @@ describe('CartPage variant lines', () => {
     await screen.findByText('Small', { exact: false })
     expect(screen.getByText('Large', { exact: false })).toBeInTheDocument()
 
-    const plusButtons = screen.getAllByRole('button', { name: '+' })
+    // Both lines are the same product ("Tee"), so the accessible names
+    // collide on purpose: order in the DOM is what tells the variants apart.
+    const plusButtons = screen.getAllByRole('button', { name: /increase quantity of tee/i })
     await user.click(plusButtons[0])
     await waitFor(() => {
       expect(api).toHaveBeenCalledWith(
@@ -61,7 +63,7 @@ describe('CartPage variant lines', () => {
       )
     })
 
-    const removeButtons = screen.getAllByRole('button', { name: '×' })
+    const removeButtons = screen.getAllByRole('button', { name: /remove tee from cart/i })
     await user.click(removeButtons[1])
     await waitFor(() => {
       expect(api).toHaveBeenCalledWith(

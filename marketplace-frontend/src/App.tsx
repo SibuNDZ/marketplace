@@ -89,21 +89,15 @@ function ChromeFaq() {
  * catalogue rewrite the query string, and whether those should jump to the
  * top is a separate product decision from "links are broken".
  *
- * history.scrollRestoration is set to manual. This is an SPA: the document
- * 'load' event fires before React has fetched the page body, so Chrome's
- * default 'auto' restoration can apply a remembered offset to a stub
- * "Loading…" document — which, with the footer already mounted, is the
- * bottom of the site. We own scroll from that point (this component on
- * route change; the product page again once its body arrives).
+ * history.scrollRestoration is deliberately left at 'auto'. Setting it to
+ * 'manual' would stop the browser restoring the catalogue offset on Back,
+ * and this component skips POP precisely because the browser handles it.
+ * The refresh-on-a-stub-document case is covered by the product page's own
+ * loading→loaded scroll reset and its layout-matching skeleton instead.
  */
 function ScrollToTop() {
   const { pathname, hash } = useLocation()
   const navigationType = useNavigationType()
-
-  useLayoutEffect(() => {
-    if (!('scrollRestoration' in history)) return
-    history.scrollRestoration = 'manual'
-  }, [])
 
   useLayoutEffect(() => {
     if (hash) return

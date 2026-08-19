@@ -161,7 +161,12 @@ export function SiteHeader() {
                 </button>
               )}
               <div className="account-action">
-                <button className="main-action" onClick={() => setAccountOpen(open => !open)} aria-expanded={accountOpen}>
+                <button
+                  className="main-action"
+                  onClick={() => setAccountOpen(open => !open)}
+                  aria-expanded={accountOpen}
+                  aria-haspopup="true"
+                >
                   <UserRound size={20} strokeWidth={1.75} /><span>Account</span><ChevronDown size={14} strokeWidth={1.75} aria-hidden />
                 </button>
                 {accountOpen && (
@@ -186,7 +191,11 @@ export function SiteHeader() {
                   </div>
                 )}
               </div>
-              <button className="main-action cart-action" onClick={cartDrawer.open}>
+              <button
+                className="main-action cart-action"
+                onClick={cartDrawer.open}
+                aria-label={itemCount > 0 ? `Open cart, ${itemCount} items` : 'Open cart'}
+              >
                 <span className="cart-action__icon"><ShoppingCart size={20} strokeWidth={1.75} />
                   {itemCount > 0 && <span className="cart-count num">{itemCount}</span>}
                 </span><span>Cart</span>

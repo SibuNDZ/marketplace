@@ -165,7 +165,7 @@ export function CatalogPage() {
             {isLoading ? (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16, marginTop: 24 }}>
                 {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} style={{ background: 'var(--line)', borderRadius: 'var(--r)', height: 320, animation: 'pulse 1.5s infinite' }} />
+                  <div key={i} className="skeleton" style={{ borderRadius: 'var(--r)', height: 320 }} />
                 ))}
               </div>
             ) : (

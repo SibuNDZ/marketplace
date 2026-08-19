@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useLayoutEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, ProductResponse, ReviewSummary, ApiError } from '../lib/api'
@@ -6,15 +6,45 @@ import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { StockBadge } from '../components/ui/StockBadge'
 import { vendorHue } from '../lib/vendorHue'
 import { ErrorSurface } from '../components/ui/ErrorSurface'
-import { productImageUrl, productImageSrcSet, IMAGE_WIDTHS, IMAGE_SIZES } from '../lib/productImage'
 import { ProductReviews } from '../components/product/ProductReviews'
 import { ProductBreadcrumb } from '../components/product/ProductBreadcrumb'
-import { ProductRail } from '../components/product/ProductRail'
+import { ProductRail, ProductRailSkeleton } from '../components/product/ProductRail'
 import { RAIL_CARD_WIDTH } from '../components/product/CompactProductCard'
 import { RelatedSearches } from '../components/product/RelatedSearches'
 import { PriceBlock } from '../components/product/PriceBlock'
 import { ProductGallery } from '../components/product/ProductGallery'
 import { VariantSelector } from '../components/product/VariantSelector'
+
+/** Matches the loaded product page's chrome so a short stub does not paint the footer first. */
+function ProductPageSkeleton() {
+  return (
+    <>
+      <Topbar />
+      <div style={{ position: 'fixed', top: 'var(--header-height)', left: 0, right: 0, height: 5, background: 'var(--line)', zIndex: 99 }} />
+      <main
+        className="page-shell no-catrail"
+        style={{ paddingTop: 'calc(var(--header-height) + 5px + 28px)' }}
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <div className="pdp" style={{ maxWidth: 1280, margin: '0 auto' }}>
+          <div className="skeleton" style={{ height: 13, width: 220, margin: '0 auto 20px', borderRadius: 4 }} />
+          <ProductRailSkeleton cardWidth={RAIL_CARD_WIDTH.tight} />
+          <div className="pdp-main">
+            <div className="skeleton" style={{ borderRadius: 'var(--r)', aspectRatio: '4/3', maxHeight: 600 }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className="skeleton" style={{ height: 13, width: 140, borderRadius: 4 }} />
+              <div className="skeleton" style={{ height: 28, width: '85%', borderRadius: 4 }} />
+              <div className="skeleton" style={{ height: 14, width: '70%', borderRadius: 4 }} />
+              <div className="skeleton" style={{ height: 32, width: 120, borderRadius: 4 }} />
+              <div className="skeleton" style={{ height: 44, borderRadius: 'var(--r-sm)' }} />
+            </div>
+          </div>
+        </div>
+      </main>
+    </>
+  )
+}
 
 export function ProductDetailPage() {
   const { id } = useParams()
@@ -59,7 +89,7 @@ export function ProductDetailPage() {
 
   // The three rails. Each is independent and each hides itself when empty,
   // so a failure or a thin catalogue costs a section rather than the page.
-  const { data: similar = [] } = useQuery<ProductResponse[]>({
+  const { data: similar = [], isPending: similarPending } = useQuery<ProductResponse[]>({
     queryKey: ['product', id, 'similar', 12],
     queryFn: () => api(`/api/v1/products/${id}/similar?limit=12`),
     enabled: !!id,
@@ -98,7 +128,29 @@ export function ProductDetailPage() {
     },
   })
 
-  if (isLoading) return <><Topbar /><div className="page-shell no-catrail">Loading…</div></>
+  // Scroll to top once the real body replaces the stub. ScrollToTop already
+  // ran on mount, but that was against a short "Loading…" document: the
+  // browser then scroll-anchors on the footer as this content grows, so
+  // without a second reset the tab stays looking at the bottom of the page
+  // until something else (images, a later rail) lets the anchor go — and
+  // the product jumps up. Only fire on the loading→loaded transition so
+  // Back still restores the previous offset.
+  const wasLoading = useRef(false)
+  useLayoutEffect(() => {
+    if (isLoading) {
+      wasLoading.current = true
+      return
+    }
+    if (!wasLoading.current) return
+    wasLoading.current = false
+    if (window.location.hash) {
+      document.getElementById(window.location.hash.slice(1))?.scrollIntoView()
+      return
+    }
+    window.scrollTo(0, 0)
+  }, [isLoading, id])
+
+  if (isLoading) return <ProductPageSkeleton />
   if (!product) return <><Topbar /><div className="page-shell no-catrail">Product not found.</div></>
 
   const stripe = vendorHue(product.vendorId ?? 1)
@@ -160,12 +212,16 @@ export function ProductDetailPage() {
               burying it below the reviews means they leave instead. Compact
               on purpose so it introduces the page rather than competing with
               it. */}
-          <ProductRail
-            title="Similar items"
-            products={similar}
-            cardWidth={RAIL_CARD_WIDTH.tight}
-            seeMoreTo={`/products/${id}/similar`}
-          />
+          {similarPending
+            ? <ProductRailSkeleton cardWidth={RAIL_CARD_WIDTH.tight} />
+            : (
+              <ProductRail
+                title="Similar items"
+                products={similar}
+                cardWidth={RAIL_CARD_WIDTH.tight}
+                seeMoreTo={`/products/${id}/similar`}
+              />
+            )}
 
         <div className="pdp-main">
           {/* Media. The thumbnail rail inside appears only for products with
@@ -251,9 +307,19 @@ export function ProductDetailPage() {
 
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid var(--line)', borderRadius: 'var(--r-sm)', overflow: 'hidden' }}>
-                <button onClick={() => setQty(q => Math.max(1, q - 1))} style={{ padding: '8px 14px', background: 'none', border: 'none', fontSize: 18 }}>−</button>
+                <button
+                  type="button"
+                  className="qty-btn"
+                  aria-label="Decrease quantity"
+                  onClick={() => setQty(q => Math.max(1, q - 1))}
+                >−</button>
                 <span className="num" style={{ padding: '0 12px', minWidth: 32, textAlign: 'center' }}>{qty}</span>
-                <button onClick={() => setQty(q => Math.min(shownStock, q + 1))} style={{ padding: '8px 14px', background: 'none', border: 'none', fontSize: 18 }}>+</button>
+                <button
+                  type="button"
+                  className="qty-btn"
+                  aria-label="Increase quantity"
+                  onClick={() => setQty(q => Math.min(shownStock, q + 1))}
+                >+</button>
               </div>
               <button disabled={!canAdd || addToCart.isPending} onClick={() => addToCart.mutate()} style={{
                 flex: 1, padding: '11px 20px', background: canAdd ? 'var(--flame-gradient)' : 'var(--line)',

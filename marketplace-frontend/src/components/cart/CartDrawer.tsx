@@ -49,7 +49,7 @@ export function CartDrawer() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', borderBottom: '1px solid var(--line)' }}>
           <h2 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 18 }}>Your cart</h2>
-          <button onClick={close} aria-label="Close cart" style={{ background: 'none', border: 'none', fontSize: 20, color: 'var(--ink-soft)' }}>×</button>
+          <button onClick={close} className="qty-btn" aria-label="Close cart">×</button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 20px' }}>
@@ -68,13 +68,25 @@ export function CartDrawer() {
                 </p>
                 <p className="num" style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 6 }}>R{Number(line.unitPrice).toFixed(2)}</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <button onClick={() => updateQty.mutate({ productId: line.productId, variantId: line.variantId, quantity: line.quantity - 1 })}
-                    style={{ width: 22, height: 22, border: '1px solid var(--line)', borderRadius: 4, background: 'none', fontSize: 13 }}>−</button>
+                  <button
+                    type="button"
+                    className="qty-btn qty-btn--boxed"
+                    aria-label={`Decrease quantity of ${line.productName}`}
+                    onClick={() => updateQty.mutate({ productId: line.productId, variantId: line.variantId, quantity: line.quantity - 1 })}
+                  >−</button>
                   <span className="num" style={{ minWidth: 20, textAlign: 'center', fontSize: 12 }}>{line.quantity}</span>
-                  <button onClick={() => updateQty.mutate({ productId: line.productId, variantId: line.variantId, quantity: line.quantity + 1 })}
-                    style={{ width: 22, height: 22, border: '1px solid var(--line)', borderRadius: 4, background: 'none', fontSize: 13 }}>+</button>
-                  <button onClick={() => removeItem.mutate({ productId: line.productId, variantId: line.variantId })}
-                    style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--ink-soft)', background: 'none', border: 'none' }}>Remove</button>
+                  <button
+                    type="button"
+                    className="qty-btn qty-btn--boxed"
+                    aria-label={`Increase quantity of ${line.productName}`}
+                    onClick={() => updateQty.mutate({ productId: line.productId, variantId: line.variantId, quantity: line.quantity + 1 })}
+                  >+</button>
+                  <button
+                    type="button"
+                    onClick={() => removeItem.mutate({ productId: line.productId, variantId: line.variantId })}
+                    aria-label={`Remove ${line.productName} from cart`}
+                    style={{ marginLeft: 'auto', minHeight: 44, padding: '0 8px', fontSize: 13, color: 'var(--ink-soft)', background: 'none', border: 'none' }}
+                  >Remove</button>
                 </div>
               </div>
             </div>

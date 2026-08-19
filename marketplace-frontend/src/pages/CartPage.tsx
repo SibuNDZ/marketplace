@@ -217,17 +217,29 @@ export function CartPage() {
                     )}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <button onClick={() => updateQty.mutate({ productId: line.productId, quantity: line.quantity - 1 })}
-                      style={{ width: 28, height: 28, border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', background: 'none', fontSize: 16 }}>−</button>
+                    <button
+                      type="button"
+                      className="qty-btn qty-btn--boxed"
+                      aria-label={`Decrease quantity of ${line.productName}`}
+                      onClick={() => updateQty.mutate({ productId: line.productId, quantity: line.quantity - 1 })}
+                    >−</button>
                     <span className="num" style={{ minWidth: 28, textAlign: 'center', fontWeight: 600 }}>{line.quantity}</span>
-                    <button onClick={() => updateQty.mutate({ productId: line.productId, quantity: line.quantity + 1 })}
-                      style={{ width: 28, height: 28, border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', background: 'none', fontSize: 16 }}>+</button>
+                    <button
+                      type="button"
+                      className="qty-btn qty-btn--boxed"
+                      aria-label={`Increase quantity of ${line.productName}`}
+                      onClick={() => updateQty.mutate({ productId: line.productId, quantity: line.quantity + 1 })}
+                    >+</button>
                   </div>
                   <p className="num" style={{ fontWeight: 700, minWidth: 80, textAlign: 'right' }}>
                     R{Number(line.lineTotal).toFixed(2)}
                   </p>
-                  <button onClick={() => removeItem.mutate(line.productId)}
-                    style={{ color: 'var(--ink-soft)', background: 'none', border: 'none', fontSize: 18, lineHeight: 1 }}>×</button>
+                  <button
+                    type="button"
+                    className="qty-btn"
+                    aria-label={`Remove ${line.productName} from cart`}
+                    onClick={() => removeItem.mutate(line.productId)}
+                  >×</button>
                 </div>
               ))}
             </div>

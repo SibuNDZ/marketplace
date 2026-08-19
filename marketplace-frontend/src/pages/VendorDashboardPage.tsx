@@ -179,11 +179,19 @@ export function VendorDashboardPage() {
                   <td className="num" style={{ padding: '12px 12px' }}>R{Number(p.price).toFixed(2)}</td>
                   <td style={{ padding: '12px 12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <button onClick={() => adjustStock.mutate({ id: p.id, delta: -1 })}
-                        style={{ width: 24, height: 24, border: '1px solid var(--line)', borderRadius: 4, background: 'none', fontSize: 14 }}>−</button>
+                      <button
+                        type="button"
+                        className="qty-btn qty-btn--boxed"
+                        aria-label={`Decrease stock of ${p.name}`}
+                        onClick={() => adjustStock.mutate({ id: p.id, delta: -1 })}
+                      >−</button>
                       <span className="num" style={{ minWidth: 28, textAlign: 'center', fontWeight: 600 }}>{p.stock}</span>
-                      <button onClick={() => adjustStock.mutate({ id: p.id, delta: 1 })}
-                        style={{ width: 24, height: 24, border: '1px solid var(--line)', borderRadius: 4, background: 'none', fontSize: 14 }}>+</button>
+                      <button
+                        type="button"
+                        className="qty-btn qty-btn--boxed"
+                        aria-label={`Increase stock of ${p.name}`}
+                        onClick={() => adjustStock.mutate({ id: p.id, delta: 1 })}
+                      >+</button>
                     </div>
                   </td>
                   <td style={{ padding: '12px 12px' }}>

@@ -13,6 +13,29 @@ interface Props {
 }
 
 /**
+ * Same outer size as a loaded ProductRail of compact tiles, used while the
+ * similar-items query is in flight. The product page puts that rail ABOVE
+ * the gallery; without a reserved block the gallery jumps down the moment
+ * the shelf arrives.
+ */
+export function ProductRailSkeleton({ cardWidth, count = 6 }: { cardWidth: number; count?: number }) {
+  return (
+    <section style={{ marginTop: 32 }} aria-hidden>
+      <div className="skeleton" style={{ height: 16, width: 140, borderRadius: 4, marginBottom: 12 }} />
+      <div style={{ display: 'flex', gap: 12, overflow: 'hidden', padding: '2px 2px 8px' }}>
+        {Array.from({ length: count }).map((_, i) => (
+          <div key={i} style={{ flex: `0 0 ${cardWidth}px`, width: cardWidth, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div className="skeleton" style={{ width: '100%', aspectRatio: '1/1', borderRadius: 'var(--r-sm)' }} />
+            <div className="skeleton" style={{ height: 16, borderRadius: 4 }} />
+            <div className="skeleton" style={{ height: 16, width: '45%', borderRadius: 4 }} />
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/**
  * A horizontal, scroll-snapping row of compact product tiles.
  *
  * Renders NOTHING when there is nothing to show. Every rail on this page
@@ -25,9 +48,8 @@ interface Props {
  * that scrolls keeps the page's vertical rhythm no matter how many items
  * come back.
  *
- * The "See more" link navigates in the SAME tab, unlike the cards. Clicking
- * a specific product is a side-quest worth preserving this page for;
- * choosing to browse the full list is a decision to leave.
+ * The "See more" link is the same tab as the cards: both leave this page
+ * on purpose, and Back brings you back.
  */
 export function ProductRail({ title, products, cardWidth, seeMoreTo, seeMoreLabel = 'See more' }: Props) {
   if (products.length === 0) return null

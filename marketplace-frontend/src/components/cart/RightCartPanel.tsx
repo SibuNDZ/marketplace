@@ -106,11 +106,9 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
 
   const miniRow = (p: ProductResponse) => (
     <div key={p.id} className="mini-product">
-      {/* New tab, same as every other recommendation tile. Only the
-          suggestion rows below get this — the cart's own line items stay
-          same-tab, because those are things you already chose rather than
-          things being pitched at you. */}
-      <Link to={`/products/${p.id}`} target="_blank" rel="noopener" className="mini-product__main" onClick={closeDrawer}>
+      {/* Same tab as the catalogue tiles. Cart line items below were already
+          same-tab; the suggestion rows match them now. */}
+      <Link to={`/products/${p.id}`} className="mini-product__main" onClick={closeDrawer}>
         <img
           src={productImageUrl(p, 88, 88)}
           srcSet={productImageSrcSet(p, IMAGE_WIDTHS.thumb)}
@@ -130,8 +128,6 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
         <Link
           className="mini-product__add"
           to={`/products/${p.id}`}
-          target="_blank"
-          rel="noopener"
           aria-label={`Choose options for ${p.name}`}
         >›</Link>
       ) : (

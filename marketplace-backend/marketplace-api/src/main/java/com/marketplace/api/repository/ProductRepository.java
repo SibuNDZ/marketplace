@@ -91,7 +91,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                   OR u.username ILIKE :likeText)
              AND (:minRating IS NULL OR (pop.review_count > 0 AND pop.avg_rating >= :minRating))
              AND (:minSold IS NULL OR COALESCE(pop.sales_count, 0) >= :minSold)
-             AND (:inStockDisabled = TRUE OR p.stock_quantity > 0)
+             AND (:inStockDisabled = TRUE
+                  OR (NOT EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = p.id)
+                      AND p.stock_quantity > 0)
+                  OR EXISTS (SELECT 1 FROM product_variants v
+                             WHERE v.product_id = p.id AND v.stock_quantity > 0))
            ORDER BY ts_rank(p.search_vector, to_tsquery('english', :tsQuery)) DESC,
                     p.created_at DESC
            """,
@@ -108,7 +112,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                   OR u.username ILIKE :likeText)
              AND (:minRating IS NULL OR (pop.review_count > 0 AND pop.avg_rating >= :minRating))
              AND (:minSold IS NULL OR COALESCE(pop.sales_count, 0) >= :minSold)
-             AND (:inStockDisabled = TRUE OR p.stock_quantity > 0)
+             AND (:inStockDisabled = TRUE
+                  OR (NOT EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = p.id)
+                      AND p.stock_quantity > 0)
+                  OR EXISTS (SELECT 1 FROM product_variants v
+                             WHERE v.product_id = p.id AND v.stock_quantity > 0))
            """,
            nativeQuery = true)
     Page<Product> searchRanked(@Param("categoryFilterDisabled") boolean categoryFilterDisabled,
@@ -122,6 +130,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                @Param("inStockDisabled") boolean inStockDisabled,
                                Pageable pageable);
 
+    /*
+     * In-stock predicate, stated once: a product either has NO variants and
+     * its own stock_quantity is the truth, or it HAS variants and only their
+     * stock counts (products.stock_quantity is then ignored and never written,
+     * see ProductVariant). Testing p.stock_quantity alone hides every variant
+     * product whose parent column happens to be 0.
+     */
     /**
      * Browse path with popularity filters and a whitelist rank (sales |
      * rating | price | created). Native so ORDER BY can switch on the
@@ -142,7 +157,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                   OR LOWER(u.username) LIKE LOWER(CONCAT('%', :searchText, '%')))
              AND (:minRating IS NULL OR (pop.review_count > 0 AND pop.avg_rating >= :minRating))
              AND (:minSold IS NULL OR COALESCE(pop.sales_count, 0) >= :minSold)
-             AND (:inStockDisabled = TRUE OR p.stock_quantity > 0)
+             AND (:inStockDisabled = TRUE
+                  OR (NOT EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = p.id)
+                      AND p.stock_quantity > 0)
+                  OR EXISTS (SELECT 1 FROM product_variants v
+                             WHERE v.product_id = p.id AND v.stock_quantity > 0))
            ORDER BY
              CASE WHEN :rank = 'price' THEN p.price END ASC,
              CASE WHEN :rank = 'sales' THEN COALESCE(pop.sales_count, 0) END DESC,
@@ -163,7 +182,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                   OR LOWER(u.username) LIKE LOWER(CONCAT('%', :searchText, '%')))
              AND (:minRating IS NULL OR (pop.review_count > 0 AND pop.avg_rating >= :minRating))
              AND (:minSold IS NULL OR COALESCE(pop.sales_count, 0) >= :minSold)
-             AND (:inStockDisabled = TRUE OR p.stock_quantity > 0)
+             AND (:inStockDisabled = TRUE
+                  OR (NOT EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = p.id)
+                      AND p.stock_quantity > 0)
+                  OR EXISTS (SELECT 1 FROM product_variants v
+                             WHERE v.product_id = p.id AND v.stock_quantity > 0))
            """,
            nativeQuery = true)
     Page<Product> findFilteredRanked(@Param("categoryFilterDisabled") boolean categoryFilterDisabled,

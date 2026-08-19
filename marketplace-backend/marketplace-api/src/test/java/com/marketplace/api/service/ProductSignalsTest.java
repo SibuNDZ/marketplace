@@ -179,7 +179,17 @@ class ProductSignalsTest {
         assertThat(page.getContent()).extracting(ProductResponse::id)
                 .contains(sold.getId())
                 .doesNotContain(quiet.getId());
-        assertThat(page.getContent().getFirst().id()).isEqualTo(sold.getId());
+        // Order-independent: the class shares one database and other tests
+        // sell more units of other products, so "first" is not ours to claim.
+        // What rank=sales promises is a non-increasing sales order, and that
+        // anything ranked above ours genuinely outsold it.
+        var content = page.getContent();
+        assertThat(content).extracting(ProductResponse::soldCount)
+                .isSortedAccordingTo(java.util.Comparator.reverseOrder());
+        int ours = content.indexOf(content.stream()
+                .filter(r -> r.id().equals(sold.getId())).findFirst().orElseThrow());
+        assertThat(content.subList(0, ours)).allSatisfy(r ->
+                assertThat(r.soldCount()).isGreaterThanOrEqualTo(3));
     }
 
     @Test

@@ -101,10 +101,21 @@ public class PaymentController {
     @PostMapping("/api/v1/payments/stripe/webhook")
     public ResponseEntity<Void> webhook(@RequestBody String payload,
                                         @RequestHeader("Stripe-Signature") String signature) {
+        // On a PayFast/Yoco deploy the Stripe secret is legitimately blank
+        // (application.yml defaults it so those deploys can boot). This is a
+        // permitAll endpoint, and an empty HMAC key makes the Stripe SDK throw
+        // IllegalArgumentException rather than SignatureVerificationException,
+        // which would turn any well-formed unauthenticated POST into a 500.
+        // Nothing can verify against a blank secret, so reject like a bad
+        // signature: the same 400 as the other providers' house rule.
+        if (webhookSecret == null || webhookSecret.isBlank()) {
+            log.warn("Stripe webhook received but no webhook secret is configured");
+            return ResponseEntity.badRequest().build();
+        }
         Event event;
         try {
             event = Webhook.constructEvent(payload, signature, webhookSecret);
-        } catch (SignatureVerificationException e) {
+        } catch (SignatureVerificationException | IllegalArgumentException e) {
             log.warn("Stripe webhook signature verification failed");
             return ResponseEntity.badRequest().build();
         }

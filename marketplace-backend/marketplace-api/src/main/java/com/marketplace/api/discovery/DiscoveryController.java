@@ -79,7 +79,11 @@ public class DiscoveryController {
         List<Number> ids = em.createNativeQuery("""
                 SELECT pp.product_id FROM product_popularity pp
                 JOIN products p ON p.id = pp.product_id
-                WHERE p.deleted_at IS NULL AND p.stock_quantity > 0
+                WHERE p.deleted_at IS NULL
+                  AND ((NOT EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = p.id)
+                        AND p.stock_quantity > 0)
+                       OR EXISTS (SELECT 1 FROM product_variants v
+                                  WHERE v.product_id = p.id AND v.stock_quantity > 0))
                 ORDER BY pp.%s DESC, pp.product_id ASC
                 LIMIT :n
                 """.formatted(orderColumn))

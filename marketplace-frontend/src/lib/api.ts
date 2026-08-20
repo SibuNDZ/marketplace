@@ -329,10 +329,10 @@ export interface CategoryOption {
  * product-variants.md §2 for why. Price is ABSOLUTE, not a delta off the
  * product price.
  *
- * These are still INERT on the buy path: the cart and order endpoints take
- * a productId only, so nothing can be added to a cart per-variant yet.
- * Render them as information; do not build a buy flow on them until
- * product-variants.md step 2 lands.
+ * Live on the buy path since V25: the cart endpoints take a variantId, the
+ * product page requires picking one before add-to-cart, and cart lines carry
+ * variantLabel. (An earlier version of this comment said variants were
+ * inert — that was product-variants.md step 1.)
  */
 export interface VariantResponse {
   id: number
@@ -341,6 +341,20 @@ export interface VariantResponse {
   price: string
   stock: number
   imageUrl: string | null
+}
+
+/**
+ * Vendor create/update of one option — matches ProductDtos.VariantRequest
+ * field-for-field. Price is a decimal string ("120.00"), absolute like the
+ * response. Every variant endpoint returns the whole ProductResponse so the
+ * caller can replace its cached product without a follow-up fetch.
+ */
+export interface VariantRequest {
+  label: string
+  sku?: string | null
+  price: string
+  stock: number
+  position?: number | null
 }
 
 export interface ProductImage {

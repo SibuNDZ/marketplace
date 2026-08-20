@@ -278,7 +278,7 @@ export function RegisterPage() {
           </label>
           <button type="submit" disabled={loading || usernameState.kind === 'taken' || passwordMismatch}
             style={{
-              background: 'var(--ink)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)',
+              background: 'var(--ink)', color: 'var(--paper)', border: 'none', borderRadius: 'var(--r-sm)',
               padding: '11px', fontWeight: 600, fontSize: 15, marginTop: 6,
               opacity: loading || usernameState.kind === 'taken' || passwordMismatch ? 0.6 : 1,
             }}>

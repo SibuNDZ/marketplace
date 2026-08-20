@@ -309,7 +309,7 @@ export function ProductFormPage() {
                     {i === 0 && (
                       <span style={{
                         position: 'absolute', bottom: 4, left: 4, fontSize: 10, fontWeight: 700,
-                        background: 'var(--ink)', color: '#fff', padding: '1px 5px',
+                        background: 'var(--ink)', color: 'var(--paper)', padding: '1px 5px',
                         borderRadius: 'var(--r-pill)',
                       }}>Cover</span>
                     )}

@@ -56,7 +56,7 @@ export function VerifyEmailPage() {
           Your account is active. You can sign in now.
         </p>
         <Link to="/login" style={{
-          background: 'var(--ink)', color: '#fff', textDecoration: 'none',
+          background: 'var(--ink)', color: 'var(--paper)', textDecoration: 'none',
           borderRadius: 'var(--r-sm)', padding: '11px', fontWeight: 600,
           fontSize: 15, textAlign: 'center',
         }}>

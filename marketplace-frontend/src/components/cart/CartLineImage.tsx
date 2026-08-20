@@ -34,7 +34,7 @@ export function CartLineImage({ line, size }: Props) {
         aria-hidden
         style={{
           width: size, height: size, flexShrink: 0,
-          borderRadius: 'var(--r-sm)', background: '#EAEEED', display: 'block',
+          borderRadius: 'var(--r-sm)', background: '#14141c', display: 'block',
         }}
       />
     )

@@ -111,7 +111,7 @@ export function LoginPage() {
               style={{ padding: '9px 12px', border: '1.5px solid var(--line)', borderRadius: 'var(--r-sm)', fontFamily: 'var(--body)', fontSize: 14 }} />
           </label>
           <button type="submit" disabled={loading}
-            style={{ background: 'var(--ink)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', padding: '11px', fontWeight: 600, fontSize: 15, marginTop: 6 }}>
+            style={{ background: 'var(--ink)', color: 'var(--paper)', border: 'none', borderRadius: 'var(--r-sm)', padding: '11px', fontWeight: 600, fontSize: 15, marginTop: 6 }}>
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>

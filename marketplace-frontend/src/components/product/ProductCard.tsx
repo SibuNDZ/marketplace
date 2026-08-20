@@ -65,24 +65,23 @@ export function ProductCard({ product }: Props) {
   const rating = Number(product.avgRating)
 
   return (
-    <div style={{
-      background: 'var(--card)',
-      borderRadius: 'var(--r)',
-      boxShadow: 'var(--shadow)',
-      overflow: 'hidden',
-      display: 'flex',
-      flexDirection: 'column',
-      transition: 'box-shadow 0.2s, transform 0.2s',
-    }}
-      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow-lift)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)' }}
-      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow)'; (e.currentTarget as HTMLDivElement).style.transform = '' }}
+    // .product-card owns the material and hover lift; the mousemove only
+    // feeds the CSS spotlight (--mx/--my), so React re-renders nothing.
+    <div
+      className="product-card"
+      onMouseMove={e => {
+        const el = e.currentTarget as HTMLDivElement
+        const rect = el.getBoundingClientRect()
+        el.style.setProperty('--mx', `${e.clientX - rect.left}px`)
+        el.style.setProperty('--my', `${e.clientY - rect.top}px`)
+      }}
     >
       {/* Product image. Same tab: Back restores the catalogue's offset
           (ScrollToTop leaves POP alone), so a new tab is not needed to keep
           the shopper's place, filters or scroll. */}
       <Link
         to={`/products/${product.id}`}
-        style={{ position: 'relative', display: 'block', height: 180, flexShrink: 0, background: '#EAEEED' }}
+        style={{ position: 'relative', display: 'block', height: 180, flexShrink: 0, background: '#14141c' }}
       >
         <img
           src={productImageUrl(product, 640, 480)}
@@ -98,7 +97,7 @@ export function ProductCard({ product }: Props) {
         {isNewIn(product) && (
           <span style={{
             position: 'absolute', top: 8, left: 8,
-            background: 'var(--aloe)', color: '#fff',
+            background: 'var(--aloe)', color: '#051014',
             fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 'var(--r-sm)',
           }}>
             New in
@@ -139,29 +138,14 @@ export function ProductCard({ product }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 6 }}>
           <PriceBlock price={product.price} originalPrice={product.originalPrice} size={18} />
           {needsOptions ? (
-            <Link
-              to={`/products/${product.id}`}
-              style={{
-                padding: '7px 14px', background: 'var(--card)', color: 'var(--ink)',
-                border: '1.5px solid var(--line)', borderRadius: 'var(--r-pill)',
-                fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
-              }}
-            >
+            <Link to={`/products/${product.id}`} className="neon-cta" style={{ display: 'inline-block' }}>
               Choose options
             </Link>
           ) : (
             <button
+              className="neon-cta"
               disabled={!canAdd || addToCart.isPending}
               onClick={() => addToCart.mutate()}
-              style={{
-                padding: '7px 14px',
-                background: canAdd ? 'var(--flame-gradient)' : 'var(--line)',
-                color: canAdd ? '#fff' : 'var(--ink-soft)',
-                border: 'none',
-                borderRadius: 'var(--r-pill)',
-                fontSize: 12, fontWeight: 700,
-                cursor: canAdd ? 'pointer' : 'not-allowed',
-              }}
             >
               {added ? '✓ Added' : 'Add to cart'}
             </button>

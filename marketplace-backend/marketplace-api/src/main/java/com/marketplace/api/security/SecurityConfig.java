@@ -63,6 +63,10 @@ public class SecurityConfig {
                     // Chip row and sidebar render before anyone signs in.
                     .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/reviews/**").permitAll()
+                    // Public fee numbers for the How It Works page: a vendor
+                    // should meet the commission rate in public copy before
+                    // meeting it inside a terms checkbox.
+                    .requestMatchers(HttpMethod.GET, "/api/v1/fees").permitAll()
                     .requestMatchers("/api/v1/payments/stripe/webhook").permitAll()
                     // PayFast ITN: unauthenticated like the Stripe webhook;
                     // authenticity comes from the signed-payload gauntlet.

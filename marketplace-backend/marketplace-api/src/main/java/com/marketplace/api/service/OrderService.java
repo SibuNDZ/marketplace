@@ -4,6 +4,7 @@ import com.marketplace.api.dto.OrderResponse;
 import com.marketplace.api.dto.ShippingDtos;
 import com.marketplace.api.entity.*;
 import com.marketplace.api.exception.OrderExceptions.*;
+import com.marketplace.api.payout.SellingGate;
 import com.marketplace.api.repository.CartRepository;
 import com.marketplace.api.repository.OrderRepository;
 import com.marketplace.api.repository.ProductRepository;
@@ -56,17 +57,20 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final ProductVariantRepository variantRepository;
     private final OrderStatusRecorder recorder;
+    private final SellingGate sellingGate;
 
     public OrderService(CartRepository cartRepository,
                         OrderRepository orderRepository,
                         ProductRepository productRepository,
                         ProductVariantRepository variantRepository,
-                        OrderStatusRecorder recorder) {
+                        OrderStatusRecorder recorder,
+                        SellingGate sellingGate) {
         this.cartRepository = cartRepository;
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.variantRepository = variantRepository;
         this.recorder = recorder;
+        this.sellingGate = sellingGate;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -160,6 +164,15 @@ public class OrderService {
         if (!shortages.isEmpty()) {
             throw new InsufficientStockException(shortages);
         }
+
+        // The payout selling gate, checked HERE and not at add-to-cart on
+        // purpose: a vendor can become ungated (terms version bump, banking
+        // detail removed) while their products already sit in carts, so the
+        // only non-stale check is at the moment money is about to be
+        // requested. Same 409-with-items shape as the shortages above —
+        // from the shopper's seat it is the same event. No-op while
+        // app.payouts.selling-gate-enabled is false.
+        sellingGate.assertSellable(productsById.values());
 
         Order order = new Order();
         order.setOrderNumber("ORD-" + UUID.randomUUID().toString().replace("-", "").toUpperCase().substring(0, 16));

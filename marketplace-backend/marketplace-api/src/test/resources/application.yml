@@ -43,6 +43,12 @@ app:
     # Never commit backfill from a test boot; the runner's dry-run logs are
     # harmless noise in a test context with an empty work list.
     backfill-commit: false
+    payout-window-days: 7
+    terms-version: 1
+    # Off by default, matching production. PayoutTermsGateTest flips it on
+    # via @DynamicPropertySource; every OTHER suite's unbanked fixture
+    # vendors selling freely is the flag-off behaviour, proven constantly.
+    selling-gate-enabled: false
   yoco:
     # Deterministic so YocoSignatureTest/YocoWebhookTest can pre-compute
     # signatures by hand. The secret must be a real "whsec_<base64>" because

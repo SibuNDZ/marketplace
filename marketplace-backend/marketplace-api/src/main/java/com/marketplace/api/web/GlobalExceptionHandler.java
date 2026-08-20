@@ -117,6 +117,24 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.CONFLICT, "Payout not possible", ex.getMessage());
     }
 
+    // The selling gate, shopper-side: 409 with the blocked items enumerated,
+    // the InsufficientStock shape — checkout renders which lines to remove.
+    @ExceptionHandler(PayoutExceptions.VendorNotSellableException.class)
+    public ProblemDetail vendorNotSellable(PayoutExceptions.VendorNotSellableException ex) {
+        ProblemDetail pd = problem(HttpStatus.CONFLICT, "Items temporarily unavailable", ex.getMessage());
+        pd.setProperty("blockedItems", ex.getBlocked().stream()
+                .map(b -> Map.of(
+                        "vendorName", b.vendorName(),
+                        "productName", b.productName()))
+                .toList());
+        return pd;
+    }
+
+    @ExceptionHandler(PayoutExceptions.StaleTermsVersionException.class)
+    public ProblemDetail staleTermsVersion(PayoutExceptions.StaleTermsVersionException ex) {
+        return problem(HttpStatus.CONFLICT, "Terms have changed", ex.getMessage());
+    }
+
     @ExceptionHandler(EmailAlreadyRegisteredException.class)
     public ProblemDetail emailTaken(EmailAlreadyRegisteredException ex) {
         return problem(HttpStatus.CONFLICT, "Email already registered", ex.getMessage());

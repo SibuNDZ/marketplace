@@ -30,4 +30,39 @@ public class PayoutExceptions {
             super(message);
         }
     }
+
+    /**
+     * The selling gate, from the shopper's side: the cart holds items from a
+     * vendor who has not completed payout onboarding (terms + banking).
+     * Carries the affected vendor/product names so checkout can say WHICH
+     * items to remove — the InsufficientStock shape, because from the
+     * shopper's seat this is the same event: an item that cannot currently
+     * be bought.
+     */
+    public static class VendorNotSellableException extends RuntimeException {
+        public record BlockedItem(String vendorName, String productName) {}
+
+        private final java.util.List<BlockedItem> blocked;
+
+        public VendorNotSellableException(java.util.List<BlockedItem> blocked) {
+            super("Some items are temporarily unavailable while their vendor completes payout setup: "
+                    + blocked.stream()
+                            .map(b -> b.productName() + " (" + b.vendorName() + ")")
+                            .distinct()
+                            .collect(java.util.stream.Collectors.joining(", ")));
+            this.blocked = java.util.List.copyOf(blocked);
+        }
+
+        public java.util.List<BlockedItem> getBlocked() {
+            return blocked;
+        }
+    }
+
+    /** Terms acceptance raced a version bump; the client must re-show the new text. */
+    public static class StaleTermsVersionException extends RuntimeException {
+        public StaleTermsVersionException(int sent, int current) {
+            super("Payout terms have changed (you accepted version " + sent
+                    + ", current is " + current + "); please review and accept the new terms");
+        }
+    }
 }

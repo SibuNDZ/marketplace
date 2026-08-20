@@ -571,6 +571,25 @@ export interface VendorPendingGroup {
   entries: PayoutPendingEntry[]
   totalNet: string
 }
+/** GET /api/v1/vendor/settings/payouts — the vendor's own onboarding state. */
+export interface PayoutSettingsStatus {
+  termsText: string
+  termsVersion: number
+  acceptedVersion: number | null
+  acceptedAt: string | null
+  termsCurrent: boolean
+  banking: MaskedBanking
+  gateEnabled: boolean
+  sellable: boolean
+}
+
+/** GET /api/v1/fees — public numbers for the How It Works Fees section. */
+export interface PublicFees {
+  commissionLive: boolean
+  commissionPercent: string
+  payoutWindowDays: number
+}
+
 export interface PayoutBatchSummary {
   id: number
   approvedAt: string

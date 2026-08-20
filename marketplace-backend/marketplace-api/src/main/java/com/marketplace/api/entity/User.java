@@ -118,6 +118,17 @@ public class User {
     @Column(name = "account_type", length = 20)
     private BankAccountType accountType;
 
+    /**
+     * The payout-terms VERSION this vendor accepted (V29), not a boolean:
+     * bumping app.payouts.terms-version invalidates prior acceptances, which
+     * is how a wording or number change forces re-acceptance.
+     */
+    @Column(name = "payout_terms_version")
+    private Integer payoutTermsVersion;
+
+    @Column(name = "payout_terms_accepted_at")
+    private LocalDateTime payoutTermsAcceptedAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -321,6 +332,27 @@ public class User {
 
     public void setAccountType(BankAccountType accountType) {
         this.accountType = accountType;
+    }
+
+    public Integer getPayoutTermsVersion() {
+        return payoutTermsVersion;
+    }
+
+    public void setPayoutTermsVersion(Integer payoutTermsVersion) {
+        this.payoutTermsVersion = payoutTermsVersion;
+    }
+
+    public LocalDateTime getPayoutTermsAcceptedAt() {
+        return payoutTermsAcceptedAt;
+    }
+
+    public void setPayoutTermsAcceptedAt(LocalDateTime payoutTermsAcceptedAt) {
+        this.payoutTermsAcceptedAt = payoutTermsAcceptedAt;
+    }
+
+    /** Acceptance counts only at the CURRENT version — see payoutTermsVersion. */
+    public boolean hasAcceptedPayoutTerms(int currentVersion) {
+        return payoutTermsVersion != null && payoutTermsVersion == currentVersion;
     }
 
     /**

@@ -1,7 +1,6 @@
 package com.marketplace.api.payout;
 
 import com.marketplace.api.dto.PayoutDtos.BatchSummary;
-import com.marketplace.api.dto.PayoutDtos.MaskedBanking;
 import com.marketplace.api.dto.PayoutDtos.PendingEntry;
 import com.marketplace.api.dto.PayoutDtos.VendorPendingGroup;
 import com.marketplace.api.entity.PayoutEntryStatus;
@@ -73,7 +72,7 @@ public class PayoutAdminService {
             groups.add(new VendorPendingGroup(
                     vendor.getId(),
                     displayName(vendor),
-                    bankingFor(vendor),
+                    BankingMask.of(vendor),
                     entries.stream().map(PayoutAdminService::toPendingEntry).toList(),
                     total));
         }
@@ -219,22 +218,6 @@ public class PayoutAdminService {
                 .map(b -> summarise(b,
                         entryRepository.findByBatchIdOrderByVendorIdAscIdAsc(b.getId())))
                 .toList();
-    }
-
-    // ── masking ──────────────────────────────────────────────────────────
-
-    /**
-     * The ENTIRE banking-masking rule, in one method, called from every
-     * surface that shows banking — the shippingFor() pattern. Full account
-     * numbers exist in exactly one output (the bank CSV), which does not
-     * pass through here.
-     */
-    private static MaskedBanking bankingFor(User vendor) {
-        String acc = vendor.getAccountNumber();
-        String last4 = acc == null || acc.length() < 4
-                ? null
-                : "···" + acc.substring(acc.length() - 4);
-        return new MaskedBanking(vendor.getBankName(), last4, vendor.hasCompleteBankingDetails());
     }
 
     // ── helpers ──────────────────────────────────────────────────────────

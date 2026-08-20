@@ -73,6 +73,17 @@ webhook secret is returned exactly once, by the registration call
 (`POST https://payments.yoco.com/api/webhooks`), and is mode-scoped: a test-key
 registration cannot verify live deliveries or vice versa.
 
+Vendor payouts (all optional — defaults carry ⚠ PLACEHOLDER comments in
+`application.yml`; see `vendor-payouts.md` §7 for the owner actions):
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `PAYOUT_COMMISSION_RATE` | `0.125` (placeholder) | Platform commission as a fraction; per-vendor overrides live on `users.commission_rate` |
+| `PAYOUT_WINDOW_DAYS` | `7` (placeholder) | Days after the weekly payout run promised in the vendor terms |
+| `PAYOUT_TERMS_VERSION` | `1` | Bump on any change to terms wording/numbers — forces vendor re-acceptance |
+| `PAYOUT_SELLING_GATE` | `false` | When true, un-onboarded vendors (terms + banking) 409 at checkout |
+| `PAYOUT_BACKFILL_COMMIT` | `false` | Set true for ONE deploy to write ledger entries for pre-ledger PAID orders (dry-run logs otherwise) |
+
 ## Testing philosophy
 
 Every test runs against PostgreSQL 16 in TestContainers, built by the real Flyway migrations — H2 was removed from the project after it masked two lock-semantics bugs that only reproduce on the real engine. The concurrency tests use `CyclicBarrier`-synchronized threads against genuinely committed data (fixtures commit in `REQUIRES_NEW`; the test classes are deliberately *not* `@Transactional`, which would deadlock against worker-thread row locks). The suite covers: last-unit oversell, same-user checkout double-submit, stock-adjustment racing checkout, illegal state transitions leaving zero audit rows, refresh-token reuse detection, webhook idempotency, payment-received-after-cancellation, and rate-limiter scoping.

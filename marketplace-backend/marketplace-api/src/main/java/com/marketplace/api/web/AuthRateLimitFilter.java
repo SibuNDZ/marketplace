@@ -36,11 +36,14 @@ import java.time.Duration;
  * N independent buckets = effective limit × N. That's degraded, not broken.
  * Swap to bucket4j-redis when horizontal scaling actually happens.
  *
- * IP resolution: HttpServletRequest.getRemoteAddr(). Behind Railway's proxy
- * this is only correct once server.forward-headers-strategy=framework is set
- * in prod application-prod.yml. Without it every request appears to come from
- * the proxy and THE ENTIRE PLATFORM shares one bucket — the 11th login attempt
- * globally returns 429. See application-prod.yml for the required setting.
+ * IP resolution: clientIp() below, NOT getRemoteAddr() directly. Behind
+ * Railway's proxy getRemoteAddr() is the proxy's address for every request,
+ * which put THE ENTIRE PLATFORM in one bucket — the 11th auth request
+ * globally returned 429, and the frontend showed it as a generic failure.
+ * forward-headers-strategy=framework does NOT fix that: ForwardedHeaderFilter
+ * rewrites scheme/host/port for URL building and never touches the remote
+ * address (only the container-level `native` strategy does). So this filter
+ * resolves the client itself from X-Forwarded-For.
  *
  * Runs AFTER CorrelationIdFilter (Order.HIGHEST_PRECEDENCE+1) so 429s carry
  * a requestId, and BEFORE Spring Security so rejected requests never burn
@@ -99,7 +102,8 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
-        Bucket bucket = buckets.get(request.getRemoteAddr(), ip -> Bucket.builder()
+        String clientIp = clientIp(request);
+        Bucket bucket = buckets.get(clientIp, ip -> Bucket.builder()
                 .addLimit(Bandwidth.builder()
                         .capacity(capacity)
                         .refillGreedy(refillPerMinute, Duration.ofMinutes(1))
@@ -117,7 +121,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         // away. That silence is what made this filter's role in a registration
         // outage so expensive to find — the logs looked healthy.
         log.warn("Auth rate limit exceeded: {} {} from {} - returning 429",
-                request.getMethod(), request.getRequestURI(), request.getRemoteAddr());
+                request.getMethod(), request.getRequestURI(), clientIp);
 
         // Same problem+json shape as everything else; Retry-After makes
         // well-behaved clients back off instead of hammering.
@@ -139,5 +143,30 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
                 {"type":"about:blank","title":"Too many requests",\
                 "status":429,"detail":"Rate limit exceeded for authentication \
                 endpoints. Retry after 60 seconds."}""");
+    }
+
+    /**
+     * The IP a bucket is keyed on: the RIGHTMOST X-Forwarded-For entry,
+     * falling back to getRemoteAddr() when the header is absent (local dev,
+     * tests, direct connections).
+     *
+     * Rightmost, never leftmost: each proxy appends the address of the peer
+     * it received the request from, so the rightmost entry was written by
+     * OUR edge (Railway) about its own peer and is the only one a client
+     * cannot smuggle in. Keying on the leftmost entry would let an attacker
+     * mint a fresh bucket per request with a forged header, which is a
+     * rate-limiter bypass. The trade-off: if another proxy (e.g. Cloudflare)
+     * is ever put in front, the rightmost entry becomes that proxy's edge
+     * address and its ranges must be handled here — degraded per-edge
+     * buckets, not a platform-wide one.
+     */
+    static String clientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded == null || forwarded.isBlank()) {
+            return request.getRemoteAddr();
+        }
+        int lastComma = forwarded.lastIndexOf(',');
+        String rightmost = (lastComma < 0 ? forwarded : forwarded.substring(lastComma + 1)).trim();
+        return rightmost.isEmpty() ? request.getRemoteAddr() : rightmost;
     }
 }

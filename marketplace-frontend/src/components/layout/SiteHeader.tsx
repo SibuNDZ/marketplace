@@ -11,6 +11,7 @@ import { ALL_SLUG } from '../../data/categories'
 import { CartDrawer } from '../cart/CartDrawer'
 import { RetailCategoryNav } from './RetailCategoryNav'
 import { LogoMark } from './LogoMark'
+import { ThemeToggle } from './ThemeToggle'
 
 /**
  * The notifications bell is HIDDEN until a notification centre exists.
@@ -160,6 +161,7 @@ export function SiteHeader() {
                   <Bell size={20} strokeWidth={1.75} />
                 </button>
               )}
+              <ThemeToggle />
               <div className="account-action">
                 <button
                   className="main-action"
@@ -210,6 +212,7 @@ export function SiteHeader() {
               {NOTIFICATIONS_ENABLED && (
                 <button className="mobile-icon" aria-label="Notifications" title="Notifications"><Bell size={21} strokeWidth={1.75} /></button>
               )}
+              <ThemeToggle mobile />
               {/* Persistent account entry: field-tested gap. A vendor at a
                   market stall could not find where to register because
                   account access only existed inside the hamburger drawer.

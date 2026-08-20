@@ -3,57 +3,58 @@
    Import once in main.tsx. Components consume var(--x), never raw values. */
 
 :root {
-  /* palette — CYBERPUNK THEME. Token NAMES are load-bearing (every component
-     consumes them), so the old names stay and only the values pivot:
-     --aloe is now neon cyan, --flame is now magenta, and every *-tint is a
-     translucent glow instead of a pastel fill. The *-deep tokens INVERT
-     role on a dark ground: they were darker-for-text-on-tint, now they are
-     BRIGHTER-for-text-on-tint, which is what dark-theme contrast needs. */
-  --paper: #09090b;          /* obsidian ground */
-  --card: #101016;           /* raised chrome: menus, drawers, panels */
-  --ink: #e7ecf5;
-  --ink-soft: #8f9bb0;
-  --line: rgba(0, 243, 255, 0.14);   /* holographic blueprint dividers */
+  /* palette — LIGHT (the classic storefront). The cyberpunk dark palette
+     lives in the [data-theme="dark"] block below; an inline script in
+     index.html stamps data-theme on <html> BEFORE first paint (saved
+     choice, else prefers-color-scheme), so neither theme ever flashes. */
+  --paper: #F5F7F3;
+  --card: #FFFFFF;
+  --ink: #182420;
+  --ink-soft: #4A5A52;
+  --line: #DDE4DE;
 
-  --aloe: #00c9e6;           /* primary interactive — neon cyan (deepened
-                                slightly so legacy white-on-aloe fills stay
-                                readable; pure #00f3ff lives in the glows) */
-  --aloe-deep: #7ff5ff;
-  --aloe-tint: rgba(0, 243, 255, 0.10);
-  --neon-cyan: #00f3ff;      /* full-strength cyan: borders, glows, focus */
+  --aloe: #1F6B4A;
+  --aloe-deep: #145036;
+  --aloe-tint: #E4F0E9;
+  --neon-cyan: #1F6B4A;     /* focus/glow accent; only actually neon in dark */
 
-  --marigold: #ffc233;      /* low-stock heat + star ratings ONLY */
-  --marigold-tint: rgba(255, 194, 51, 0.12);
+  --marigold: #E8A020;      /* low-stock heat + star ratings ONLY */
+  --marigold-tint: #FBF1DC;
 
-  --clay: #ff5c7a;          /* errors ONLY — neon red, distinct from magenta */
-  --clay-tint: rgba(255, 92, 122, 0.12);
+  --clay: #B4432F;          /* errors ONLY */
+  --clay-tint: #F7E6E1;
 
-  /* Promotional accent — CTAs and brand highlights. Electric magenta;
-     the cyan --aloe stays in play for positive/neutral state. The gradient
-     runs cyan-to-magenta with deepened stops so white CTA text survives. */
-  --flame: #ff00ff;
-  --flame-deep: #ff8df8;
-  --flame-tint: rgba(255, 0, 255, 0.10);
-  --flame-gradient: linear-gradient(135deg, #00a8c8 0%, #7c22c8 55%, #d4009e 100%);
+  /* Temu/Alibaba-style promotional accent — CTAs and brand highlights.
+     Deliberately loud; the marketplace's calmer --aloe green stays in play
+     for positive/neutral state (in-stock, success). */
+  --flame: #FF4626;
+  --flame-deep: #D6331A;
+  --flame-tint: #FFE7E1;
+  --flame-gradient: linear-gradient(135deg, #FF9A3D 0%, #FF4626 60%, #E31C3D 100%);
 
-  --sun: #ffd166;           /* secondary accent — notices, highlights */
-  --sun-deep: #ffe19a;
-  --sun-tint: rgba(255, 209, 102, 0.10);
+  --sun: #FFB020;           /* secondary accent — notices, highlights */
+  --sun-deep: #C97D00;
+  --sun-tint: #FFF3D6;
 
-  --trust-blue: #7aa7ff;    /* informational accent (links, info chips) */
-  --trust-blue-tint: rgba(122, 167, 255, 0.10);
+  --trust-blue: #1E6FE0;    /* informational accent (links, info chips) */
+  --trust-blue-tint: #E7EFFD;
 
-  /* footer — deliberately darker than --paper so it still reads as a
-     distinct "bookend" band under the busy product grid */
-  --footer-bg: #050508;
-  --footer-line: rgba(0, 243, 255, 0.12);
+  /* footer — deliberately darker than --ink so it reads as a distinct
+     "bookend" band under the busy product grid, not just more page */
+  --footer-bg: #0E1512;
+  --footer-line: rgba(255,255,255,0.10);
   --footer-heading: #ffffff;
   --footer-text: rgba(255,255,255,0.62);
   --footer-text-dim: rgba(255,255,255,0.38);
 
-  /* typography — Space Grotesk for display per the cyberpunk directive;
-     Instrument Sans stays for body so dense product copy remains readable */
-  --display: "Space Grotesk", "Bricolage Grotesque", system-ui, sans-serif;
+  /* text/icon color on top of --aloe and other accent fills; image
+     placeholder wells. Both flip with the theme so components never have
+     to hardcode a side of the inversion. */
+  --on-accent: #ffffff;
+  --img-well: #EAEEED;
+
+  /* typography */
+  --display: "Bricolage Grotesque", system-ui, sans-serif;
   --body: "Instrument Sans", system-ui, sans-serif;
   --mono: "Spline Sans Mono", ui-monospace, "SF Mono", monospace;
 
@@ -61,8 +62,8 @@
   --r: 10px;
   --r-sm: 6px;
   --r-pill: 999px;
-  --shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 4px 18px rgba(0,0,0,0.45);
-  --shadow-lift: 0 0 0 1px rgba(0,243,255,0.20), 0 12px 34px rgba(0,0,0,0.60), 0 0 24px rgba(0,243,255,0.08);
+  --shadow: 0 1px 2px rgba(24,36,32,.06), 0 4px 14px rgba(24,36,32,.05);
+  --shadow-lift: 0 2px 4px rgba(24,36,32,.08), 0 10px 28px rgba(24,36,32,.10);
 
   /* layout */
   /* Full-bleed: the storefront uses the whole window rather than a centred
@@ -82,6 +83,67 @@
   --catrail-total: var(--catrail-h);
 }
 
+/* palette — CYBERPUNK DARK. Token NAMES are load-bearing (every component
+   consumes them), so the names stay and only the values pivot: --aloe
+   becomes neon cyan, --flame electric magenta, every *-tint a translucent
+   glow. The *-deep tokens INVERT role on a dark ground: they were
+   darker-for-text-on-tint, here they are BRIGHTER-for-text-on-tint, which
+   is what dark-theme contrast needs. */
+[data-theme="dark"] {
+  --paper: #09090b;          /* obsidian ground */
+  --card: #101016;           /* raised chrome: menus, drawers, panels */
+  --ink: #e7ecf5;
+  --ink-soft: #8f9bb0;
+  --line: rgba(0, 243, 255, 0.14);   /* holographic blueprint dividers */
+
+  --aloe: #00c9e6;           /* deepened so legacy on-accent fills read;
+                                pure #00f3ff lives in --neon-cyan glows */
+  --aloe-deep: #7ff5ff;
+  --aloe-tint: rgba(0, 243, 255, 0.10);
+  --neon-cyan: #00f3ff;
+
+  --marigold: #ffc233;
+  --marigold-tint: rgba(255, 194, 51, 0.12);
+
+  --clay: #ff5c7a;           /* errors — neon red, distinct from magenta */
+  --clay-tint: rgba(255, 92, 122, 0.12);
+
+  --flame: #ff00ff;
+  --flame-deep: #ff8df8;
+  --flame-tint: rgba(255, 0, 255, 0.10);
+  --flame-gradient: linear-gradient(135deg, #00a8c8 0%, #7c22c8 55%, #d4009e 100%);
+
+  --sun: #ffd166;
+  --sun-deep: #ffe19a;
+  --sun-tint: rgba(255, 209, 102, 0.10);
+
+  --trust-blue: #7aa7ff;
+  --trust-blue-tint: rgba(122, 167, 255, 0.10);
+
+  --footer-bg: #050508;
+  --footer-line: rgba(0, 243, 255, 0.12);
+
+  --on-accent: #051014;
+  --img-well: #14141c;
+
+  --display: "Space Grotesk", "Bricolage Grotesque", system-ui, sans-serif;
+
+  --shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 4px 18px rgba(0,0,0,0.45);
+  --shadow-lift: 0 0 0 1px rgba(0,243,255,0.20), 0 12px 34px rgba(0,0,0,0.60), 0 0 24px rgba(0,243,255,0.08);
+}
+
+/* The 300ms palette cross-fade, enabled ONLY for the moment of switching
+   (ThemeContext adds the class, removes it 350ms later). Permanent global
+   transitions would smear every ordinary hover and focus change. */
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out,
+              border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out,
+              fill 0.3s ease-in-out, stroke 0.3s ease-in-out !important;
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html { background: var(--paper); }
@@ -95,12 +157,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Ambient depth: a slow-drifting cyan/magenta mesh gradient plus a static
-   noise grain, both fixed behind all content (html carries the base color,
-   so z-index -1 paints above it but below everything else). Kept at single-
-   digit alpha — atmosphere, not wallpaper — and the global reduced-motion
-   rule below freezes the drift. */
-body::before {
+/* Ambient depth (DARK ONLY): a slow-drifting cyan/magenta mesh gradient
+   plus a static noise grain, both fixed behind all content (html carries
+   the base color, so z-index -1 paints above it but below everything
+   else). Kept at single-digit alpha — atmosphere, not wallpaper — and the
+   global reduced-motion rule below freezes the drift. */
+[data-theme="dark"] body::before {
   content: '';
   position: fixed;
   inset: -20%;
@@ -112,7 +174,7 @@ body::before {
     radial-gradient(50% 45% at 65% 88%, rgba(124, 34, 200, 0.06), transparent 70%);
   animation: mesh-drift 36s ease-in-out infinite alternate;
 }
-body::after {
+[data-theme="dark"] body::after {
   content: '';
   position: fixed;
   inset: 0;
@@ -126,9 +188,12 @@ body::after {
   to   { transform: translate3d(3%, 2%, 0) scale(1.06); }
 }
 
-/* Chromatic display text: cyan-to-magenta mask, slowly cycling. The solid
-   color is the fallback for browsers without background-clip: text. */
-.chroma-text {
+/* Chromatic display text. Light theme: plain white, as the hero always was
+   on its vivid banner gradients. Dark: a cyan-to-magenta mask, slowly
+   cycling; the solid color is the fallback for browsers without
+   background-clip: text. */
+.chroma-text { color: #fff; }
+[data-theme="dark"] .chroma-text {
   color: var(--neon-cyan);
   background: linear-gradient(90deg, #00f3ff 0%, #ff00ff 50%, #00f3ff 100%);
   background-size: 200% 100%;
@@ -139,9 +204,59 @@ body::after {
 }
 @keyframes chroma-shift { to { background-position: 200% 0; } }
 
-/* Floating translucent geometry for the hero. Positions/sizes are set
-   inline per shape; this owns the material and the drift. */
-.hero-shape {
+/* Hero badge chip and CTA. LIGHT: the classic frosted-white chip and the
+   solid white pill button. DARK: cyan-edged glass chip and a neon outline
+   button that fills with the gradient on hover. */
+.hero-badge {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 3px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+[data-theme="dark"] .hero-badge {
+  background: rgba(0, 243, 255, 0.10);
+  border-color: rgba(0, 243, 255, 0.35);
+  color: var(--aloe-deep);
+}
+.hero-cta {
+  padding: 10px 22px;
+  border: 1.5px solid transparent;
+  border-radius: var(--r-pill);
+  background: #fff;
+  color: #182420;
+  font-size: 14px;
+  font-weight: 700;
+  transition: background 0.18s, color 0.18s, border-color 0.18s, box-shadow 0.25s,
+              transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.hero-cta:active { transform: scale(0.95); }
+[data-theme="dark"] .hero-cta {
+  background: transparent;
+  border-color: rgba(0, 243, 255, 0.55);
+  color: var(--aloe-deep);
+}
+[data-theme="dark"] .hero-cta:hover,
+[data-theme="dark"] .hero-cta:focus-visible {
+  background: var(--flame-gradient);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 0 16px rgba(0, 243, 255, 0.35), 0 0 30px rgba(255, 0, 255, 0.22);
+  transform: translateY(-1px);
+}
+
+/* Floating translucent geometry for the hero — part of the cyberpunk look,
+   so it simply does not exist in light. Positions/sizes are set inline per
+   shape; this owns the material and the drift. */
+.hero-shape { display: none; }
+[data-theme="dark"] .hero-shape {
+  display: block;
   position: absolute;
   pointer-events: none;
   border: 1px solid rgba(0, 243, 255, 0.28);
@@ -155,51 +270,81 @@ body::after {
   to   { transform: translateY(-14px) rotate(calc(var(--tilt, 12deg) + 6deg)); }
 }
 
-/* Neon CTA: cyan outline at rest, cyan-to-magenta glow fill on hover, with
-   a springy overshoot curve and a press-down on :active for the physical
-   feel. Disabled stays inert. */
+/* Card/hero CTA. One class, two personalities:
+   LIGHT — the classic filled pill (flame gradient, white text); the
+   --ghost variant is the classic outline pill (Choose options).
+   DARK — both become the neon cyan outline that fills with the glowing
+   cyan-to-magenta gradient on hover, springy overshoot curve and a
+   press-down on :active. Disabled stays inert in both. */
 .neon-cta {
   padding: 7px 14px;
-  border: 1.5px solid rgba(0, 243, 255, 0.55);
+  border: 1.5px solid transparent;
   border-radius: var(--r-pill);
-  background: transparent;
-  color: var(--aloe-deep);
+  background: var(--flame-gradient);
+  color: #fff;
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
   transition: background 0.18s, color 0.18s, border-color 0.18s, box-shadow 0.25s,
               transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.neon-cta:hover:not(:disabled),
-.neon-cta:focus-visible:not(:disabled) {
-  background: var(--flame-gradient);
-  border-color: transparent;
-  color: #fff;
-  box-shadow: 0 0 16px rgba(0, 243, 255, 0.35), 0 0 30px rgba(255, 0, 255, 0.22);
-  transform: translateY(-1px);
-}
+.neon-cta:hover:not(:disabled) { filter: saturate(1.08) brightness(0.97); }
 .neon-cta:active:not(:disabled) { transform: scale(0.95); }
 .neon-cta:disabled {
-  border-color: rgba(255, 255, 255, 0.12);
+  background: var(--line);
   color: var(--ink-soft);
   cursor: not-allowed;
 }
+.neon-cta--ghost {
+  background: var(--card);
+  border-color: var(--line);
+  color: var(--ink);
+}
+.neon-cta--ghost:hover:not(:disabled) { filter: none; border-color: var(--flame); color: var(--flame-deep); }
 
-/* Product card: dark translucent panel whose ::after is a cursor-tracked
-   spotlight (the card sets --mx/--my from onMouseMove). Opacity-only
-   reveal, so the hover cost is one composited layer. */
+[data-theme="dark"] .neon-cta,
+[data-theme="dark"] .neon-cta--ghost {
+  background: transparent;
+  border-color: rgba(0, 243, 255, 0.55);
+  color: var(--aloe-deep);
+}
+[data-theme="dark"] .neon-cta:hover:not(:disabled),
+[data-theme="dark"] .neon-cta:focus-visible:not(:disabled) {
+  background: var(--flame-gradient);
+  border-color: transparent;
+  color: #fff;
+  filter: none;
+  box-shadow: 0 0 16px rgba(0, 243, 255, 0.35), 0 0 30px rgba(255, 0, 255, 0.22);
+  transform: translateY(-1px);
+}
+[data-theme="dark"] .neon-cta:disabled {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--ink-soft);
+}
+
+/* Product card. LIGHT: the classic white card with a small lift on hover.
+   DARK: a translucent panel whose ::after is a cursor-tracked spotlight
+   (the card sets --mx/--my from onMouseMove) — opacity-only reveal, so the
+   hover cost is one composited layer. */
 .product-card {
   position: relative;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border: 1px solid transparent;
   border-radius: var(--r);
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--card);
   box-shadow: var(--shadow);
   transition: transform 0.2s, box-shadow 0.25s, border-color 0.25s;
 }
-.product-card::after {
+.product-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
+
+[data-theme="dark"] .product-card {
+  border-color: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.035);
+}
+[data-theme="dark"] .product-card::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -210,8 +355,8 @@ body::after {
   background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%),
     rgba(0, 243, 255, 0.13), transparent 65%);
 }
-.product-card:hover { transform: translateY(-3px); border-color: rgba(0, 243, 255, 0.35); box-shadow: var(--shadow-lift); }
-.product-card:hover::after { opacity: 1; }
+[data-theme="dark"] .product-card:hover { transform: translateY(-3px); border-color: rgba(0, 243, 255, 0.35); }
+[data-theme="dark"] .product-card:hover::after { opacity: 1; }
 
 /* First focusable control for keyboard users. Off-screen until Tab, then
    sits above the fixed header so it is not painted under it. */
@@ -222,8 +367,8 @@ body::after {
   z-index: 400;
   padding: 8px 14px;
   border-radius: var(--r-sm);
-  background: var(--neon-cyan);
-  color: #051014;
+  background: var(--ink);
+  color: var(--paper);
   font-size: 13px;
   font-weight: 700;
   transform: translateY(-150%);
@@ -274,14 +419,19 @@ body::after {
   background: #fff;
 }
 
-/* Three-tier retail header — floating frosted glass panel: translucent
-   obsidian + heavy backdrop blur + a 1px semitransparent edge, so the
-   catalogue scrolls visibly beneath it. */
+/* Three-tier retail header. LIGHT: the classic solid card. DARK: a
+   floating frosted glass panel — translucent obsidian + heavy backdrop
+   blur + a 1px semitransparent edge, so the catalogue scrolls visibly
+   beneath it. */
 .site-header {
   position: fixed;
   inset: 0 0 auto;
   z-index: 100;
   height: var(--header-height);
+  background: var(--card);
+  box-shadow: 0 1px 0 var(--line);
+}
+[data-theme="dark"] .site-header {
   background: rgba(9, 9, 11, 0.45);
   backdrop-filter: blur(24px) saturate(1.3);
   -webkit-backdrop-filter: blur(24px) saturate(1.3);
@@ -318,7 +468,8 @@ body::after {
 .utility-bar nav { display: flex; align-items: center; gap: 10px; }
 .utility-bar a:hover { color: var(--footer-heading); }
 
-.main-bar { height: 64px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.main-bar { height: 64px; border-bottom: 1px solid var(--line); }
+[data-theme="dark"] .main-bar { border-bottom-color: rgba(255, 255, 255, 0.06); }
 .main-bar__inner { height: 100%; align-items: center; }
 .main-bar__desktop { display: flex; gap: 28px; }
 .main-bar__mobile { display: none; }
@@ -353,21 +504,26 @@ body::after {
   max-width: 620px;
   height: 40px;
   padding-left: 13px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid #aab8af;
   border-radius: var(--r-sm);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--card);
   color: var(--ink-soft);
   transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s;
 }
+.site-search:focus-within { border-color: var(--aloe); box-shadow: 0 0 0 2px var(--aloe-tint); }
 
-/* Focus: expand slightly and emit the cyan glow. */
-.site-search:focus-within {
+[data-theme="dark"] .site-search {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+}
+/* Dark focus: expand slightly and emit the cyan glow. */
+[data-theme="dark"] .site-search:focus-within {
   border-color: var(--neon-cyan);
   box-shadow: 0 0 0 1px rgba(0, 243, 255, 0.45), 0 0 18px rgba(0, 243, 255, 0.30);
   transform: scale(1.012);
 }
 .site-search input { min-width: 0; height: 100%; border: 0; outline: 0; padding: 0 10px; color: var(--ink); font: inherit; background: transparent; }
-.site-search > button { align-self: stretch; border: 0; border-left: 1px solid var(--line); background: var(--aloe); color: #051014; }
+.site-search > button { align-self: stretch; border: 0; border-left: 1px solid var(--line); background: var(--aloe); color: var(--on-accent); }
 
 .main-actions { display: flex; align-items: stretch; height: 100%; margin-left: auto; }
 .main-action {
@@ -394,6 +550,39 @@ body::after {
   color: var(--ink-soft);
 }
 .notification-action:hover { border-color: var(--aloe); }
+
+/* Light/dark toggle. Both icons stay mounted, stacked in one well; the
+   data-theme flip cross-rotates them (sun spins out, moon spins in) on a
+   springy curve — a transition, not a remount blink. The desktop variant
+   matches the notification pill; mobile reuses .mobile-icon and only
+   needs the stacking context. */
+.theme-toggle { position: relative; }
+.theme-toggle--desktop {
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  margin-right: 4px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink-soft);
+}
+.theme-toggle--desktop:hover { border-color: var(--aloe); color: var(--ink); }
+[data-theme="dark"] .theme-toggle--desktop:hover { box-shadow: 0 0 12px rgba(0, 243, 255, 0.25); }
+.theme-toggle__icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -10px 0 0 -10px;    /* center the 20px icon in any well size */
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease-in-out;
+}
+.theme-toggle__moon { opacity: 0; transform: rotate(-90deg) scale(0.4); }
+[data-theme="dark"] .theme-toggle__sun { opacity: 0; transform: rotate(90deg) scale(0.4); }
+[data-theme="dark"] .theme-toggle__moon { opacity: 1; transform: none; }
+.theme-toggle:active .theme-toggle__icon { transform: scale(0.8); }
 .account-action { position: relative; display: flex; }
 .account-menu {
   position: absolute;
@@ -410,10 +599,13 @@ body::after {
   padding: 7px;
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
+  background: var(--card);
+  box-shadow: var(--shadow-lift);
+}
+[data-theme="dark"] .account-menu {
   background: rgba(16, 16, 22, 0.92);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  box-shadow: var(--shadow-lift);
 }
 .account-menu > * { padding: 9px 10px; border: 0; border-radius: 4px; background: transparent; color: var(--ink); font-size: 13px; text-align: left; }
 .account-menu > span { overflow: hidden; color: var(--ink-soft); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
@@ -447,7 +639,8 @@ body::after {
   font-size: 9px;
 }
 
-.category-bar { position: relative; height: 44px; background: transparent; }
+.category-bar { position: relative; height: 44px; background: var(--card); }
+[data-theme="dark"] .category-bar { background: transparent; }
 .category-bar__inner { display: flex; align-items: center; height: 100%; overflow: hidden; }
 .category-bar__inner > button {
   position: relative;
@@ -493,11 +686,15 @@ body::after {
   right: 0;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
+  background: var(--card);
+  box-shadow: 0 16px 30px rgba(24, 36, 32, .13);
+  animation: mega-menu-in 140ms ease-out both;
+}
+[data-theme="dark"] .subcategory-panel {
   background: rgba(12, 12, 18, 0.92);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   box-shadow: 0 16px 40px rgba(0, 0, 0, .55);
-  animation: mega-menu-in 140ms ease-out both;
 }
 .subcategory-panel__inner { padding-block: 22px 26px; }
 .subcategory-panel__heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; font-family: var(--display); font-size: 18px; font-weight: 750; }
@@ -705,9 +902,9 @@ button { cursor: pointer; font: inherit; }
     gap: 28px;
   }
 
-  /* Filtering sidebar: holographic blueprint panel — translucent glass,
-     cyan hairline dividers, and a glowing magenta indicator on the active
-     filter instead of the old tinted-green fill. */
+  /* Filtering sidebar. LIGHT: the classic solid card. DARK: holographic
+     blueprint panel — translucent glass, cyan hairline dividers, glowing
+     magenta indicator on the active filter. */
   .category-pane {
     display: block;
     position: sticky;
@@ -715,8 +912,12 @@ button { cursor: pointer; font: inherit; }
     max-height: calc(100vh - var(--header-height) - 40px);
     overflow-y: auto;
     padding: 18px 14px;
-    border: 1px solid rgba(0, 243, 255, 0.20);
+    border: 1px solid var(--line);
     border-radius: var(--r-sm);
+    background: var(--card);
+  }
+  [data-theme="dark"] .category-pane {
+    border-color: rgba(0, 243, 255, 0.20);
     background: rgba(255, 255, 255, 0.03);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -747,11 +948,12 @@ button { cursor: pointer; font: inherit; }
   }
 
   .category-pane button { transition: background 0.15s, color 0.15s, box-shadow 0.2s; }
-  .category-pane button:hover { background: rgba(0, 243, 255, 0.07); color: var(--aloe-deep); }
-  .category-pane button.is-active {
+  .category-pane button:hover { background: var(--paper); color: var(--aloe-deep); }
+  .category-pane button.is-active { background: var(--aloe-tint); color: var(--aloe-deep); font-weight: 700; }
+  [data-theme="dark"] .category-pane button:hover { background: rgba(0, 243, 255, 0.07); }
+  [data-theme="dark"] .category-pane button.is-active {
     background: var(--flame-tint);
     color: var(--flame-deep);
-    font-weight: 700;
     box-shadow: inset 2px 0 0 var(--flame), 0 0 14px rgba(255, 0, 255, 0.16);
   }
   .category-pane__group { padding-top: 4px; border-top: 1px solid var(--line); }
@@ -855,11 +1057,15 @@ button { cursor: pointer; font: inherit; }
     overflow-y: auto;
     border-top: 1px solid var(--line);
     border-bottom: 1px solid var(--line);
+    background: var(--card);
+    box-shadow: 0 18px 38px rgba(24, 36, 32, .16);
+    animation: mega-menu-in 150ms ease-out both;
+  }
+  [data-theme="dark"] .category-mega-menu {
     background: rgba(12, 12, 18, 0.92);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     box-shadow: 0 18px 44px rgba(0, 0, 0, .55);
-    animation: mega-menu-in 150ms ease-out both;
   }
 
   .category-mega-menu__inner {
@@ -1401,7 +1607,7 @@ button { cursor: pointer; font: inherit; }
   border: 0;
   border-radius: var(--r-pill);
   background: var(--aloe);
-  color: #051014;
+  color: var(--on-accent);
   box-shadow: var(--shadow-lift);
   cursor: pointer;
 }

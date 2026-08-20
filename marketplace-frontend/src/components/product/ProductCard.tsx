@@ -81,7 +81,7 @@ export function ProductCard({ product }: Props) {
           the shopper's place, filters or scroll. */}
       <Link
         to={`/products/${product.id}`}
-        style={{ position: 'relative', display: 'block', height: 180, flexShrink: 0, background: '#14141c' }}
+        style={{ position: 'relative', display: 'block', height: 180, flexShrink: 0, background: 'var(--img-well)' }}
       >
         <img
           src={productImageUrl(product, 640, 480)}
@@ -97,7 +97,7 @@ export function ProductCard({ product }: Props) {
         {isNewIn(product) && (
           <span style={{
             position: 'absolute', top: 8, left: 8,
-            background: 'var(--aloe)', color: '#051014',
+            background: 'var(--aloe)', color: 'var(--on-accent)',
             fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 'var(--r-sm)',
           }}>
             New in
@@ -138,7 +138,7 @@ export function ProductCard({ product }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 6 }}>
           <PriceBlock price={product.price} originalPrice={product.originalPrice} size={18} />
           {needsOptions ? (
-            <Link to={`/products/${product.id}`} className="neon-cta" style={{ display: 'inline-block' }}>
+            <Link to={`/products/${product.id}`} className="neon-cta neon-cta--ghost" style={{ display: 'inline-block' }}>
               Choose options
             </Link>
           ) : (

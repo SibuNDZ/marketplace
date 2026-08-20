@@ -136,7 +136,7 @@ export function PayoutSetupCard() {
               Accepted{status.acceptedAt ? ` on ${new Date(status.acceptedAt).toLocaleDateString()}` : ''}
             </span>
           ) : status.acceptedVersion != null ? (
-            <span style={{ fontSize: 12, color: 'var(--clay)' }}>The terms have changed — please review and accept again.</span>
+            <span style={{ fontSize: 12, color: 'var(--clay)' }}>The terms have changed. Please review and accept again.</span>
           ) : null}
         </div>
         <p style={{ fontSize: 13, color: 'var(--ink-soft)', maxWidth: 640, marginBottom: 8 }}>

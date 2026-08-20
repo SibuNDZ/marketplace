@@ -49,8 +49,8 @@ public class PayoutTerms {
      * commission-rate property this quotes.
      */
     public String text() {
-        return "eRestyu remits your share of each sale — item total minus "
-                + commissionPercentDisplay() + "% commission; delivery fees pass through in full — "
+        return "eRestyu remits your share of each sale (item total minus "
+                + commissionPercentDisplay() + "% commission; delivery fees pass through in full) "
                 + "by EFT to your nominated account within " + payoutWindowDays
                 + " days of the weekly payout run following delivery confirmation.";
     }

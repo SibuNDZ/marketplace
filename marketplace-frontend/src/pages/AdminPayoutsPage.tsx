@@ -155,7 +155,7 @@ export function AdminPayoutsPage() {
                 <span style={{ fontSize: 12, color: 'var(--ink-soft)' }}>
                   {group.banking.complete
                     ? `${group.banking.bankName} ${group.banking.accountNumberLast4}`
-                    : 'Banking details incomplete — batch will not export'}
+                    : 'Banking details incomplete; batch will not export'}
                 </span>
                 <span className="num" style={{ marginLeft: 'auto', fontWeight: 700 }}>{money(group.totalNet)}</span>
               </div>
@@ -179,7 +179,7 @@ export function AdminPayoutsPage() {
                           aria-label={`Select entry for order ${e.orderNumber}`} />
                       </td>
                       <td className="num" style={td}>{e.orderNumber}</td>
-                      <td style={td}>{e.kind === 'ADJUSTMENT' ? `Adjustment${e.note ? ` — ${e.note}` : ''}` : 'Sale'}</td>
+                      <td style={td}>{e.kind === 'ADJUSTMENT' ? `Adjustment${e.note ? `: ${e.note}` : ''}` : 'Sale'}</td>
                       <td className="num" style={td}>{money(e.itemSubtotal)}</td>
                       <td className="num" style={td}>{money(e.deliveryFee)}</td>
                       <td className="num" style={td}>−{money(e.commissionAmount)}</td>

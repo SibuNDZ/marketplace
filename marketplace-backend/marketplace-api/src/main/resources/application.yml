@@ -144,7 +144,7 @@ app:
     # Version of the payout terms text. Bumping this invalidates every
     # vendor's prior acceptance and forces re-acceptance — bump on ANY change
     # to the terms wording or the numbers it quotes.
-    terms-version: ${PAYOUT_TERMS_VERSION:1}
+    terms-version: ${PAYOUT_TERMS_VERSION:2}
     # The selling gate: when true, a vendor with unaccepted terms or
     # incomplete banking details cannot be checked out from (server-enforced
     # 409 at placeOrder). DEFAULT OFF deliberately: flipping it on while

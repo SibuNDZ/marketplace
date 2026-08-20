@@ -78,7 +78,7 @@ export function CheckEmailPage() {
         <>
           <button onClick={resend} disabled={sending || resent}
             style={{
-              background: 'var(--ink)', color: '#fff', border: 'none',
+              background: 'var(--ink)', color: 'var(--paper)', border: 'none',
               borderRadius: 'var(--r-sm)', padding: '11px', fontWeight: 600,
               fontSize: 15, opacity: sending || resent ? 0.6 : 1,
             }}>
@@ -91,7 +91,7 @@ export function CheckEmailPage() {
       ) : (
         <>
           <Link to="/login" style={{
-            background: 'var(--ink)', color: '#fff', borderRadius: 'var(--r-sm)',
+            background: 'var(--ink)', color: 'var(--paper)', borderRadius: 'var(--r-sm)',
             padding: '11px', fontWeight: 600, fontSize: 15, textAlign: 'center',
           }}>
             Continue to sign in

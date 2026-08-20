@@ -186,7 +186,7 @@ export function CartPage() {
             </Field>
 
             <button type="submit" disabled={pay.isPending} style={{
-              width: '100%', padding: '13px', background: 'var(--ink)', color: '#fff',
+              width: '100%', padding: '13px', background: 'var(--ink)', color: 'var(--paper)',
               border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 700, fontSize: 16, marginTop: 6,
             }}>
               {pay.isPending ? 'Continuing…' : 'Continue to payment'}
@@ -250,7 +250,7 @@ export function CartPage() {
         {!isLoading && isEmpty && (
           <div style={{ textAlign: 'center', padding: '60px 0' }}>
             <p style={{ color: 'var(--ink-soft)', marginBottom: 16 }}>Your cart is empty</p>
-            <Link to="/" style={{ padding: '10px 24px', background: 'var(--ink)', color: '#fff', borderRadius: 'var(--r-pill)', fontWeight: 600 }}>
+            <Link to="/" style={{ padding: '10px 24px', background: 'var(--ink)', color: 'var(--paper)', borderRadius: 'var(--r-pill)', fontWeight: 600 }}>
               Browse products
             </Link>
           </div>
@@ -314,7 +314,7 @@ export function CartPage() {
               </div>
               {checkoutError && <ErrorSurface error={checkoutError} onDismiss={() => setCheckoutError(undefined)} />}
               <button disabled={placeOrder.isPending} onClick={() => placeOrder.mutate()} style={{
-                width: '100%', padding: '13px', background: 'var(--ink)', color: '#fff',
+                width: '100%', padding: '13px', background: 'var(--ink)', color: 'var(--paper)',
                 border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 700, fontSize: 16, marginTop: 16,
               }}>
                 {placeOrder.isPending ? 'Placing order…' : 'Continue to payment'}

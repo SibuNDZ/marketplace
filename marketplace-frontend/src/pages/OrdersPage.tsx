@@ -97,7 +97,7 @@ export function OrdersPage() {
             {/* Only the truly-empty case needs a way out to the catalogue;
                 an empty filter just needs a different tab. */}
             {!hasAnyOrders && (
-              <Link to="/" style={{ padding: '10px 24px', background: 'var(--ink)', color: '#fff', borderRadius: 'var(--r-pill)', fontWeight: 600 }}>
+              <Link to="/" style={{ padding: '10px 24px', background: 'var(--ink)', color: 'var(--paper)', borderRadius: 'var(--r-pill)', fontWeight: 600 }}>
                 Browse products
               </Link>
             )}

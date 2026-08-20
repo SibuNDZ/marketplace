@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { BannerConfig, HERO_BANNERS, TILE_BANNERS } from '../../data/banners'
+import { useTheme } from '../../context/ThemeContext'
 
 // Editorial banners only — no discount claims, no countdowns, no urgency.
 // The old slides claimed "up to 40% off" and ticked toward a sale that
@@ -42,8 +43,12 @@ export function PromoCarousel({ onSelect }: Props) {
     return () => clearInterval(id)
   }, [paused])
 
+  const { theme } = useTheme()
   const slide = SLIDES[index]
   const clickable = !!(slide.category && onSelect)
+  // Gradients are data, not CSS, so the theme fork happens here: the same
+  // slide composition on vivid daylight stops or obsidian-metallic ones.
+  const gradient = theme === 'dark' ? slide.gradientDark : slide.gradient
 
   return (
     <div
@@ -56,10 +61,24 @@ export function PromoCarousel({ onSelect }: Props) {
         height: 200, marginBottom: 28, boxShadow: 'var(--shadow)',
       }}>
       <div key={index} style={{
-        position: 'absolute', inset: 0, background: slide.gradient,
+        position: 'absolute', inset: 0, background: gradient,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 40px', animation: 'carousel-fade 0.4s ease',
       }}>
+        {/* Floating translucent geometry — pure decoration, so hidden from
+            AT and click-through (.hero-shape is pointer-events: none). */}
+        <span aria-hidden className="hero-shape" style={{
+          width: 120, height: 120, right: 180, top: 24, borderRadius: 18,
+          ['--tilt' as string]: '14deg',
+        }} />
+        <span aria-hidden className="hero-shape hero-shape--magenta" style={{
+          width: 70, height: 70, right: 320, bottom: 18, borderRadius: '50%',
+          animationDelay: '-4s',
+        }} />
+        <span aria-hidden className="hero-shape" style={{
+          width: 44, height: 44, right: 90, bottom: 42, borderRadius: 8,
+          ['--tilt' as string]: '-18deg', animationDelay: '-7s',
+        }} />
         {/* Stretched-button pattern: the whole category slide is one click
             target, and the CTA is a second, independently focusable control
             layered above it (nested <button>s are invalid HTML). */}
@@ -71,23 +90,15 @@ export function PromoCarousel({ onSelect }: Props) {
           />
         )}
         <div style={{ maxWidth: 420, position: 'relative', pointerEvents: clickable ? 'none' : undefined }}>
-          <span style={{
-            display: 'inline-block',
-            background: 'rgba(255,255,255,0.22)', color: '#fff', fontSize: 11, fontWeight: 700,
-            padding: '3px 10px', borderRadius: 'var(--r-pill)', textTransform: 'uppercase', letterSpacing: '0.04em',
-            marginBottom: 8,
-          }}>{slide.badge}</span>
-          <h2 style={{ fontFamily: 'var(--display)', fontWeight: 800, fontSize: 30, color: '#fff', lineHeight: 1.15, marginBottom: 6 }}>
+          <span className="hero-badge">{slide.badge}</span>
+          <h2 className="chroma-text" style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 30, lineHeight: 1.15, marginBottom: 6 }}>
             {slide.title}
           </h2>
-          <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: 14, marginBottom: 14 }}>{slide.subtitle}</p>
+          <p style={{ color: 'rgba(255,255,255,0.82)', fontSize: 14, marginBottom: 14 }}>{slide.subtitle}</p>
           <button
+            className="hero-cta"
             onClick={clickable ? () => onSelect!(slide.subcategory ?? slide.category!) : undefined}
-            style={{
-              background: '#fff', color: 'var(--ink)', border: 'none',
-              padding: '10px 22px', borderRadius: 'var(--r-pill)', fontWeight: 700, fontSize: 14,
-              pointerEvents: clickable ? 'auto' : undefined,
-            }}>
+            style={{ pointerEvents: clickable ? 'auto' : undefined }}>
             {slide.cta} →
           </button>
         </div>

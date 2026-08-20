@@ -42,7 +42,7 @@ export function CheckoutSuccessPage() {
           <p style={{ color: 'var(--ink-soft)' }}>Loading order…</p>
         ) : null}
         <div style={{ marginTop: 32, display: 'flex', gap: 12, justifyContent: 'center' }}>
-          <Link to="/orders" style={{ padding: '10px 24px', background: 'var(--ink)', color: '#fff', borderRadius: 'var(--r-pill)', fontWeight: 600 }}>
+          <Link to="/orders" style={{ padding: '10px 24px', background: 'var(--ink)', color: 'var(--paper)', borderRadius: 'var(--r-pill)', fontWeight: 600 }}>
             View orders
           </Link>
           <Link to="/" style={{ padding: '10px 24px', border: '1.5px solid var(--line)', borderRadius: 'var(--r-pill)', fontWeight: 600 }}>

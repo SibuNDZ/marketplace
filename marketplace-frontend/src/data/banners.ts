@@ -21,6 +21,8 @@ export interface BannerConfig {
   subtitle: string
   cta: string
   gradient: string
+  /** Dark-theme variant: same composition, obsidian-metallic values. */
+  gradientDark: string
   icon: string
 }
 
@@ -33,6 +35,7 @@ export const BANNERS: BannerConfig[] = [
     subtitle: 'Tongs, boerewors spirals & firelighters from local stalls',
     cta: 'Shop the braai',
     gradient: 'linear-gradient(120deg, #FF7A18 0%, #FF4626 55%, #AF2896 100%)',
+    gradientDark: 'linear-gradient(120deg, #0e0a14 0%, #2a1040 55%, #6e0f8a 100%)',
     icon: '🔥',
   },
   {
@@ -42,6 +45,7 @@ export const BANNERS: BannerConfig[] = [
     subtitle: 'Wool blankets, rooibos, and hand-knit beanies from local stalls',
     cta: 'Explore winter picks',
     gradient: 'linear-gradient(120deg, #2E5CA6 0%, #1E6FE0 55%, #46B4D6 100%)',
+    gradientDark: 'linear-gradient(120deg, #070b14 0%, #0a2438 55%, #0a6a80 100%)',
     icon: '🧣',
   },
   {
@@ -51,6 +55,7 @@ export const BANNERS: BannerConfig[] = [
     subtitle: 'Hand-picked from Cape Town stalls, delivered to your door',
     cta: 'Browse eRestyu',
     gradient: 'linear-gradient(120deg, #C97D00 0%, #FFB020 55%, #FFD76A 100%)',
+    gradientDark: 'linear-gradient(120deg, #0d0c08 0%, #33250a 55%, #8a6410 100%)',
     icon: '🧺',
   },
 
@@ -63,6 +68,7 @@ export const BANNERS: BannerConfig[] = [
     subtitle: 'Rooibos, biltong & small batch preserves from local stalls',
     cta: 'Shop pantry',
     gradient: 'linear-gradient(120deg, #B36A00 0%, #E8A020 55%, #FFC85C 100%)',
+    gradientDark: 'linear-gradient(120deg, #0c0a08 0%, #2e2008 55%, #7a5510 100%)',
     icon: '🧺',
   },
   {
@@ -74,6 +80,7 @@ export const BANNERS: BannerConfig[] = [
     subtitle: 'Hand knit beanies, scarves & streetwear from local makers',
     cta: 'Shop fashion',
     gradient: 'linear-gradient(120deg, #1E5FA6 0%, #1E8FB4 55%, #3EC6C0 100%)',
+    gradientDark: 'linear-gradient(120deg, #070d12 0%, #0a2e3a 55%, #0e7c8c 100%)',
     icon: '🧣',
   },
   {
@@ -87,6 +94,7 @@ export const BANNERS: BannerConfig[] = [
     subtitle: 'Rose gold chains, watches & artisan pieces',
     cta: 'Shop jewellery',
     gradient: 'linear-gradient(120deg, #B76E79 0%, #D9938B 55%, #EEC9B7 100%)',
+    gradientDark: 'linear-gradient(120deg, #120a10 0%, #3a1230 55%, #8a2468 100%)',
     icon: '💍',
   },
   {
@@ -98,6 +106,7 @@ export const BANNERS: BannerConfig[] = [
     subtitle: 'Small batch skincare & self care essentials',
     cta: 'Shop beauty',
     gradient: 'linear-gradient(120deg, #D6408B 0%, #B23FB2 55%, #7B3FE4 100%)',
+    gradientDark: 'linear-gradient(120deg, #100814 0%, #380a44 55%, #8a14b0 100%)',
     icon: '🧴',
   },
   {
@@ -109,6 +118,7 @@ export const BANNERS: BannerConfig[] = [
     subtitle: 'Rugs, décor & furniture from local workshops',
     cta: 'Shop home',
     gradient: 'linear-gradient(120deg, #1F6B4A 0%, #1F8B6E 55%, #2FB4A6 100%)',
+    gradientDark: 'linear-gradient(120deg, #06100e 0%, #0a3030 55%, #10847c 100%)',
     icon: '🛋️',
   },
 ]

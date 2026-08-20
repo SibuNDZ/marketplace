@@ -53,6 +53,7 @@ export function AdminPage() {
           <nav style={{ display: 'flex', gap: 2 }} aria-label="Admin sections">
             <span style={{ padding: '6px 14px', fontSize: 13, fontWeight: 700, color: 'var(--aloe)', borderBottom: '2px solid var(--aloe)' }}>Orders</span>
             <Link to="/admin/feedback" style={{ padding: '6px 14px', fontSize: 13, fontWeight: 600, color: 'var(--ink-soft)' }}>Feedback</Link>
+            <Link to="/admin/payouts" style={{ padding: '6px 14px', fontSize: 13, fontWeight: 600, color: 'var(--ink-soft)' }}>Payouts</Link>
           </nav>
         </div>
         {isLoading ? <p>Loading…</p> : (

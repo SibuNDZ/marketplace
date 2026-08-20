@@ -5,6 +5,7 @@ import com.marketplace.api.entity.OrderStatus;
 import com.marketplace.api.entity.OrderStatusHistory;
 import com.marketplace.api.exception.OrderExceptions.InvalidOrderStateException;
 import com.marketplace.api.exception.OrderExceptions.OrderNotFoundException;
+import com.marketplace.api.payout.CommissionLedgerService;
 import com.marketplace.api.repository.OrderRepository;
 import com.marketplace.api.repository.OrderStatusHistoryRepository;
 import org.springframework.data.domain.Page;
@@ -34,13 +35,16 @@ public class OrderAdminService {
     private final OrderRepository orderRepository;
     private final OrderStatusRecorder recorder;
     private final OrderStatusHistoryRepository historyRepository;
+    private final CommissionLedgerService ledger;
 
     public OrderAdminService(OrderRepository orderRepository,
                              OrderStatusRecorder recorder,
-                             OrderStatusHistoryRepository historyRepository) {
+                             OrderStatusHistoryRepository historyRepository,
+                             CommissionLedgerService ledger) {
         this.orderRepository = orderRepository;
         this.recorder = recorder;
         this.historyRepository = historyRepository;
+        this.ledger = ledger;
     }
 
     @Transactional
@@ -86,6 +90,15 @@ public class OrderAdminService {
         }
         order.setStatus(target);
         recorder.record(order, current, target, adminUserId, note);
+
+        // REFUNDED is DELIVERED-only in the transition map and this generic
+        // path is its sole route, so the ledger reversal lives here. This is
+        // the first side effect REFUNDED has grown — per the class comment,
+        // if it gains more (gateway refund call, restocking), it graduates
+        // into its own method the way cancelOrder did.
+        if (target == OrderStatus.REFUNDED) {
+            ledger.reverseOnRefund(order);
+        }
     }
 
     /**

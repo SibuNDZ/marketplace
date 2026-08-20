@@ -45,6 +45,13 @@ export function PrivacyPolicyPage() {
           in-app feedback form is stored with your account and used to improve
           eRestyu.
         </p>
+        <p>
+          <strong>Vendor banking details</strong>: if you sell on eRestyu, the
+          bank account details you provide are collected solely to pay out your
+          share of sales, and are not used for anything else. They are shown
+          masked (last four digits) everywhere except the payment file sent to
+          the bank.
+        </p>
       </LegalSection>
 
       <LegalSection heading="Why we collect it">

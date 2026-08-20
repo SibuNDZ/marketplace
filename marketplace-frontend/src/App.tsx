@@ -28,6 +28,7 @@ import { ProductFormPage } from './pages/ProductFormPage'
 import { AdminPage } from './pages/AdminPage'
 import { AdminFeedbackPage } from './pages/AdminFeedbackPage'
 import { AdminOrderDetailPage } from './pages/AdminOrderDetailPage'
+import { AdminPayoutsPage } from './pages/AdminPayoutsPage'
 import { PrivacyPolicyPage } from './pages/legal/PrivacyPolicyPage'
 import { TermsPage } from './pages/legal/TermsPage'
 import { AboutPage, CareersPage, ContactPage, ReturnsPage, ShippingInfoPage, HelpPage, HowItWorksPage } from './pages/InfoPages'
@@ -161,6 +162,7 @@ export default function App() {
           <Route path="/vendor/products/:id/edit" element={<RequireAuth><ProductFormPage /></RequireAuth>} />
           <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
           <Route path="/admin/feedback" element={<RequireAuth><AdminFeedbackPage /></RequireAuth>} />
+          <Route path="/admin/payouts" element={<RequireAuth><AdminPayoutsPage /></RequireAuth>} />
           <Route path="/admin/orders/:id" element={<RequireAuth><AdminOrderDetailPage /></RequireAuth>} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsPage />} />

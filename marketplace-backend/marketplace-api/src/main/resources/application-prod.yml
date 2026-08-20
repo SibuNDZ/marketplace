@@ -15,9 +15,12 @@ spring:
 
 server:
   # Railway injects PORT and probes it; server.port in application.yml already
-  # maps it via ${PORT:8080}. forward-headers-strategy is the second required
-  # setting: without it, getRemoteAddr() returns Railway's proxy address and
-  # the rate limiter puts the ENTIRE PLATFORM in one bucket.
+  # maps it via ${PORT:8080}. forward-headers-strategy makes URL building
+  # (redirects, springdoc, Location headers) honour X-Forwarded-Proto/Host.
+  # It does NOT rewrite getRemoteAddr() — the framework strategy only touches
+  # scheme/host/port, so it never fixed the rate limiter as the comment here
+  # once claimed. AuthRateLimitFilter resolves the client from X-Forwarded-For
+  # itself (see clientIp there).
   # Safe on Railway (edge controls X-Forwarded-For); do NOT set this on
   # deployments where clients reach the app directly (header spoofing).
   forward-headers-strategy: framework

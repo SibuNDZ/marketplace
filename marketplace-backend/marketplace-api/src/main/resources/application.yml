@@ -125,6 +125,18 @@ app:
     # the rollback until the first real rand clears end to end on the new
     # provider (payfast-port.md).
     provider: ${PAYMENTS_PROVIDER:stripe}
+  payouts:
+    # ⚠ PLACEHOLDER — the commission percentage is UNSET BUSINESS CONFIG, not
+    # a decision (vendor-payouts.md §5: it must cover the processor's ~3% cut
+    # plus margin, and setting it is the operator's call). 0.125 exists so the
+    # ledger arithmetic is testable; it must be confirmed or overridden via
+    # PAYOUT_COMMISSION_RATE before any payout statement reaches a vendor.
+    # A FRACTION in [0..1]: 0.125 = 12.5%. Per-vendor overrides live on
+    # users.commission_rate; the resolved rate is snapshotted per entry.
+    commission-rate: ${PAYOUT_COMMISSION_RATE:0.125}
+    # One-time catch-up for pre-ledger PAID orders. Dry-run (log only) by
+    # default; set true for a single deploy, then unset. See PayoutBackfillRunner.
+    backfill-commit: ${PAYOUT_BACKFILL_COMMIT:false}
   yoco:
     # Blank defaults, NOT sandbox defaults: Yoco test keys are per-merchant
     # (Yoco app -> Checkout API integration -> Test keys), so there is no

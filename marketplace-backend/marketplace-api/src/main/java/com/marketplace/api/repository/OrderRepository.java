@@ -112,5 +112,18 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
      */
     List<Order> findByStatusAndCreatedAtBefore(OrderStatus status, LocalDateTime cutoff);
 
+    /**
+     * Orders that reached PAID (in any of its later states too) before the
+     * commission ledger existed — i.e. with money kept but no payout entries.
+     * The backfill runner's work list. Ascending id: oldest debt first.
+     */
+    @Query("""
+            SELECT o.id FROM Order o
+            WHERE o.status IN :statuses
+              AND NOT EXISTS (SELECT 1 FROM VendorPayoutEntry e WHERE e.order.id = o.id)
+            ORDER BY o.id ASC
+            """)
+    List<Long> findIdsMissingPayoutEntries(@Param("statuses") Collection<OrderStatus> statuses);
+
     long countByUserId(Long userId);
 }

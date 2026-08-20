@@ -82,6 +82,16 @@ public class User {
     @Column(name = "delivery_fee", nullable = false, precision = 10, scale = 2)
     private BigDecimal deliveryFee = BigDecimal.ZERO;
 
+    /**
+     * Per-vendor commission override (V27), a FRACTION (0.15 = 15%). NULL
+     * means "use the platform default from app.payouts.commission-rate".
+     * This is the CURRENT rate: the resolved rate is snapshotted onto each
+     * payout entry at PAID time, so edits here never rewrite what an
+     * existing entry owes — same principle as deliveryFee above.
+     */
+    @Column(name = "commission_rate", precision = 5, scale = 4)
+    private BigDecimal commissionRate;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -237,6 +247,14 @@ public class User {
 
     public void setDeliveryFee(BigDecimal deliveryFee) {
         this.deliveryFee = deliveryFee;
+    }
+
+    public BigDecimal getCommissionRate() {
+        return commissionRate;
+    }
+
+    public void setCommissionRate(BigDecimal commissionRate) {
+        this.commissionRate = commissionRate;
     }
 
     public String getBusinessName() {

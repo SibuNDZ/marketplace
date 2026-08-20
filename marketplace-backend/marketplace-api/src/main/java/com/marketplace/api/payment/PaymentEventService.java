@@ -2,6 +2,7 @@ package com.marketplace.api.payment;
 
 import com.marketplace.api.entity.Order;
 import com.marketplace.api.entity.OrderStatus;
+import com.marketplace.api.payout.CommissionLedgerService;
 import com.marketplace.api.repository.OrderRepository;
 import com.marketplace.api.service.OrderStatusRecorder;
 import com.marketplace.api.service.OrderTransitions;
@@ -34,10 +35,13 @@ public class PaymentEventService {
 
     private final OrderRepository orderRepository;
     private final OrderStatusRecorder recorder;
+    private final CommissionLedgerService ledger;
 
-    public PaymentEventService(OrderRepository orderRepository, OrderStatusRecorder recorder) {
+    public PaymentEventService(OrderRepository orderRepository, OrderStatusRecorder recorder,
+                               CommissionLedgerService ledger) {
         this.orderRepository = orderRepository;
         this.recorder = recorder;
+        this.ledger = ledger;
     }
 
     /**
@@ -80,6 +84,13 @@ public class PaymentEventService {
         order.setStatus(OrderStatus.PAID);
         recorder.record(order, current, OrderStatus.PAID,
                 order.getUser().getId(), "Payment completed (" + provider + ")");
+        // Same transaction as the status flip, on purpose: an order is never
+        // PAID without its commission ledger entries. If the ledger write
+        // fails, the whole transition rolls back and the provider retries.
+        // This is the ONLY setStatus(PAID) site in the codebase (admin manual
+        // PAID is rejected in OrderAdminService), so this one call covers
+        // every provider.
+        ledger.recordOnPaid(order);
         log.info("Order {} PENDING -> PAID via {} webhook", orderId, provider);
     }
 }

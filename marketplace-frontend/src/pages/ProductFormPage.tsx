@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError, CategoryOption, ProductRequest, ProductResponse, categories as categoriesApi, draftListingFromPhoto, fieldErrorsFrom, uploadProductImage } from '../lib/api'
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { ErrorSurface } from '../components/ui/ErrorSurface'
+import { VariantsEditor } from '../components/vendor/VariantsEditor'
 import { imageUrlAt } from '../lib/productImage'
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
@@ -471,6 +472,27 @@ export function ProductFormPage() {
               </Field>
             </div>
           </div>
+
+          {/* Options manage themselves through their own endpoints, like the
+              photo gallery above — not staged into the form's Save. Create
+              mode only gets the hint: a variant needs a productId to hang
+              off, so the product has to exist first. */}
+          <Field label="Options (sizes, colours)">
+            {isEdit ? (
+              <>
+                <span style={{ fontSize: 12, color: 'var(--ink-soft)', fontWeight: 400 }}>
+                  Each option has its own price and stock, and shoppers must pick one
+                  before adding to cart. With options, the price and stock above stop
+                  being what shoppers see.
+                </span>
+                <VariantsEditor productId={id!} variants={existing?.variants ?? []} />
+              </>
+            ) : (
+              <span style={{ fontSize: 12, color: 'var(--ink-soft)', fontWeight: 400 }}>
+                Save the product first, then add size or colour options from Edit.
+              </span>
+            )}
+          </Field>
 
           {/* PAUSED 2026-08-13, input removed rather than left visible and
               broken. The arithmetic guardrail (must exceed price) proved

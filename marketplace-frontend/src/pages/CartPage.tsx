@@ -1,9 +1,10 @@
 import React, { FormEvent, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api, CartResponse, ApiError, PayResponse, ShippingAddress, fieldErrorsFrom } from '../lib/api'
+import { api, CartLine, CartResponse, ApiError, OrderResponse, PayResponse, ShippingAddress, fieldErrorsFrom } from '../lib/api'
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { ErrorSurface } from '../components/ui/ErrorSurface'
+import { CartLineImage } from '../components/cart/CartLineImage'
 
 const EMPTY_SHIPPING: ShippingAddress = {
   recipientName: '', phone: '', addressLine1: '', addressLine2: '',
@@ -36,7 +37,11 @@ export function CartPage() {
   // POST /orders creates the PENDING order; the address is only submitted
   // at pay-time (POST /orders/{id}/pay), so there's a brief in-between
   // screen rather than the old immediate cart->Stripe redirect.
-  const [pendingOrderId, setPendingOrderId] = useState<number>()
+  const [placedOrder, setPlacedOrder] = useState<OrderResponse>()
+  // Snapshot of the cart lines at placement: POST /orders clears the cart
+  // server-side, and OrderItemResponse carries no imageUrl, so the shipping
+  // step's summary renders from what the shopper just saw, not a refetch.
+  const [placedLines, setPlacedLines] = useState<CartLine[]>([])
   const [shipping, setShipping] = useState<ShippingAddress>(EMPTY_SHIPPING)
   const [payError, setPayError] = useState<ApiError>()
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
@@ -46,26 +51,36 @@ export function CartPage() {
     queryFn: () => api('/api/v1/cart'),
   })
 
+  // variantId identifies WHICH line, same as RightCartPanel: a product can
+  // appear twice in one cart under different options, and a bare productId
+  // call would hit the no-option line every time.
   const updateQty = useMutation({
-    mutationFn: ({ productId, quantity }: { productId: number; quantity: number }) =>
-      api(`/api/v1/cart/items/${productId}`, { method: 'PUT', body: { quantity } }),
+    mutationFn: ({ productId, variantId, quantity }: { productId: number; variantId?: number | null; quantity: number }) =>
+      api(`/api/v1/cart/items/${productId}${variantId != null ? `?variantId=${variantId}` : ''}`,
+        { method: 'PUT', body: { quantity } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cart'] }),
   })
 
   const removeItem = useMutation({
-    mutationFn: (productId: number) => api(`/api/v1/cart/items/${productId}`, { method: 'DELETE' }),
+    mutationFn: ({ productId, variantId }: { productId: number; variantId?: number | null }) =>
+      api(`/api/v1/cart/items/${productId}${variantId != null ? `?variantId=${variantId}` : ''}`,
+        { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cart'] }),
   })
 
   const placeOrder = useMutation({
-    mutationFn: () => api<{ id: number }>('/api/v1/orders', { method: 'POST' }),
-    onSuccess: (order) => setPendingOrderId(order.id),
+    mutationFn: () => api<OrderResponse>('/api/v1/orders', { method: 'POST' }),
+    onSuccess: (order) => {
+      setPlacedLines(lines)
+      setPlacedOrder(order)
+      qc.invalidateQueries({ queryKey: ['cart'] }) // server cleared it at placement
+    },
     onError: (e) => { if (e instanceof ApiError) setCheckoutError(e) },
   })
 
   const pay = useMutation({
     mutationFn: () =>
-      api<PayResponse>(`/api/v1/orders/${pendingOrderId}/pay`, { method: 'POST', body: shipping }),
+      api<PayResponse>(`/api/v1/orders/${placedOrder!.id}/pay`, { method: 'POST', body: shipping }),
     // The response SHAPE says which provider answered: {checkoutUrl} is a
     // Stripe redirect; {processUrl, fields} is PayFast, which wants a form
     // POST of the signed fields in the exact order the backend built them.
@@ -111,19 +126,23 @@ export function CartPage() {
   const lines = cart?.items ?? []
   const isEmpty = lines.length === 0
 
-  if (pendingOrderId) {
+  if (placedOrder) {
     return (
       <>
         <Topbar />
-        <main className="page-shell no-catrail" style={{ maxWidth: 480 }}>
+        {/* Same two-column shape as the cart view below: form where the
+            lines were, summary card on the right. A lone 480px column left
+            the rest of the page empty and the shopper paying blind. */}
+        <main className="page-shell no-catrail">
           <h1 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 26, marginBottom: 8 }}>
             Shipping details
           </h1>
           <p style={{ color: 'var(--ink-soft)', fontSize: 13, marginBottom: 24 }}>
-            Order <span className="num">#{pendingOrderId}</span>. Where should it be delivered?
+            Order <span className="num">#{placedOrder.id}</span>. Where should it be delivered?
           </p>
 
-          <form onSubmit={submitShipping} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 40, alignItems: 'start' }}>
+          <form onSubmit={submitShipping} style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 520 }}>
             {payError && <ErrorSurface error={payError} onDismiss={() => setPayError(undefined)} />}
 
             <Field label="Recipient name" error={fieldErrors.recipientName}>
@@ -176,6 +195,45 @@ export function CartPage() {
               You'll complete payment on our secure payment provider
             </p>
           </form>
+
+          {/* What this address is for: the lines just ordered, with the same
+              thumbnails the cart showed, and the total actually charged
+              (items + delivery fees, from the order itself). */}
+          <aside aria-label="Order summary" style={{ background: 'var(--card)', borderRadius: 'var(--r)', padding: 24, boxShadow: 'var(--shadow)' }}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>Order summary</h2>
+            {placedLines.map(line => (
+              <div key={`${line.productId}:${line.variantId ?? ''}`} style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '10px 0', borderBottom: '1px solid var(--line)',
+              }}>
+                <CartLineImage line={line} size={48} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {line.productName}
+                  </p>
+                  <p style={{ fontSize: 12, color: 'var(--ink-soft)' }}>
+                    {line.variantLabel ? `${line.variantLabel} · ` : ''}Qty <span className="num">{line.quantity}</span>
+                  </p>
+                </div>
+                <p className="num" style={{ fontSize: 13, fontWeight: 600 }}>R{Number(line.lineTotal).toFixed(2)}</p>
+              </div>
+            ))}
+            {placedOrder.deliveryFees.map(f => (
+              <div key={f.vendorName} style={{
+                display: 'flex', justifyContent: 'space-between', gap: 12,
+                padding: '10px 0', borderBottom: '1px solid var(--line)',
+                fontSize: 13, color: 'var(--ink-soft)',
+              }}>
+                <span>Delivery ({f.vendorName})</span>
+                <span className="num">R{Number(f.fee).toFixed(2)}</span>
+              </div>
+            ))}
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 14 }}>
+              <span style={{ fontWeight: 600 }}>Total</span>
+              <span className="num" style={{ fontWeight: 700, fontSize: 18 }}>R{Number(placedOrder.total).toFixed(2)}</span>
+            </div>
+          </aside>
+          </div>
         </main>
       </>
     )
@@ -203,12 +261,16 @@ export function CartPage() {
             {/* Lines */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {lines.map(line => (
-                <div key={line.productId} style={{
+                <div key={`${line.productId}:${line.variantId ?? ''}`} style={{
                   display: 'flex', alignItems: 'center', gap: 16,
                   padding: '16px 0', borderBottom: '1px solid var(--line)',
                 }}>
+                  <CartLineImage line={line} size={64} />
                   <div style={{ flex: 1 }}>
                     <p style={{ fontWeight: 600, marginBottom: 2 }}>{line.productName}</p>
+                    {line.variantLabel && (
+                      <p style={{ fontSize: 13, color: 'var(--ink-soft)' }}>{line.variantLabel}</p>
+                    )}
                     <p className="num" style={{ fontSize: 13, color: 'var(--ink-soft)' }}>R{Number(line.unitPrice).toFixed(2)} each</p>
                     {line.availableStock < line.quantity && (
                       <p style={{ fontSize: 12, color: 'var(--clay)', marginTop: 2 }}>
@@ -221,14 +283,14 @@ export function CartPage() {
                       type="button"
                       className="qty-btn qty-btn--boxed"
                       aria-label={`Decrease quantity of ${line.productName}`}
-                      onClick={() => updateQty.mutate({ productId: line.productId, quantity: line.quantity - 1 })}
+                      onClick={() => updateQty.mutate({ productId: line.productId, variantId: line.variantId, quantity: line.quantity - 1 })}
                     >−</button>
                     <span className="num" style={{ minWidth: 28, textAlign: 'center', fontWeight: 600 }}>{line.quantity}</span>
                     <button
                       type="button"
                       className="qty-btn qty-btn--boxed"
                       aria-label={`Increase quantity of ${line.productName}`}
-                      onClick={() => updateQty.mutate({ productId: line.productId, quantity: line.quantity + 1 })}
+                      onClick={() => updateQty.mutate({ productId: line.productId, variantId: line.variantId, quantity: line.quantity + 1 })}
                     >+</button>
                   </div>
                   <p className="num" style={{ fontWeight: 700, minWidth: 80, textAlign: 'right' }}>
@@ -238,7 +300,7 @@ export function CartPage() {
                     type="button"
                     className="qty-btn"
                     aria-label={`Remove ${line.productName} from cart`}
-                    onClick={() => removeItem.mutate(line.productId)}
+                    onClick={() => removeItem.mutate({ productId: line.productId, variantId: line.variantId })}
                   >×</button>
                 </div>
               ))}

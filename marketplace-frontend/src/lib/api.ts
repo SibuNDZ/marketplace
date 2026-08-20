@@ -226,6 +226,33 @@ export async function draftListingFromPhoto(file: File, _retried = false): Promi
   return res.json()
 }
 
+/**
+ * Authenticated download of a text body (the payout bank CSV). NOT routed
+ * through api() because that helper parses JSON; this shares the same
+ * 401→refresh→retry logic instead of duplicating a bespoke auth path.
+ */
+export async function apiText(path: string, _retried = false): Promise<string> {
+  const headers: Record<string, string> = {}
+  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+
+  let res: Response
+  try {
+    res = await fetch(`${BASE}${path}`, { headers })
+  } catch {
+    throw new ApiError(0, 'Network error',
+      "Couldn't reach the server. Check your connection and try again.")
+  }
+
+  if (res.status === 401 && !_retried) {
+    if (await refreshSession()) return apiText(path, true)
+    clearSession()
+    window.dispatchEvent(new Event('mk:logout'))
+    throw await toApiError(res)
+  }
+  if (!res.ok) throw await toApiError(res)
+  return res.text()
+}
+
 // ---------- DTOs (mirrors backend) ----------
 
 /** POST /api/v1/vendor/products/draft — a suggestion, never a persisted product. */
@@ -514,6 +541,46 @@ export interface ReviewResponse {
   rating: number
   comment?: string
   createdAt: string
+}
+
+// ---------- payouts (admin) ----------
+// Banking arrives MASKED from the server (last 4 only); the full account
+// number exists client-side in exactly one artifact — the downloaded bank
+// CSV — and never in application state.
+export interface MaskedBanking {
+  bankName: string | null
+  accountNumberLast4: string | null
+  complete: boolean
+}
+export interface PayoutPendingEntry {
+  id: number
+  orderId: number
+  orderNumber: string
+  kind: 'PRIMARY' | 'ADJUSTMENT'
+  createdAt: string
+  itemSubtotal: string
+  deliveryFee: string
+  commissionAmount: string
+  netPayable: string
+  note: string | null
+}
+export interface VendorPendingGroup {
+  vendorId: number
+  displayName: string
+  banking: MaskedBanking
+  entries: PayoutPendingEntry[]
+  totalNet: string
+}
+export interface PayoutBatchSummary {
+  id: number
+  approvedAt: string
+  exportedAt: string | null
+  paidAt: string | null
+  paymentReference: string | null
+  entryCount: number
+  vendorCount: number
+  totalNet: string
+  state: 'APPROVED' | 'EXPORTED' | 'PAID'
 }
 
 // ---------- typed endpoints ----------

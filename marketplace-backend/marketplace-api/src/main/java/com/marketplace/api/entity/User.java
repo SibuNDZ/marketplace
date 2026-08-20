@@ -92,6 +92,32 @@ public class User {
     @Column(name = "commission_rate", precision = 5, scale = 4)
     private BigDecimal commissionRate;
 
+    // ── Vendor banking details (V28) ────────────────────────────────────
+    // SENSITIVE. These fields must never appear in a log line or an API
+    // response unmasked — masking (last 4 of the account number, one method,
+    // shippingFor()-style) is the only way they leave the server. The
+    // toString below enumerates its fields explicitly; banking must NEVER be
+    // added to it, because entities get logged wholesale in debug lines.
+    // Completeness is a selling gate enforced in the application, not a
+    // column constraint: customers and not-yet-onboarded vendors
+    // legitimately have all-null rows.
+
+    @Column(name = "account_holder_name", length = 120)
+    private String accountHolderName;
+
+    @Column(name = "bank_name", length = 80)
+    private String bankName;
+
+    @Column(name = "account_number", length = 20)
+    private String accountNumber;
+
+    @Column(name = "branch_code", length = 10)
+    private String branchCode;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "account_type", length = 20)
+    private BankAccountType accountType;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -255,6 +281,59 @@ public class User {
 
     public void setCommissionRate(BigDecimal commissionRate) {
         this.commissionRate = commissionRate;
+    }
+
+    public String getAccountHolderName() {
+        return accountHolderName;
+    }
+
+    public void setAccountHolderName(String accountHolderName) {
+        this.accountHolderName = accountHolderName;
+    }
+
+    public String getBankName() {
+        return bankName;
+    }
+
+    public void setBankName(String bankName) {
+        this.bankName = bankName;
+    }
+
+    public String getAccountNumber() {
+        return accountNumber;
+    }
+
+    public void setAccountNumber(String accountNumber) {
+        this.accountNumber = accountNumber;
+    }
+
+    public String getBranchCode() {
+        return branchCode;
+    }
+
+    public void setBranchCode(String branchCode) {
+        this.branchCode = branchCode;
+    }
+
+    public BankAccountType getAccountType() {
+        return accountType;
+    }
+
+    public void setAccountType(BankAccountType accountType) {
+        this.accountType = accountType;
+    }
+
+    /**
+     * The banking-completeness rule, in ONE place — the selling gate, the
+     * settings UI and the exporter all ask this same method, so they can
+     * never disagree about what "complete" means.
+     */
+    public boolean hasCompleteBankingDetails() {
+        return accountHolderName != null && !accountHolderName.isBlank()
+                && bankName != null && !bankName.isBlank()
+                && accountNumber != null && !accountNumber.isBlank()
+                && branchCode != null && !branchCode.isBlank()
+                && accountType != null;
     }
 
     public String getBusinessName() {

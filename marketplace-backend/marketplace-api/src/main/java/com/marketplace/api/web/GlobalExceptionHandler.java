@@ -13,6 +13,7 @@ import com.marketplace.api.exception.ProductExceptions.DuplicateSkuException;
 import com.marketplace.api.exception.ProductExceptions.ProductNotFoundException;
 import com.marketplace.api.exception.ReviewExceptions.*;
 import com.marketplace.api.payment.PaymentExceptions.PaymentProviderException;
+import com.marketplace.api.payout.PayoutExceptions;
 import com.marketplace.api.service.ProductStockService.InsufficientAdjustmentException;
 import com.marketplace.api.service.VariantSelection.VariantNotApplicableException;
 import com.marketplace.api.service.VariantSelection.VariantRequiredException;
@@ -100,6 +101,20 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidOrderStateException.class)
     public ProblemDetail invalidOrderState(InvalidOrderStateException ex) {
         return problem(HttpStatus.CONFLICT, "Invalid order state", ex.getMessage());
+    }
+
+    @ExceptionHandler(PayoutExceptions.PayoutBatchNotFoundException.class)
+    public ProblemDetail payoutBatchNotFound(PayoutExceptions.PayoutBatchNotFoundException ex) {
+        return problem(HttpStatus.NOT_FOUND, "Payout batch not found", ex.getMessage());
+    }
+
+    // Both 409, same reasoning as InvalidOrderState: the request was
+    // well-formed but conflicts with the resource's current state (already
+    // paid, not exported, non-positive vendor sum, incomplete banking).
+    @ExceptionHandler({PayoutExceptions.InvalidPayoutStateException.class,
+            PayoutExceptions.VendorNotPayableException.class})
+    public ProblemDetail payoutConflict(RuntimeException ex) {
+        return problem(HttpStatus.CONFLICT, "Payout not possible", ex.getMessage());
     }
 
     @ExceptionHandler(EmailAlreadyRegisteredException.class)

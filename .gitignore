@@ -4,6 +4,11 @@ dist/
 *.tsbuildinfo
 .vite/
 
+# Playwright / Vitest
+playwright-report/
+test-results/
+blob-report/
+
 # Backend (Maven)
 target/
 
@@ -15,6 +20,7 @@ target/
 # IDE / OS
 .idea/
 .vscode/
+.metadata/
 *.iml
 .DS_Store
 Thumbs.db

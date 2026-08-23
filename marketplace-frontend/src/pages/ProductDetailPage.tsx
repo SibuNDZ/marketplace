@@ -193,17 +193,9 @@ export function ProductDetailPage() {
           which is 90px and counts only two of the header's three bars —
           the 44px category bar is missing from that sum, so the stripe was
           rendering underneath the header and was invisible. */}
-      <div style={{ position: 'fixed', top: 'var(--header-height)', left: 0, right: 0, height: 5, background: stripe, zIndex: 99 }} />
-      {/* Same arithmetic, same bug: the old padding of 127px sat 9px UNDER a
-          136px header, so the first element on the page was always clipped.
-          It went unnoticed while that element was a small back-link. */}
-      <main className="page-shell no-catrail" style={{ paddingTop: 'calc(var(--header-height) + 5px + 28px)' }}>
-        {/* Everything on this page lives inside one measured column. The
-            page shell itself is full-bleed (--content-max: 100%), which is
-            right for a catalogue grid and wrong for a reading surface: at
-            1920px the old layout stretched the image column to ~1400px and
-            the product photo swallowed the page. */}
-        <div className="pdp" style={{ maxWidth: 1280, margin: '0 auto' }}>
+      <div className="vendor-stripe" style={{ background: stripe }} />
+      <main className="page-shell no-catrail pdp-page">
+        <div className="pdp">
           <ProductBreadcrumb product={product} />
 
           {/* Similar items FIRST, above the product itself. Counter-intuitive
@@ -230,43 +222,38 @@ export function ProductDetailPage() {
           <ProductGallery product={product} />
 
           {/* Buy panel */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Demand line. Renders ONLY when the count is genuinely above
-                the backend's threshold, which today is never — so on the
-                live site this element does not exist. It is not padded,
-                bucketed or softened into "many people": if it says four,
-                four different people bought it in the last 24 hours. */}
+          <div className="pdp-buy">
             {demand?.recentBuyers != null && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--flame)' }}>
+              <div className="demand-line">
                 <span aria-hidden>🔥</span>
                 <span>
                   In demand. <span className="num">{demand.recentBuyers}</span> people bought this in the last 24 hours.
                 </span>
               </div>
             )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 9, height: 9, borderRadius: '50%', background: stripe }} />
-              <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>{product.vendorName}</span>
+            <div className="pdp-vendor">
+              <div className="pdp-vendor__dot" style={{ background: stripe }} />
+              <span className="muted" style={{ fontSize: 13 }}>{product.vendorName}</span>
             </div>
-            <h1 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 26, lineHeight: 1.2, color: 'var(--ink)' }}>{product.name}</h1>
+            <h1 className="pdp-title">{product.name}</h1>
 
             {/* Live review summary — renders only once reviews exist.
                 Clicking jumps to the section rather than opening a modal. */}
             {summary && summary.reviewCount > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <span style={{ color: 'var(--marigold)', fontSize: 14 }}>
+              <div className="pdp-rating">
+                <span className="pdp-rating__stars">
                   {'★'.repeat(Math.round(summary.averageRating))}{'☆'.repeat(5 - Math.round(summary.averageRating))}
                 </span>
-                <a href="#reviews" style={{ fontSize: 13, color: 'var(--trust-blue)' }}>
+                <a href="#reviews">
                   <span className="num">{summary.averageRating.toFixed(1)}</span> (<span className="num">{summary.reviewCount.toLocaleString()}</span> review{summary.reviewCount !== 1 ? 's' : ''})
                 </a>
                 {product.soldCount > 0 && (
-                  <span className="num" style={{ fontSize: 13, color: 'var(--ink-soft)' }}>· {product.soldCount} sold</span>
+                  <span className="num muted" style={{ fontSize: 13 }}>· {product.soldCount} sold</span>
                 )}
               </div>
             )}
 
-            {product.description && <p style={{ color: 'var(--ink-soft)', lineHeight: 1.6 }}>{product.description}</p>}
+            {product.description && <p className="pdp-desc">{product.description}</p>}
             <StockBadge product={product} />
             <PriceBlock
               price={shownPrice}
@@ -287,33 +274,23 @@ export function ProductDetailPage() {
             )}
 
             {needsSignIn && (
-              <div style={{
-                background: 'var(--flame-tint)', border: '1px solid var(--flame)',
-                borderRadius: 'var(--r-sm)', padding: '12px 14px',
-                fontSize: 13, lineHeight: 1.5, marginBottom: 12,
-              }}>
-                <Link
-                  to="/login"
-                  state={{ from: `/products/${id}` }}
-                  style={{ color: 'var(--flame-deep)', fontWeight: 700 }}
-                >
-                  Sign in
-                </Link>{' '}
+              <div className="signin-callout">
+                <Link to="/login" state={{ from: `/products/${id}` }}>Sign in</Link>{' '}
                 to add this to your cart. We will bring you straight back here.
               </div>
             )}
 
             {cartError && <ErrorSurface error={cartError} onDismiss={() => setCartError(undefined)} />}
 
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid var(--line)', borderRadius: 'var(--r-sm)', overflow: 'hidden' }}>
+            <div className="pdp-cta">
+              <div className="qty-box">
                 <button
                   type="button"
                   className="qty-btn"
                   aria-label="Decrease quantity"
                   onClick={() => setQty(q => Math.max(1, q - 1))}
                 >−</button>
-                <span className="num" style={{ padding: '0 12px', minWidth: 32, textAlign: 'center' }}>{qty}</span>
+                <span className="num qty-value">{qty}</span>
                 <button
                   type="button"
                   className="qty-btn"
@@ -321,49 +298,33 @@ export function ProductDetailPage() {
                   onClick={() => setQty(q => Math.min(shownStock, q + 1))}
                 >+</button>
               </div>
-              <button disabled={!canAdd || addToCart.isPending} onClick={() => addToCart.mutate()} style={{
-                flex: 1, padding: '11px 20px', background: canAdd ? 'var(--flame-gradient)' : 'var(--line)',
-                color: canAdd ? '#fff' : 'var(--ink-soft)', border: 'none',
-                borderRadius: 'var(--r-sm)', fontWeight: 700, fontSize: 15,
-              }}>
+              <button disabled={!canAdd || addToCart.isPending} onClick={() => addToCart.mutate()}
+                className={`btn-add${canAdd ? ' is-ready' : ''}`}>
                 {addToCart.isPending ? 'Adding…'
                   : addToCart.isSuccess ? '✓ Added'
                   : hasVariants && !selected ? 'Choose an option'
                   : 'Add to cart'}
               </button>
             </div>
-            <p style={{ fontSize: 12, color: 'var(--ink-soft)' }}>SKU: <span className="num">{product.sku ?? '-'}</span></p>
+            <p className="pdp-sku">SKU: <span className="num">{product.sku ?? '-'}</span></p>
 
-            {/* Who you are buying from. Vendors trade under a business name
-                (V19), so this is a storefront, not a person — and now a real
-                link to that storefront, so a shopper who likes one item can
-                see the rest of the stall. */}
             <Link
               to={`/shop/${product.vendorId}`}
               aria-label={`See all products from ${product.vendorName ?? 'this vendor'}`}
-              style={{
-                marginTop: 4, padding: 14, borderRadius: 'var(--r-sm)',
-                border: '1px solid var(--line)', display: 'flex', gap: 12, alignItems: 'center',
-              }}>
-              <div aria-hidden style={{
-                width: 38, height: 38, borderRadius: '50%', background: stripe,
-                display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 15,
-                flexShrink: 0,
-              }}>
+              className="sold-by">
+              <div aria-hidden className="sold-by__avatar" style={{ background: stripe }}>
                 {(product.vendorName ?? '?').trim().charAt(0).toUpperCase()}
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 11, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Sold by
-                </div>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>{product.vendorName ?? 'Vendor'}</div>
+                <div className="sold-by__kicker">Sold by</div>
+                <div className="sold-by__name">{product.vendorName ?? 'Vendor'}</div>
                 {product.categoryName && (
-                  <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>
+                  <div className="sold-by__meta">
                     Listed in {product.categoryName}{product.handmade ? ' · Handmade' : ''}
                   </div>
                 )}
               </div>
-              <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--ink-soft)', fontSize: 18 }}>›</span>
+              <span aria-hidden className="sold-by__chevron">›</span>
             </Link>
           </div>
         </div>

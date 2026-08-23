@@ -27,7 +27,7 @@ function isNewIn(p: ProductResponse): boolean {
   return ageMs < NEW_IN_DAYS * 86400_000 && p.soldCount === 0
 }
 
-export function ProductCard({ product }: Props) {
+export const ProductCard = React.memo(function ProductCard({ product }: Props) {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const location = useLocation()
@@ -62,11 +62,11 @@ export function ProductCard({ product }: Props) {
   const needsOptions = (product.variants?.length ?? 0) > 0
   const canAdd = product.stock > 0 && !product.deletedAt && !needsOptions
   const isOutOfStock = product.stock === 0 && !product.deletedAt
-  const rating = Number(product.avgRating)
+  const imgSrc = productImageUrl(product, 640, 480)
 
+  // .product-card owns the material and hover lift; the mousemove only feeds
+  // the CSS spotlight (--mx/--my), so React re-renders nothing.
   return (
-    // .product-card owns the material and hover lift; the mousemove only
-    // feeds the CSS spotlight (--mx/--my), so React re-renders nothing.
     <div
       className="product-card"
       onMouseMove={e => {
@@ -81,81 +81,67 @@ export function ProductCard({ product }: Props) {
           the shopper's place, filters or scroll. */}
       <Link
         to={`/products/${product.id}`}
-        style={{ position: 'relative', display: 'block', height: 180, flexShrink: 0, background: 'var(--img-well)' }}
+        className="product-card__media"
       >
-        <img
-          src={productImageUrl(product, 640, 480)}
-          srcSet={productImageSrcSet(product, IMAGE_WIDTHS.card)}
-          sizes={IMAGE_SIZES.card}
-          alt={product.name}
-          width={640}
-          height={480}
-          loading="lazy"
-          decoding="async"
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-        />
-        {isNewIn(product) && (
-          <span style={{
-            position: 'absolute', top: 8, left: 8,
-            background: 'var(--aloe)', color: 'var(--on-accent)',
-            fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 'var(--r-sm)',
-          }}>
-            New in
-          </span>
+        {imgSrc ? (
+          <img
+            src={imgSrc}
+            srcSet={productImageSrcSet(product, IMAGE_WIDTHS.card)}
+            sizes={IMAGE_SIZES.card}
+            alt={product.name}
+            width={640}
+            height={480}
+            loading="lazy"
+            decoding="async"
+          />
+        ) : (
+          <span className="image-well" aria-hidden />
         )}
+        {isNewIn(product) && <span className="product-card__new">New in</span>}
         {isOutOfStock && <OutOfStockOverlay />}
       </Link>
 
-      <div style={{ padding: '12px 14px 14px', display: 'flex', flexDirection: 'column', gap: 5, flex: 1 }}>
-        {/* Vendor */}
-        <span style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{product.vendorName ?? 'Vendor'}</span>
+      <div className="product-card__body">
+        <span className="product-card__vendor">{product.vendorName ?? 'Vendor'}</span>
 
-        {/* Name */}
         <Link
           to={`/products/${product.id}`}
-          style={{ fontWeight: 600, fontSize: 14, color: 'var(--ink)', lineHeight: 1.3, minHeight: 36 }}
+          className="product-card__name"
         >
           {product.name}
         </Link>
 
-        {/* Always present, never blank: a rated product shows its score, an
-            unrated one says "New" rather than leaving a gap that reads as a
-            missing element. */}
         <RatingLine product={product} />
 
         {product.soldCount > 0 && (
-          <span className="num" style={{ fontSize: 11, color: 'var(--ink-soft)' }}>
-            {formatSold(product.soldCount)}
-          </span>
+          <span className="num product-card__sold">{formatSold(product.soldCount)}</span>
         )}
 
-        {/* Urgency — real stock only. The true out-of-stock case moved to
-            the image overlay above; this inline row still carries "No
-            longer available" (soft-deleted) and the low/in-stock states. */}
         {!isOutOfStock && <StockBadge product={product} />}
 
-        {/* Price + Add */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 6 }}>
+        <div className="product-card__row">
           <PriceBlock price={product.price} originalPrice={product.originalPrice} size={18} />
           {needsOptions ? (
-            <Link to={`/products/${product.id}`} className="neon-cta neon-cta--ghost" style={{ display: 'inline-block' }}>
+            <Link
+              to={`/products/${product.id}`}
+              className="product-card__cta product-card__cta--options neon-cta neon-cta--ghost"
+              style={{ display: 'inline-block' }}
+            >
               Choose options
             </Link>
           ) : (
             <button
-              className="neon-cta"
+              className="neon-cta product-card__cta product-card__cta--add"
               disabled={!canAdd || addToCart.isPending}
               onClick={() => addToCart.mutate()}
             >
               {added ? '✓ Added' : 'Add to cart'}
             </button>
           )}
-          {/* TODO(notify-me): "Notify me when available" for isOutOfStock
-              products belongs here, gated behind the transactional-email
-              slice (no email infra to fire the notification yet). Deferred,
-              not rejected — see UI polish pass spec. */}
+          {/* TODO(notify-me): waitlist button — docs/tickets/notify-me-waitlist.md.
+              Gated behind transactional email; do not render a dead control. */}
         </div>
       </div>
     </div>
   )
-}
+})

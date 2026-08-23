@@ -12,6 +12,12 @@ spring:
       auto-commit: false
 
 app:
+  cors:
+    # CorsOrigins reads app.cors.allowed-origins with no in-code default (prod
+    # must set APP_CORS_ALLOWED_ORIGINS explicitly). This file shadows the main
+    # application.yml on the test classpath, so the property has to be here or
+    # every @SpringBootTest context fails to start.
+    allowed-origins: http://localhost:5173
   ai:
     # api-key is deliberately blank here and set per-test:
     #   ListingDraftTest gives it a dummy value (the model is mocked anyway),

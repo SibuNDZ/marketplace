@@ -2,6 +2,7 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { ProductResponse } from '../../lib/api'
 import { productImageUrl, productImageSrcSet, IMAGE_WIDTHS, IMAGE_SIZES } from '../../lib/productImage'
+import { RatingLine } from './RatingLine'
 
 interface Props {
   product: ProductResponse
@@ -16,13 +17,14 @@ interface Props {
  * vendor line, rating, sold count, stock badge, add-to-cart button — and at
  * 220px+ it dominates whatever it sits under. A rail below the thing you are
  * already reading needs to stay subordinate to it, so this is image, one
- * line of title, and a price. Nothing else.
+ * line of title, a compact rating, and a price.
  *
  * Same tab as the rest of the site. Back restores the product you were
  * evaluating, which is the same trade a new tab was trying to make, without
  * the extra window.
  */
 export function CompactProductCard({ product, width }: Props) {
+  const src = productImageUrl(product, width * 2, width * 2)
   return (
     <Link
       to={`/products/${product.id}`}
@@ -39,28 +41,31 @@ export function CompactProductCard({ product, width }: Props) {
         width: '100%', aspectRatio: '1/1', borderRadius: 'var(--r-sm)',
         overflow: 'hidden', background: '#EAEEED',
       }}>
-        <img
-          src={productImageUrl(product, width * 2, width * 2)}
-          srcSet={productImageSrcSet(product, IMAGE_WIDTHS.card)}
-          // The rail is a fixed pixel width at every breakpoint, so `sizes`
-          // can state it exactly rather than guessing from the viewport.
-          sizes={`${width}px`}
-          alt={product.name}
-          width={width}
-          height={width}
-          loading="lazy"
-          decoding="async"
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-        />
+        {src ? (
+          <img
+            src={src}
+            srcSet={productImageSrcSet(product, IMAGE_WIDTHS.card)}
+            // The rail is a fixed pixel width at every breakpoint, so `sizes`
+            // can state it exactly rather than guessing from the viewport.
+            sizes={`${width}px`}
+            alt={product.name}
+            width={width}
+            height={width}
+            loading="lazy"
+            decoding="async"
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        ) : (
+          <span className="image-well" aria-hidden />
+        )}
       </div>
       <span style={{
         fontSize: 12, lineHeight: 1.35, color: 'var(--ink)',
-        // One line, clipped. A rail's rhythm depends on every card being the
-        // same height, and a two-line title on one card staggers the row.
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
         {product.name}
       </span>
+      <RatingLine product={product} compact />
       <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)' }}>
         <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 400, color: 'var(--ink-soft)' }}>R</span>
         <span className="num">{Number(product.price).toFixed(2)}</span>

@@ -6,6 +6,7 @@ import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { ProductCard } from '../components/product/ProductCard'
 import { CategoryPane } from '../components/product/CategoryPane'
 import { PromoCarousel } from '../components/promo/PromoCarousel'
+import { CategoryBannerRow } from '../components/catalog/CategoryBannerRow'
 import { ExpandedCategories } from '../components/catalog/ExpandedCategories'
 import { FeaturedCarousel } from '../components/catalog/FeaturedCarousel'
 import { RightCartPanel } from '../components/cart/RightCartPanel'
@@ -16,10 +17,10 @@ import { useSellerEntry } from '../hooks/useSellerEntry'
 
 function SectionDivider({ icon, label }: { icon: string; label: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '32px 0 16px' }}>
-      <span style={{ fontSize: 18 }} aria-hidden>{icon}</span>
-      <h2 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 18 }}>{label}</h2>
-      <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
+    <div className="section-divider">
+      <span className="section-divider__icon" aria-hidden>{icon}</span>
+      <h2>{label}</h2>
+      <div className="section-divider__rule" />
     </div>
   )
 }
@@ -30,6 +31,7 @@ export function CatalogPage() {
   const name = searchParams.get('name')?.trim() ?? ''
   const [page, setPage] = useState(0)
   const PAGE_SIZE = 20
+  const [loaded, setLoaded] = useState<ProductResponse[]>([])
 
   // Quick filters live in the URL (?filters=handmade,bestSelling) so the
   // chip row and the right panel's Highlights chips share one source of
@@ -69,29 +71,52 @@ export function CatalogPage() {
   }
 
   const handmadeOnly = activeFilters.has('handmade')
+  const fiveStar = activeFilters.has('fiveStar')
+  const bestSelling = activeFilters.has('bestSelling')
 
   useEffect(() => {
     setPage(0)
-  }, [category, name, handmadeOnly])
+    setLoaded([])
+  }, [category, name, handmadeOnly, fiveStar, bestSelling])
 
-  // Category AND handmade are both server-side. Category is a slug now, and
-  // a top-level slug also matches its subcategories on the backend, so
-  // selecting Fashion returns the jewellery filed one level down.
+  // Category, handmade, rating floor and sales rank are all server-side.
+  // Client-side filter of the loaded page would only search the 20 products
+  // already fetched, which silently lies once there is more than one page.
   const { data, isLoading } = useQuery<Page<ProductResponse>>({
-    queryKey: ['products', category, name, handmadeOnly, page, PAGE_SIZE],
-    queryFn: () => api(
-      `/api/v1/products?page=${page}&size=${PAGE_SIZE}&sort=createdAt,desc`
-      + (category === ALL_SLUG ? '' : `&category=${category}`)
-      + (name ? `&name=${encodeURIComponent(name)}` : '')
-      + (handmadeOnly ? '&handmade=true' : ''),
-    ),
+    queryKey: ['products', category, name, handmadeOnly, fiveStar, bestSelling, page, PAGE_SIZE],
+    queryFn: () => {
+      let q = `/api/v1/products?page=${page}&size=${PAGE_SIZE}`
+        + (category === ALL_SLUG ? '' : `&category=${category}`)
+        + (name ? `&name=${encodeURIComponent(name)}` : '')
+        + (handmadeOnly ? '&handmade=true' : '')
+      if (bestSelling) q += '&minSold=1&rank=sales'
+      else if (fiveStar) q += '&minRating=4.5&rank=rating'
+      else q += '&sort=createdAt,desc'
+      return api(q)
+    },
   })
 
-  const products = data?.content ?? []
+  useEffect(() => {
+    if (!data) return
+    if (page === 0) {
+      setLoaded(data.content)
+      return
+    }
+    setLoaded(prev => {
+      const seen = new Set(prev.map(p => p.id))
+      return [...prev, ...data.content.filter(p => !seen.has(p.id))]
+    })
+  }, [data, page])
 
-  // Real signal: rated well by actual reviewers. Hidden entirely until
-  // review data exists — an empty shelf is not filled with guesses.
-  const recommended = products.filter(p => p.reviewCount > 0 && Number(p.avgRating) >= 4.0)
+  const products = loaded
+
+  const { data: recommendedPage } = useQuery<Page<ProductResponse>>({
+    queryKey: ['products', 'recommended'],
+    queryFn: () => api('/api/v1/products?page=0&size=8&minRating=4.0&rank=rating'),
+    enabled: category === ALL_SLUG && !name && !fiveStar && !bestSelling,
+    staleTime: 5 * 60 * 1000,
+  })
+  const recommended = recommendedPage?.content ?? []
 
   const toggleFilter = (key: QuickFilterKey) => {
     const nextFilters = new Set(activeFilters)
@@ -100,14 +125,9 @@ export function CatalogPage() {
     if (nextFilters.size > 0) next.set('filters', [...nextFilters].join(','))
     else next.delete('filters')
     setSearchParams(next)
-    // handmade changes the QUERY, not just the client-side view, so the
-    // current page number no longer means anything (the effect above resets
-    // it). The other two filter what is already loaded.
   }
 
-  let mainList = products
-  if (activeFilters.has('fiveStar')) mainList = mainList.filter(p => p.reviewCount > 0 && Number(p.avgRating) >= 4.5)
-  if (activeFilters.has('bestSelling')) mainList = [...mainList].filter(p => p.soldCount > 0).sort((a, b) => b.soldCount - a.soldCount)
+  const mainList = products
 
   const found = category === ALL_SLUG ? undefined : findBySlug(categoryTree, category)
   const categoryLabel = category === ALL_SLUG
@@ -123,7 +143,8 @@ export function CatalogPage() {
     <>
       <Topbar />
       <main className="page-shell">
-        <PromoCarousel onSelect={browseCategory} />
+        <PromoCarousel />
+        <CategoryBannerRow onSelect={browseCategory} />
 
         {/* Mobile-only seller strip (hidden on desktop via .seller-strip).
             One line, below the hero, nothing louder: vendor acquisition is
@@ -145,27 +166,22 @@ export function CatalogPage() {
 
           <div className="catalog-results">
             {/* Quick filter chips */}
-            <div className="scroll-rail" style={{ display: 'flex', gap: 8, whiteSpace: 'nowrap' }}>
+            <div className="scroll-rail filter-row">
               {QUICK_FILTERS.map(f => {
                 const isActive = activeFilters.has(f.key)
                 return (
-                  <button key={f.key} onClick={() => toggleFilter(f.key)} style={{
-                    flexShrink: 0, padding: '7px 14px', borderRadius: 'var(--r-pill)',
-                    border: isActive ? '1.5px solid var(--flame)' : '1.5px solid var(--line)',
-                    background: isActive ? 'var(--flame-tint)' : 'var(--card)',
-                    color: isActive ? 'var(--flame-deep)' : 'var(--ink)',
-                    fontWeight: isActive ? 700 : 500, fontSize: 13,
-                  }}>
+                  <button key={f.key} onClick={() => toggleFilter(f.key)}
+                    className={`filter-chip${isActive ? ' is-active' : ''}`}>
                     {f.label}
                   </button>
                 )
               })}
             </div>
 
-            {isLoading ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16, marginTop: 24 }}>
+            {isLoading && loaded.length === 0 ? (
+              <div className="product-grid product-grid--skeletons">
                 {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="skeleton" style={{ borderRadius: 'var(--r)', height: 320 }} />
+                  <div key={i} className="skeleton-card" />
                 ))}
               </div>
             ) : (
@@ -173,7 +189,7 @@ export function CatalogPage() {
                 {category === ALL_SLUG && recommended.length > 0 && (
                   <>
                     <SectionDivider icon="⭐" label="Highly rated" />
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
+                    <div className="product-grid">
                       {recommended.map(p => <ProductCard key={`rec-${p.id}`} product={p} />)}
                     </div>
                   </>
@@ -181,20 +197,16 @@ export function CatalogPage() {
 
                 <SectionDivider icon="🛍️" label={name ? `Results for “${name}”` : categoryLabel} />
                 {mainList.length === 0 ? (
-                  <p style={{ color: 'var(--ink-soft)', fontSize: 14, padding: '20px 0' }}>No products match right now. Try a different category or filter.</p>
+                  <p className="muted-copy">No products match right now. Try a different category or filter.</p>
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
+                  <div className="product-grid">
                     {mainList.map(p => <ProductCard key={p.id} product={p} />)}
                   </div>
                 )}
 
                 {data && page + 1 < data.totalPages && (
-                  <div style={{ textAlign: 'center', marginTop: 32 }}>
-                    <button onClick={() => setPage(p => p + 1)} style={{
-                      padding: '11px 28px', border: '1.5px solid var(--ink)',
-                      borderRadius: 'var(--r-pill)', background: 'transparent',
-                      fontWeight: 600, fontSize: 14,
-                    }}>
+                  <div className="load-more">
+                    <button onClick={() => setPage(p => p + 1)} className="btn-outline">
                       Load more · <span className="num">{products.length}</span> of <span className="num">{data.totalElements}</span>
                     </button>
                   </div>

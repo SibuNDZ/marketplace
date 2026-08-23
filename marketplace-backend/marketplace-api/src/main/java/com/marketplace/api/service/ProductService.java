@@ -148,6 +148,25 @@ public class ProductService {
                           @Nullable String name,
                           @Nullable Long vendorId,
                           Pageable pageable) {
+        return list(categorySlug, handmade, name, vendorId, null, null, null, null, pageable);
+        }
+
+    /**
+     * minRating / minSold / inStock / rank are the catalogue's server-side
+     * ranking filters. rank is a whitelist (created|sales|rating|price);
+     * unknown values fall back to created. The Pageable sort is ignored
+     * when rank is sales/rating/price so a client cannot inject a column.
+     */
+        @Transactional(readOnly = true)
+        public Page<ProductResponse> list(@Nullable String categorySlug,
+                          @Nullable Boolean handmade,
+                          @Nullable String name,
+                          @Nullable Long vendorId,
+                          @Nullable BigDecimal minRating,
+                          @Nullable Long minSold,
+                          @Nullable Boolean inStock,
+                          @Nullable String rank,
+                          Pageable pageable) {
         List<Long> categoryIds = categorySlug == null || categorySlug.isBlank()
                 ? null
                 : categoryService.resolveToIds(categorySlug);
@@ -155,8 +174,15 @@ public class ProductService {
         String searchText = searchDisabled
             ? ""
             : name.strip();
+        String safeRank = sanitizeRank(rank);
+        boolean inStockDisabled = inStock == null || !inStock;
+        boolean ranked = minRating != null || minSold != null
+                || !inStockDisabled
+                || !"created".equals(safeRank);
 
-        if (categoryIds == null && handmade == null && searchDisabled && vendorId == null) return list(pageable);
+        if (categoryIds == null && handmade == null && searchDisabled && vendorId == null && !ranked) {
+            return list(pageable);
+        }
 
         // A real search goes through full-text (V21); everything else stays on
         // the browse query. Splitting on searchDisabled rather than adding a
@@ -179,6 +205,9 @@ public class ProductService {
                         vendorId,
                         tsQuery,
                         "%" + searchText + "%",
+                        minRating,
+                        minSold,
+                        inStockDisabled,
                         unsorted));
             }
             // Nothing survived sanitising (punctuation only, or pure stop
@@ -186,8 +215,32 @@ public class ProductService {
             // an empty tsquery that matches nothing.
         }
 
+        if (ranked) {
+            Pageable unsorted = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+            return toResponses(productRepository.findFilteredRanked(
+                    categoryIds == null,
+                    categoryIds == null ? List.of(-1L) : categoryIds,
+                    handmade,
+                    vendorId,
+                    searchDisabled,
+                    searchText,
+                    minRating,
+                    minSold,
+                    inStockDisabled,
+                    safeRank,
+                    unsorted));
+        }
+
         return toResponses(
             productRepository.findFiltered(categoryIds, handmade, searchDisabled, searchText, vendorId, pageable));
+    }
+
+    private static String sanitizeRank(@Nullable String rank) {
+        if (rank == null || rank.isBlank()) return "created";
+        return switch (rank.strip().toLowerCase()) {
+            case "sales", "rating", "price", "created" -> rank.strip().toLowerCase();
+            default -> "created";
+        };
     }
 
     /**

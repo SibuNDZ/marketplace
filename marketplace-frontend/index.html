@@ -8,7 +8,7 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="any" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <!-- Theme BEFORE first paint: saved manual choice wins, else the OS
-         preference. Inline and synchronous on purpose — this is the whole
+         preference. Inline and synchronous on purpose - this is the whole
          no-flicker guarantee; React only reads the attribute afterwards. -->
     <script>
       (function () {
@@ -23,9 +23,10 @@
         }
       })()
     </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <!-- The Google Fonts <link>s that used to sit here are deliberately not
+         restored: this branch self-hosts the latin subsets via @fontsource in
+         main.tsx (audit 3.4), so re-adding them would put a render-blocking
+         third-party request back on the critical path. -->
   </head>
   <body>
     <div id="root"></div>

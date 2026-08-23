@@ -66,25 +66,28 @@ public class DiscoveryController {
     }
 
     @GetMapping("/api/v1/products/popular")
-    public List<ProductResponse> popular(@RequestParam(defaultValue = "sales") String by) {
-        // Whitelist switch — NEVER format the raw parameter into SQL.
-        // orderColumn is one of three string literals; the user's input
-        // is discarded and the literal is what enters the query.
+    public List<ProductResponse> popular(@RequestParam(defaultValue = "sales") String by,
+                                         @RequestParam(defaultValue = "12") int limit) {
         String orderColumn = switch (by) {
             case "rating" -> "weighted_rating";
             case "views"  -> "views_30d";
             default       -> "sales_count";
         };
+        int n = Math.clamp(limit, 1, 24);
 
         @SuppressWarnings("unchecked")
         List<Number> ids = em.createNativeQuery("""
                 SELECT pp.product_id FROM product_popularity pp
                 JOIN products p ON p.id = pp.product_id
                 WHERE p.deleted_at IS NULL
+                  AND ((NOT EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = p.id)
+                        AND p.stock_quantity > 0)
+                       OR EXISTS (SELECT 1 FROM product_variants v
+                                  WHERE v.product_id = p.id AND v.stock_quantity > 0))
                 ORDER BY pp.%s DESC, pp.product_id ASC
                 LIMIT :n
                 """.formatted(orderColumn))
-                .setParameter("n", SHELF_SIZE)
+                .setParameter("n", n)
                 .getResultList();
 
         return inOrder(ids.stream().map(Number::longValue).toList());

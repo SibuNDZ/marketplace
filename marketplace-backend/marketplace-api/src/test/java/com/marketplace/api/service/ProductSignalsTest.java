@@ -163,4 +163,63 @@ class ProductSignalsTest {
         assertThat(quietResp.soldCount()).isZero();
         assertThat(quietResp.reviewCount()).isZero();
     }
+
+    @Test
+    void catalogList_minSold_ranksBySales_andDropsUnsolds() {
+        Product quiet = fixtures.product("Rank Quiet", "SKU-SIG-RK-Q", new BigDecimal("5"), 10);
+        Product sold = fixtures.product("Rank Sold", "SKU-SIG-RK-S", new BigDecimal("90"), 10);
+        User admin = fixtures.admin("sig-rank-admin");
+        User buyer = fixtures.customerWithCart("sig-rank-buyer", sold, 3);
+        var order = orderService.placeOrder(buyer.getId());
+        fixtures.deliverOrder(order.id(), admin.getId());
+        popularityJob.rebuild();
+
+        var page = productService.list(null, null, null, null,
+                null, 1L, null, "sales", PageRequest.of(0, 50));
+        assertThat(page.getContent()).extracting(ProductResponse::id)
+                .contains(sold.getId())
+                .doesNotContain(quiet.getId());
+        // Order-independent: the class shares one database and other tests
+        // sell more units of other products, so "first" is not ours to claim.
+        // What rank=sales promises is a non-increasing sales order, and that
+        // anything ranked above ours genuinely outsold it.
+        var content = page.getContent();
+        assertThat(content).extracting(ProductResponse::soldCount)
+                .isSortedAccordingTo(java.util.Comparator.reverseOrder());
+        int ours = content.indexOf(content.stream()
+                .filter(r -> r.id().equals(sold.getId())).findFirst().orElseThrow());
+        assertThat(content.subList(0, ours)).allSatisfy(r ->
+                assertThat(r.soldCount()).isGreaterThanOrEqualTo(3));
+    }
+
+    @Test
+    void catalogList_minRating_hidesUnreviewed() {
+        Product quiet = fixtures.product("Rate Quiet", "SKU-SIG-RT-Q", new BigDecimal("20"), 10);
+        Product rated = fixtures.product("Rate Star", "SKU-SIG-RT-S", new BigDecimal("20"), 10);
+        User buyer = fixtures.customer("sig-rate-buyer");
+        addReview(rated.getId(), buyer.getId(), 5);
+        popularityJob.rebuild();
+
+        var page = productService.list(null, null, null, null,
+                new BigDecimal("4.5"), null, null, "rating", PageRequest.of(0, 50));
+        assertThat(page.getContent()).extracting(ProductResponse::id)
+                .contains(rated.getId())
+                .doesNotContain(quiet.getId());
+    }
+
+    @Test
+    void catalogList_priceRank_inStockOnly() {
+        Product out = fixtures.product("Price Out", "SKU-SIG-PR-O", new BigDecimal("1.00"), 0);
+        Product cheap = fixtures.product("Price Cheap", "SKU-SIG-PR-C", new BigDecimal("3.00"), 5);
+        Product dear = fixtures.product("Price Dear", "SKU-SIG-PR-D", new BigDecimal("40.00"), 5);
+
+        var page = productService.list(null, null, null, null,
+                null, null, true, "price", PageRequest.of(0, 50));
+        assertThat(page.getContent()).extracting(ProductResponse::id)
+                .contains(cheap.getId(), dear.getId())
+                .doesNotContain(out.getId());
+        int cheapIdx = page.getContent().stream().map(ProductResponse::id).toList().indexOf(cheap.getId());
+        int dearIdx = page.getContent().stream().map(ProductResponse::id).toList().indexOf(dear.getId());
+        assertThat(cheapIdx).isLessThan(dearIdx);
+    }
 }

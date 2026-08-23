@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -80,6 +81,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query(value = """
            SELECT p.* FROM products p
            LEFT JOIN users u ON u.id = p.vendor_id
+           LEFT JOIN product_popularity pop ON pop.product_id = p.id
            WHERE p.deleted_at IS NULL
              AND (:categoryFilterDisabled = TRUE OR p.category_id IN (:categoryIds))
              AND (:handmade IS NULL OR p.handmade = :handmade)
@@ -87,12 +89,20 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
              AND (p.search_vector @@ to_tsquery('english', :tsQuery)
                   OR u.business_name ILIKE :likeText
                   OR u.username ILIKE :likeText)
+             AND (:minRating IS NULL OR (pop.review_count > 0 AND pop.avg_rating >= :minRating))
+             AND (:minSold IS NULL OR COALESCE(pop.sales_count, 0) >= :minSold)
+             AND (:inStockDisabled = TRUE
+                  OR (NOT EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = p.id)
+                      AND p.stock_quantity > 0)
+                  OR EXISTS (SELECT 1 FROM product_variants v
+                             WHERE v.product_id = p.id AND v.stock_quantity > 0))
            ORDER BY ts_rank(p.search_vector, to_tsquery('english', :tsQuery)) DESC,
                     p.created_at DESC
            """,
            countQuery = """
            SELECT count(*) FROM products p
            LEFT JOIN users u ON u.id = p.vendor_id
+           LEFT JOIN product_popularity pop ON pop.product_id = p.id
            WHERE p.deleted_at IS NULL
              AND (:categoryFilterDisabled = TRUE OR p.category_id IN (:categoryIds))
              AND (:handmade IS NULL OR p.handmade = :handmade)
@@ -100,6 +110,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
              AND (p.search_vector @@ to_tsquery('english', :tsQuery)
                   OR u.business_name ILIKE :likeText
                   OR u.username ILIKE :likeText)
+             AND (:minRating IS NULL OR (pop.review_count > 0 AND pop.avg_rating >= :minRating))
+             AND (:minSold IS NULL OR COALESCE(pop.sales_count, 0) >= :minSold)
+             AND (:inStockDisabled = TRUE
+                  OR (NOT EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = p.id)
+                      AND p.stock_quantity > 0)
+                  OR EXISTS (SELECT 1 FROM product_variants v
+                             WHERE v.product_id = p.id AND v.stock_quantity > 0))
            """,
            nativeQuery = true)
     Page<Product> searchRanked(@Param("categoryFilterDisabled") boolean categoryFilterDisabled,
@@ -108,7 +125,81 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                @Param("vendorId") Long vendorId,
                                @Param("tsQuery") String tsQuery,
                                @Param("likeText") String likeText,
+                               @Param("minRating") BigDecimal minRating,
+                               @Param("minSold") Long minSold,
+                               @Param("inStockDisabled") boolean inStockDisabled,
                                Pageable pageable);
+
+    /*
+     * In-stock predicate, stated once: a product either has NO variants and
+     * its own stock_quantity is the truth, or it HAS variants and only their
+     * stock counts (products.stock_quantity is then ignored and never written,
+     * see ProductVariant). Testing p.stock_quantity alone hides every variant
+     * product whose parent column happens to be 0.
+     */
+    /**
+     * Browse path with popularity filters and a whitelist rank (sales |
+     * rating | price | created). Native so ORDER BY can switch on the
+     * sanitised rank token without exposing a column name to the caller.
+     * Separate from findFiltered: the unranked browse is every nav click
+     * and is not worth risking for ranking.
+     */
+    @Query(value = """
+           SELECT p.* FROM products p
+           LEFT JOIN users u ON u.id = p.vendor_id
+           LEFT JOIN product_popularity pop ON pop.product_id = p.id
+           WHERE p.deleted_at IS NULL
+             AND (:categoryFilterDisabled = TRUE OR p.category_id IN (:categoryIds))
+             AND (:handmade IS NULL OR p.handmade = :handmade)
+             AND (:vendorId IS NULL OR p.vendor_id = :vendorId)
+             AND (:searchDisabled = TRUE
+                  OR LOWER(p.name) LIKE LOWER(CONCAT('%', :searchText, '%'))
+                  OR LOWER(u.username) LIKE LOWER(CONCAT('%', :searchText, '%')))
+             AND (:minRating IS NULL OR (pop.review_count > 0 AND pop.avg_rating >= :minRating))
+             AND (:minSold IS NULL OR COALESCE(pop.sales_count, 0) >= :minSold)
+             AND (:inStockDisabled = TRUE
+                  OR (NOT EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = p.id)
+                      AND p.stock_quantity > 0)
+                  OR EXISTS (SELECT 1 FROM product_variants v
+                             WHERE v.product_id = p.id AND v.stock_quantity > 0))
+           ORDER BY
+             CASE WHEN :rank = 'price' THEN p.price END ASC,
+             CASE WHEN :rank = 'sales' THEN COALESCE(pop.sales_count, 0) END DESC,
+             CASE WHEN :rank = 'rating' THEN COALESCE(pop.weighted_rating, 0) END DESC,
+             CASE WHEN :rank = 'created' THEN p.created_at END DESC,
+             p.id ASC
+           """,
+           countQuery = """
+           SELECT count(*) FROM products p
+           LEFT JOIN users u ON u.id = p.vendor_id
+           LEFT JOIN product_popularity pop ON pop.product_id = p.id
+           WHERE p.deleted_at IS NULL
+             AND (:categoryFilterDisabled = TRUE OR p.category_id IN (:categoryIds))
+             AND (:handmade IS NULL OR p.handmade = :handmade)
+             AND (:vendorId IS NULL OR p.vendor_id = :vendorId)
+             AND (:searchDisabled = TRUE
+                  OR LOWER(p.name) LIKE LOWER(CONCAT('%', :searchText, '%'))
+                  OR LOWER(u.username) LIKE LOWER(CONCAT('%', :searchText, '%')))
+             AND (:minRating IS NULL OR (pop.review_count > 0 AND pop.avg_rating >= :minRating))
+             AND (:minSold IS NULL OR COALESCE(pop.sales_count, 0) >= :minSold)
+             AND (:inStockDisabled = TRUE
+                  OR (NOT EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = p.id)
+                      AND p.stock_quantity > 0)
+                  OR EXISTS (SELECT 1 FROM product_variants v
+                             WHERE v.product_id = p.id AND v.stock_quantity > 0))
+           """,
+           nativeQuery = true)
+    Page<Product> findFilteredRanked(@Param("categoryFilterDisabled") boolean categoryFilterDisabled,
+                                     @Param("categoryIds") List<Long> categoryIds,
+                                     @Param("handmade") Boolean handmade,
+                                     @Param("vendorId") Long vendorId,
+                                     @Param("searchDisabled") boolean searchDisabled,
+                                     @Param("searchText") String searchText,
+                                     @Param("minRating") BigDecimal minRating,
+                                     @Param("minSold") Long minSold,
+                                     @Param("inStockDisabled") boolean inStockDisabled,
+                                     @Param("rank") String rank,
+                                     Pageable pageable);
 
     /**
      * "You might also like" — related products, computed from what the

@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { ProductResponse } from '../../lib/api'
+import { findBySlug, useCategoryTree } from '../../hooks/useCategoryTree'
 
 /**
  * Home > [Parent] > Category, above the product.
@@ -18,30 +19,30 @@ import { ProductResponse } from '../../lib/api'
  * of having moved.
  */
 export function ProductBreadcrumb({ product }: { product: ProductResponse }) {
-  const sep = <span aria-hidden style={{ color: 'var(--line)' }}>›</span>
+  const { data: tree = [] } = useCategoryTree(true)
+  const parent = product.parentCategorySlug
+    ? findBySlug(tree, product.parentCategorySlug)?.node
+    : undefined
+  const parentLabel = parent?.name
+    ?? (product.parentCategorySlug ? product.parentCategorySlug.replace(/-/g, ' ') : undefined)
+
+  const sep = <span aria-hidden className="crumb__sep">›</span>
 
   return (
-    <nav
-      aria-label="Breadcrumb"
-      style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        gap: 8, fontSize: 13, color: 'var(--ink-soft)', marginBottom: 20,
-        flexWrap: 'wrap',
-      }}
-    >
-      <Link to="/" style={{ color: 'var(--ink-soft)' }}>Home</Link>
-      {product.parentCategorySlug && (
+    <nav aria-label="Breadcrumb" className="crumb">
+      <Link to="/">Home</Link>
+      {parentLabel && product.parentCategorySlug && (
         <>
           {sep}
-          <Link to={`/?category=${product.parentCategorySlug}`} style={{ color: 'var(--ink-soft)' }}>
-            {product.parentCategorySlug.replace(/-/g, ' ')}
+          <Link to={`/?category=${product.parentCategorySlug}`}>
+            {parentLabel}
           </Link>
         </>
       )}
       {product.categorySlug && (
         <>
           {sep}
-          <Link to={`/?category=${product.categorySlug}`} style={{ color: 'var(--ink)' }}>
+          <Link to={`/?category=${product.categorySlug}`} className="crumb__here">
             {product.categoryName ?? product.categorySlug}
           </Link>
         </>

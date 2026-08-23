@@ -44,6 +44,9 @@ export class ApiError extends Error {
     // login could be several things, and the UI has to tell that one apart
     // to offer a resend rather than a dead end.
     public code?: string,
+    // RFC 7807 type URI. Payment 502s use
+    // payments:provider-misconfigured vs payments:provider-unavailable.
+    public type?: string,
   ) {
     super(detail || title)
   }
@@ -80,6 +83,7 @@ async function toApiError(res: Response): Promise<ApiError> {
       body.shortages,
       body.errors,
       body.code,
+      body.type,
     )
   } catch {
     return new ApiError(res.status, 'Request failed', res.statusText, requestId)
@@ -322,7 +326,7 @@ export interface CategoryOption {
 }
 
 /**
- * A purchasable option on a product (backend V20).
+ * A purchasable option on a product (backend V20, cart-aware since V25).
  *
  * ONE axis, not two: `label` is a single flat choice ("Black", "XL",
  * "2pcs black"), deliberately not colour x size as a matrix — see
@@ -331,8 +335,14 @@ export interface CategoryOption {
  *
  * Live on the buy path since V25: the cart endpoints take a variantId, the
  * product page requires picking one before add-to-cart, and cart lines carry
- * variantLabel. (An earlier version of this comment said variants were
- * inert — that was product-variants.md step 1.)
+ * variantLabel. An earlier version of this comment said variants were inert,
+ * which described product-variants.md step 1 rather than the current state.
+ *
+ * Buy path: POST /api/v1/cart/items with `{ productId, variantId, quantity }`.
+ * Update/remove the line with PUT/DELETE
+ * `/api/v1/cart/items/{productId}?variantId={id}`. Omit `variantId` only for
+ * products that have no options (the pre-V25 row). A product can appear
+ * twice in one cart under different options; the query param is which row.
  */
 export interface VariantResponse {
   id: number
@@ -396,7 +406,7 @@ export interface ProductResponse {
   parentCategorySlug: string | null  // null when filed directly on a top-level category
   handmade: boolean
   tags: string[]
-  imageUrl: string | null    // null until a vendor uploads one — frontend falls back to a placeholder
+  imageUrl: string | null    // null until a vendor uploads one — frontend renders the empty well
   /** Empty for products the vendor has not given options; never null. */
   variants: VariantResponse[]
 }

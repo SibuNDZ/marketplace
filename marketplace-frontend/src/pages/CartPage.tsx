@@ -13,20 +13,15 @@ const EMPTY_SHIPPING: ShippingAddress = {
 
 function Field({ label, error, children }: { label: string; error?: string[]; children: React.ReactNode }) {
   return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 500 }}>
+    <label className="field">
       {label}
       {children}
       {error?.map((msg, i) => (
-        <span key={i} style={{ fontSize: 12, color: 'var(--clay)', fontWeight: 400 }}>{msg}</span>
+        <span key={i} className="field__error">{msg}</span>
       ))}
     </label>
   )
 }
-
-const inputStyle = (hasError?: boolean): React.CSSProperties => ({
-  padding: '9px 12px', border: `1.5px solid ${hasError ? 'var(--clay)' : 'var(--line)'}`,
-  borderRadius: 'var(--r-sm)', fontFamily: 'var(--body)', fontSize: 14,
-})
 
 export function CartPage() {
   const qc = useQueryClient()
@@ -56,6 +51,8 @@ export function CartPage() {
   // call would hit the no-option line every time.
   const updateQty = useMutation({
     mutationFn: ({ productId, variantId, quantity }: { productId: number; variantId?: number | null; quantity: number }) =>
+      // variantId identifies WHICH line: a product can now appear twice in
+      // one cart under different options. Same contract as RightCartPanel.
       api(`/api/v1/cart/items/${productId}${variantId != null ? `?variantId=${variantId}` : ''}`,
         { method: 'PUT', body: { quantity } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cart'] }),
@@ -132,68 +129,58 @@ export function CartPage() {
         <Topbar />
         {/* Same two-column shape as the cart view below: form where the
             lines were, summary card on the right. A lone 480px column left
-            the rest of the page empty and the shopper paying blind. */}
+            the rest of the page empty and the shopper paying blind, which is
+            why this is not `narrow-form`. */}
         <main className="page-shell no-catrail">
-          <h1 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 26, marginBottom: 8 }}>
-            Shipping details
-          </h1>
-          <p style={{ color: 'var(--ink-soft)', fontSize: 13, marginBottom: 24 }}>
+          <h1 className="page-heading page-heading--sm">Shipping details</h1>
+          <p className="lede">
             Order <span className="num">#{placedOrder.id}</span>. Where should it be delivered?
           </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 40, alignItems: 'start' }}>
-          <form onSubmit={submitShipping} style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 520 }}>
+          <form onSubmit={submitShipping} className="form-stack" style={{ maxWidth: 520 }}>
             {payError && <ErrorSurface error={payError} onDismiss={() => setPayError(undefined)} />}
 
             <Field label="Recipient name" error={fieldErrors.recipientName}>
               <input required value={shipping.recipientName} onChange={e => setField('recipientName', e.target.value)}
-                style={inputStyle(!!fieldErrors.recipientName)} />
+                className={`input${fieldErrors.recipientName ? ' is-invalid' : ''}`} />
             </Field>
 
             <Field label="Phone" error={fieldErrors.phone}>
               <input required type="tel" value={shipping.phone} onChange={e => setField('phone', e.target.value)}
-                style={inputStyle(!!fieldErrors.phone)} />
+                className={`input${fieldErrors.phone ? ' is-invalid' : ''}`} />
             </Field>
 
             <Field label="Address line 1" error={fieldErrors.addressLine1}>
               <input required value={shipping.addressLine1} onChange={e => setField('addressLine1', e.target.value)}
-                style={inputStyle(!!fieldErrors.addressLine1)} />
+                className={`input${fieldErrors.addressLine1 ? ' is-invalid' : ''}`} />
             </Field>
 
             <Field label="Address line 2 (optional)" error={fieldErrors.addressLine2}>
               <input value={shipping.addressLine2 ?? ''} onChange={e => setField('addressLine2', e.target.value)}
-                style={inputStyle(!!fieldErrors.addressLine2)} />
+                className={`input${fieldErrors.addressLine2 ? ' is-invalid' : ''}`} />
             </Field>
 
-            <div style={{ display: 'flex', gap: 12 }}>
-              <div style={{ flex: 1 }}>
-                <Field label="City" error={fieldErrors.city}>
-                  <input required value={shipping.city} onChange={e => setField('city', e.target.value)}
-                    style={inputStyle(!!fieldErrors.city)} />
-                </Field>
-              </div>
-              <div style={{ flex: 1 }}>
-                <Field label="Province" error={fieldErrors.province}>
-                  <input required value={shipping.province} onChange={e => setField('province', e.target.value)}
-                    style={inputStyle(!!fieldErrors.province)} />
-                </Field>
-              </div>
+            <div className="form-row">
+              <Field label="City" error={fieldErrors.city}>
+                <input required value={shipping.city} onChange={e => setField('city', e.target.value)}
+                  className={`input${fieldErrors.city ? ' is-invalid' : ''}`} />
+              </Field>
+              <Field label="Province" error={fieldErrors.province}>
+                <input required value={shipping.province} onChange={e => setField('province', e.target.value)}
+                  className={`input${fieldErrors.province ? ' is-invalid' : ''}`} />
+              </Field>
             </div>
 
             <Field label="Postal code" error={fieldErrors.postalCode}>
               <input required value={shipping.postalCode} onChange={e => setField('postalCode', e.target.value)}
-                style={inputStyle(!!fieldErrors.postalCode)} />
+                className={`input${fieldErrors.postalCode ? ' is-invalid' : ''}`} />
             </Field>
 
-            <button type="submit" disabled={pay.isPending} style={{
-              width: '100%', padding: '13px', background: 'var(--ink)', color: 'var(--paper)',
-              border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 700, fontSize: 16, marginTop: 6,
-            }}>
+            <button type="submit" disabled={pay.isPending} className="btn-primary">
               {pay.isPending ? 'Continuing…' : 'Continue to payment'}
             </button>
-            <p style={{ fontSize: 12, color: 'var(--ink-soft)', textAlign: 'center' }}>
-              You'll complete payment on our secure payment provider
-            </p>
+            <p className="hint">You'll complete payment on our secure payment provider</p>
           </form>
 
           {/* What this address is for: the lines just ordered, with the same
@@ -243,49 +230,45 @@ export function CartPage() {
     <>
       <Topbar />
       <main className="page-shell no-catrail">
-        <h1 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 28, marginBottom: 28 }}>Your cart</h1>
+        <h1 className="page-heading">Your cart</h1>
 
-        {isLoading && <p style={{ color: 'var(--ink-soft)' }}>Loading…</p>}
+        {isLoading && <p className="muted">Loading…</p>}
 
         {!isLoading && isEmpty && (
-          <div style={{ textAlign: 'center', padding: '60px 0' }}>
-            <p style={{ color: 'var(--ink-soft)', marginBottom: 16 }}>Your cart is empty</p>
-            <Link to="/" style={{ padding: '10px 24px', background: 'var(--ink)', color: 'var(--paper)', borderRadius: 'var(--r-pill)', fontWeight: 600 }}>
-              Browse products
-            </Link>
+          <div className="cart-empty">
+            <p>Your cart is empty</p>
+            <Link to="/" className="btn-pill">Browse products</Link>
           </div>
         )}
 
         {!isEmpty && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 40, alignItems: 'start' }}>
-            {/* Lines */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <div className="cart-layout">
+            <div>
               {lines.map(line => (
-                <div key={`${line.productId}:${line.variantId ?? ''}`} style={{
-                  display: 'flex', alignItems: 'center', gap: 16,
-                  padding: '16px 0', borderBottom: '1px solid var(--line)',
-                }}>
-                  <CartLineImage line={line} size={64} />
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontWeight: 600, marginBottom: 2 }}>{line.productName}</p>
-                    {line.variantLabel && (
-                      <p style={{ fontSize: 13, color: 'var(--ink-soft)' }}>{line.variantLabel}</p>
-                    )}
-                    <p className="num" style={{ fontSize: 13, color: 'var(--ink-soft)' }}>R{Number(line.unitPrice).toFixed(2)} each</p>
+                <div key={`${line.productId}:${line.variantId ?? 'base'}`} className="cart-line">
+                  <CartLineImage line={line} size={56} />
+                  <div className="cart-line__body">
+                    <p className="cart-line__name">
+                      {line.productName}
+                      {line.variantLabel && (
+                        <span className="cart-line__opt"> · {line.variantLabel}</span>
+                      )}
+                    </p>
+                    <p className="num cart-line__unit">R{Number(line.unitPrice).toFixed(2)} each</p>
                     {line.availableStock < line.quantity && (
-                      <p style={{ fontSize: 12, color: 'var(--clay)', marginTop: 2 }}>
+                      <p className="cart-line__warn">
                         Only <span className="num">{line.availableStock}</span> available
                       </p>
                     )}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div className="qty-stepper">
                     <button
                       type="button"
                       className="qty-btn qty-btn--boxed"
                       aria-label={`Decrease quantity of ${line.productName}`}
                       onClick={() => updateQty.mutate({ productId: line.productId, variantId: line.variantId, quantity: line.quantity - 1 })}
                     >−</button>
-                    <span className="num" style={{ minWidth: 28, textAlign: 'center', fontWeight: 600 }}>{line.quantity}</span>
+                    <span className="num qty-value">{line.quantity}</span>
                     <button
                       type="button"
                       className="qty-btn qty-btn--boxed"
@@ -293,12 +276,12 @@ export function CartPage() {
                       onClick={() => updateQty.mutate({ productId: line.productId, variantId: line.variantId, quantity: line.quantity + 1 })}
                     >+</button>
                   </div>
-                  <p className="num" style={{ fontWeight: 700, minWidth: 80, textAlign: 'right' }}>
+                  <p className="num cart-line__sum">
                     R{Number(line.lineTotal).toFixed(2)}
                   </p>
                   <button
                     type="button"
-                    className="qty-btn"
+                    className="qty-btn cart-line__remove"
                     aria-label={`Remove ${line.productName} from cart`}
                     onClick={() => removeItem.mutate({ productId: line.productId, variantId: line.variantId })}
                   >×</button>
@@ -306,22 +289,16 @@ export function CartPage() {
               ))}
             </div>
 
-            {/* Summary */}
-            <div style={{ background: 'var(--card)', borderRadius: 'var(--r)', padding: 24, boxShadow: 'var(--shadow)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
+            <div className="cart-summary">
+              <div className="cart-summary__total">
                 <span style={{ fontWeight: 600 }}>Total</span>
                 <span className="num" style={{ fontWeight: 700, fontSize: 20 }}>R{Number(cart?.subtotal ?? 0).toFixed(2)}</span>
               </div>
               {checkoutError && <ErrorSurface error={checkoutError} onDismiss={() => setCheckoutError(undefined)} />}
-              <button disabled={placeOrder.isPending} onClick={() => placeOrder.mutate()} style={{
-                width: '100%', padding: '13px', background: 'var(--ink)', color: 'var(--paper)',
-                border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 700, fontSize: 16, marginTop: 16,
-              }}>
+              <button disabled={placeOrder.isPending} onClick={() => placeOrder.mutate()} className="btn-primary">
                 {placeOrder.isPending ? 'Placing order…' : 'Continue to payment'}
               </button>
-              <p style={{ fontSize: 12, color: 'var(--ink-soft)', textAlign: 'center', marginTop: 10 }}>
-                You'll complete payment on our secure payment provider
-              </p>
+              <p className="hint">You'll complete payment on our secure payment provider</p>
             </div>
           </div>
         )}

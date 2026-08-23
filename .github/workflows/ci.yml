@@ -120,5 +120,14 @@ jobs:
       - name: Typecheck and build
         run: VITE_API_URL=https://ci-placeholder.invalid npm run build
 
+      - name: Unit tests
+        run: npm test
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: VITE_API_URL=https://ci-placeholder.invalid npm run test:e2e
+
       - name: SPA fallback file present in build output
         run: test -f dist/_redirects

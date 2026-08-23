@@ -5,10 +5,9 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
 import { api, CartResponse } from '../../lib/api'
 import { useCategoryTree } from '../../hooks/useCategoryTree'
-import { useCartDrawer } from '../../context/CartDrawerContext'
+import { useRightPanel } from '../../context/RightPanelContext'
 import { useSellerEntry } from '../../hooks/useSellerEntry'
 import { ALL_SLUG } from '../../data/categories'
-import { CartDrawer } from '../cart/CartDrawer'
 import { RetailCategoryNav } from './RetailCategoryNav'
 import { LogoMark } from './LogoMark'
 import { ThemeToggle } from './ThemeToggle'
@@ -36,7 +35,7 @@ export function SiteHeader() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const cartDrawer = useCartDrawer()
+  const { openDrawer, setCollapsed } = useRightPanel()
   const sellerEntry = useSellerEntry()
   const [accountOpen, setAccountOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -57,6 +56,24 @@ export function SiteHeader() {
   useEffect(() => {
     setSearchText(new URLSearchParams(location.search).get('name') ?? '')
   }, [location.search])
+
+  useEffect(() => {
+    if (!accountOpen) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setAccountOpen(false)
+    }
+    const onPointer = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null
+      if (target?.closest('.js-account')) return
+      setAccountOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onPointer)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', onPointer)
+    }
+  }, [accountOpen])
 
   useEffect(() => {
     if (!drawerOpen) return
@@ -122,6 +139,26 @@ export function SiteHeader() {
     navigate('/login')
   }
 
+  const openCart = () => {
+    setDrawerOpen(false)
+    setAccountOpen(false)
+    // Catalogue already has RightCartPanel mounted — open it. Everywhere
+    // else the header cart is a link to the full cart page.
+    if (location.pathname === '/') {
+      setCollapsed(false)
+      // Below 1280px the panel is a slide-in drawer with a backdrop and a
+      // close button; at desktop widths it is a sticky column that is
+      // already on screen and whose drawer chrome is display:none. Opening
+      // the "drawer" there only locks body scroll with no visible way out.
+      const drawerMode = typeof window !== 'undefined'
+        && typeof window.matchMedia === 'function'
+        && window.matchMedia('(max-width: 1279px)').matches
+      if (drawerMode) openDrawer()
+    } else {
+      navigate('/cart')
+    }
+  }
+
   const roleDestination = user?.role === 'ADMIN' ? '/admin' : user?.role === 'VENDOR' ? '/vendor' : '/orders'
   const roleLabel = user?.role === 'ADMIN' ? 'Admin' : user?.role === 'VENDOR' ? 'Dashboard' : 'Orders'
 
@@ -162,7 +199,7 @@ export function SiteHeader() {
                 </button>
               )}
               <ThemeToggle />
-              <div className="account-action">
+              <div className="account-action js-account">
                 <button
                   className="main-action"
                   onClick={() => setAccountOpen(open => !open)}
@@ -194,8 +231,8 @@ export function SiteHeader() {
                 )}
               </div>
               <button
-                className="main-action cart-action"
-                onClick={cartDrawer.open}
+                className="main-action cart-action js-site-cart"
+                onClick={openCart}
                 aria-label={itemCount > 0 ? `Open cart, ${itemCount} items` : 'Open cart'}
               >
                 <span className="cart-action__icon"><ShoppingCart size={20} strokeWidth={1.75} />
@@ -218,18 +255,18 @@ export function SiteHeader() {
                   account access only existed inside the hamburger drawer.
                   Signed out this goes straight to sign-in; signed in it
                   opens the same menu as desktop, full-width under the bar. */}
-              <button className="mobile-icon" aria-label="Account"
+              <button className="mobile-icon js-account" aria-label="Account"
                 onClick={() => user ? setAccountOpen(open => !open) : navigate('/login')}
                 aria-expanded={user ? accountOpen : undefined}>
                 <UserRound size={22} strokeWidth={1.75} />
               </button>
               <button className="mobile-icon" onClick={() => setDrawerOpen(true)} aria-label="Open search"><Search size={22} strokeWidth={1.75} /></button>
-              <button className="mobile-icon cart-action__icon" onClick={cartDrawer.open} aria-label="Open cart">
+              <button className="mobile-icon cart-action__icon js-site-cart" onClick={openCart} aria-label="Open cart">
                 <ShoppingCart size={22} strokeWidth={1.75} />{itemCount > 0 && <span className="cart-count num">{itemCount}</span>}
               </button>
             </div>
             {accountOpen && user && (
-              <div className="account-menu account-menu--mobile">
+              <div className="account-menu account-menu--mobile js-account">
                 <span>{user.email}</span>
                 <Link to="/orders" onClick={() => setAccountOpen(false)}>Orders</Link>
                 {user.role !== 'CUSTOMER' && <Link to={roleDestination} onClick={() => setAccountOpen(false)}>{roleLabel}</Link>}
@@ -301,7 +338,6 @@ export function SiteHeader() {
           </div>
         </div>
       )}
-      <CartDrawer />
     </>
   )
 }

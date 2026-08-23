@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, ShoppingCart, X } from 'lucide-react'
 import { ApiError, api, CartResponse, ProductResponse } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import { useRightPanel } from '../../context/RightPanelContext'
-import { bargains, topSelling, useProductPool } from '../../hooks/useProductPool'
+import { useBargains, usePopular } from '../../hooks/useProductPool'
 import { productImageUrl, productImageSrcSet, IMAGE_WIDTHS, IMAGE_SIZES } from '../../lib/productImage'
 import { RatingLine } from '../product/RatingLine'
 import { QUICK_FILTERS, QuickFilterKey } from '../../data/quickFilters'
@@ -20,6 +20,11 @@ export const CHECKOUT_MIN_RAND = 200
 
 const QTY_CAP = 10
 
+/** Same line identity as /cart: a product can appear twice under different options. */
+function cartLineKey(productId: number, variantId?: number | null) {
+  return `${productId}:${variantId ?? 'base'}`
+}
+
 interface Props {
   activeFilters: Set<QuickFilterKey>
   /** Toggles a quick filter on the main grid and scrolls to it. */
@@ -29,8 +34,9 @@ interface Props {
 /**
  * The persistent cart-plus-discovery column: sticky third column of the
  * catalogue grid on ≥1280px screens, and a right-hand slide-in drawer
- * behind a floating cart button below that. One component, both modes —
+ * opened from the header cart button below that. One component, both modes —
  * CSS switches the presentation, the context keeps state across routes.
+ * The header is the only cart control on the home page at every breakpoint.
  */
 export function RightCartPanel({ activeFilters, onHighlight }: Props) {
   const { user } = useAuth()
@@ -38,23 +44,24 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
   const location = useLocation()
   const qc = useQueryClient()
   const {
-    collapsed, setCollapsed, drawerOpen, openDrawer, closeDrawer,
+    collapsed, setCollapsed, drawerOpen, closeDrawer,
     deselected, toggleItem, selectAll, deselectAll,
   } = useRightPanel()
 
   const panelRef = useRef<HTMLElement>(null)
-  const fabRef = useRef<HTMLButtonElement>(null)
 
   const { data: cart } = useQuery<CartResponse>({
     queryKey: ['cart'],
     queryFn: () => api('/api/v1/cart'),
     enabled: !!user,
   })
-  const { data: pool } = useProductPool()
+  const { data: sellers = [] } = usePopular('sales', 4)
+  const { data: bargainPage } = useBargains(4)
+  const deals = bargainPage?.content ?? []
 
   const items = cart?.items ?? []
   const itemCount = items.reduce((n, l) => n + l.quantity, 0)
-  const selected = items.filter(l => !deselected.has(l.productId))
+  const selected = items.filter(l => !deselected.has(cartLineKey(l.productId, l.variantId)))
   const subtotal = selected.reduce((sum, l) => sum + Number(l.lineTotal), 0)
   const allSelected = items.length > 0 && selected.length === items.length
   const progress = Math.min(subtotal / CHECKOUT_MIN_RAND, 1)
@@ -84,7 +91,7 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
   })
 
   // Drawer mode: ESC closes, body scroll locks, focus moves in on open and
-  // back to the floating button on close.
+  // back to the header cart button on close (the only cart control left).
   useEffect(() => {
     if (!drawerOpen) return
     const previousOverflow = document.body.style.overflow
@@ -97,24 +104,29 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
     return () => {
       document.removeEventListener('keydown', onKeyDown)
       document.body.style.overflow = previousOverflow
-      fabRef.current?.focus()
+      const cartBtn = Array.from(document.querySelectorAll<HTMLElement>('.js-site-cart'))
+        .find(el => el.offsetParent !== null)
+      cartBtn?.focus()
     }
   }, [drawerOpen, closeDrawer])
 
-  const sellers = topSelling(pool?.content ?? [], 4)
-  const deals = bargains(pool?.content ?? [], 4)
-
-  const miniRow = (p: ProductResponse) => (
+  const miniRow = (p: ProductResponse) => {
+    const src = productImageUrl(p, 88, 88)
+    return (
     <div key={p.id} className="mini-product">
       {/* Same tab as the catalogue tiles. Cart line items below were already
           same-tab; the suggestion rows match them now. */}
       <Link to={`/products/${p.id}`} className="mini-product__main" onClick={closeDrawer}>
-        <img
-          src={productImageUrl(p, 88, 88)}
-          srcSet={productImageSrcSet(p, IMAGE_WIDTHS.thumb)}
-          sizes={IMAGE_SIZES.thumb}
-          alt="" width={44} height={44} loading="lazy" decoding="async"
-        />
+        {src ? (
+          <img
+            src={src}
+            srcSet={productImageSrcSet(p, IMAGE_WIDTHS.thumb)}
+            sizes={IMAGE_SIZES.thumb}
+            alt="" width={44} height={44} loading="lazy" decoding="async"
+          />
+        ) : (
+          <span className="image-well image-well--thumb" aria-hidden />
+        )}
         <span className="mini-product__text">
           <span className="mini-product__name">{p.name}</span>
           <RatingLine product={p} compact />
@@ -139,23 +151,11 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
         >+</button>
       )}
     </div>
-  )
+    )
+  }
 
   return (
     <>
-      {/* Floating toggle — small screens only (CSS hides it at ≥1280px). */}
-      <button
-        ref={fabRef}
-        className="right-panel-fab"
-        aria-label={`Open cart panel${itemCount > 0 ? `, ${itemCount} items` : ''}`}
-        onClick={openDrawer}
-      >
-        <span className="cart-action__icon">
-          <ShoppingCart size={22} strokeWidth={1.75} />
-          {itemCount > 0 && <span className="cart-count num">{itemCount}</span>}
-        </span>
-      </button>
-
       {drawerOpen && (
         <button className="right-panel-backdrop" aria-label="Close cart panel" onClick={closeDrawer} />
       )}
@@ -197,7 +197,10 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
             </div>
 
             <div className="rc-signals">
-              <span className="rc-freeship">✓ Free shipping</span>
+              {/* Derived free-shipping badge belongs here once delivery
+                  fees on the selected lines actually sum to zero. ROADMAP.md
+                  forbids an unconditional "✓ Free shipping" chip — it is a
+                  commercial promise with no system behind it. */}
               <span className="rc-min-pill num">R{CHECKOUT_MIN_RAND} Min. to checkout</span>
             </div>
             <div
@@ -227,19 +230,20 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
                 <label className="rc-select-all">
                   <input
                     type="checkbox"
+                    aria-label="Select all"
                     checked={allSelected}
-                    onChange={() => allSelected ? deselectAll(items.map(l => l.productId)) : selectAll()}
+                    onChange={() => allSelected ? deselectAll(items.map(l => cartLineKey(l.productId, l.variantId))) : selectAll()}
                   />
                   Select all (<span className="num">{items.length}</span>)
                 </label>
                 <div className="rc-items">
                   {items.map(line => (
-                    <div key={line.productId} className="rc-item">
+                    <div key={cartLineKey(line.productId, line.variantId)} className="rc-item">
                       <input
                         type="checkbox"
-                        checked={!deselected.has(line.productId)}
-                        aria-label={`Select ${line.productName}`}
-                        onChange={() => toggleItem(line.productId)}
+                        checked={!deselected.has(cartLineKey(line.productId, line.variantId))}
+                        aria-label={`Select ${line.productName}${line.variantLabel ? ` · ${line.variantLabel}` : ''}`}
+                        onChange={() => toggleItem(cartLineKey(line.productId, line.variantId))}
                       />
                       <Link to={`/products/${line.productId}`} className="rc-item__main" onClick={closeDrawer}>
                         {/* The vendor's real photo. This used to be a picsum
@@ -263,7 +267,7 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
                       <select
                         className="rc-item__qty num"
                         value={line.quantity}
-                        aria-label={`Quantity for ${line.productName}`}
+                        aria-label={`Quantity for ${line.productName}${line.variantLabel ? ` · ${line.variantLabel}` : ''}`}
                         onChange={e => updateQty.mutate({ productId: line.productId, variantId: line.variantId, quantity: Number(e.target.value) })}
                       >
                         {Array.from(

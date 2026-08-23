@@ -1,10 +1,6 @@
-// Banner config for the hero carousel: the 3 editorial slides plus the 5
-// category banners. PromoCarousel interleaves the two kinds — an editorial
-// slide, then a category slide — so the category banners rotate through the
-// existing hero rather than adding a second banner surface to the page.
-//
-// Same honesty rule throughout: no discount claims, no countdowns, no
-// urgency. Category banners are shelf labels that point at real categories.
+// Banner config: 3 editorial hero slides plus 5 category tiles. The hero
+// carousel stays hero-only; CategoryBannerRow renders the tiles as their
+// own segmented row. Same honesty rule: no discount claims, no countdowns.
 
 export interface BannerConfig {
   format: 'hero' | 'tile'

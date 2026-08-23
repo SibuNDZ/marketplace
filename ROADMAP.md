@@ -131,6 +131,26 @@ not a principle problem.
 
 ---
 
+## Vendor payouts — commission ledger (shipped 2026-08-20)
+
+The collect-then-disburse tier from `vendor-payouts.md` is built: every order
+that goes PAID writes one ledger entry per vendor (same transaction as the
+status flip), the admin Payouts page runs approve → Nedbank bulk CSV →
+mark-paid, and vendors onboard (banking + versioned terms) from their
+dashboard. Gateway splits remain future work, PayFast-conditional.
+
+**Three config placeholders are NOT decisions** — see OWNER ACTIONS in the PR
+and the ⚠ comments in `application.yml`: the commission rate (0.125), the
+payout window (7 days), and the selling gate (`selling-gate-enabled`,
+default OFF). The gate ships built-and-tested but disabled: enabling it while
+the rate is a placeholder would make every vendor unsellable under terms
+quoting a number nobody decided. Setting the real rate, the window, and the
+flag is ONE owner action. The public Fees section renders the commission
+sentence only once the gate is live — a placeholder is not published as if it
+were a decision (house rule above).
+
+---
+
 ## Fault isolation for external providers
 
 Every third-party API is optional at boot. A missing or bad key degrades the

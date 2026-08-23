@@ -1,6 +1,15 @@
 # Vendor payouts — roadmap
 
-Status: **decided direction, blocked on a question to PayFast.** No code yet.
+Status: **the ledger tier (Tier 1 below) SHIPPED 2026-08-20** on
+`feature/vendor-payouts` — commission ledger written at PAID time, admin
+approve → Nedbank bulk CSV → mark-paid flow, vendor banking + versioned
+terms with a config-flagged selling gate. Split payments (Tier 2) remain
+future work and PayFast-conditional (§6a). Outstanding owner actions are
+listed at the end of this file.
+
+(A note on numbering: the build prompt for the shipped slice called these
+tiers 2 and 3 — one higher than this file. This file's numbering is
+canonical: Tier 0 nothing, Tier 1 ledger, Tier 2 splits.)
 
 The goal is that a vendor's money never lands in eRestyu's Nedbank account
 at all. Collecting everything into one account and disbursing by hand means
@@ -59,17 +68,35 @@ sharper question than "do you support splits":
 
 ## 3. The three tiers
 
-**Tier 0 — today.** Commission is not tracked at all. Money lands in the
-Nedbank account and nothing computes what is owed to whom.
+**Tier 0 — before 2026-08-20.** Commission was not tracked at all. Money
+landed in the Nedbank account and nothing computed what was owed to whom.
 
-**Tier 1 — commission ledger + bank bulk file (interim).**
-The queued ledger slice should gain one feature: export a payout batch
-(vendor, bank details, amount owed, reference) in Nedbank's bulk payment
-upload format. Fully automated payments from an SME account are not
-realistically available — bank payment APIs are enterprise territory — but
-bulk file upload is. The manual step shrinks from "capture each payment by
-hand" to "upload one file, authorise once", and the authorisation stays
-human deliberately. At this volume that is a control, not a limitation.
+**Tier 1 — commission ledger + bank bulk file. SHIPPED 2026-08-20.**
+What shipped (V27–V29):
+
+- `vendor_payout_entries`: one PRIMARY row per (order, vendor), written in
+  the SAME transaction as PENDING→PAID (`CommissionLedgerService`, hooked at
+  the single `setStatus(PAID)` site in `PaymentEventService`, so all three
+  providers are covered by one hook). Snapshotted rate, append-only history;
+  full refunds VOID unpaid rows and claw back paid ones with negative
+  ADJUSTMENT rows. Partial-refund adjustments exist as a tested mechanism
+  with no HTTP trigger (no partial-refund flow exists yet).
+- Arithmetic per §5: `net = items − commission + delivery fee`, fee never
+  commissioned, commission rounded DOWN so the platform absorbs the
+  sub-cent.
+- Admin flow (`/admin/payouts`): pending grouped per vendor → approve into a
+  batch → export Nedbank bulk CSV (`NedbankBulkPaymentsExporter`, column
+  mapping isolated in that one file because the real NetBank profile is
+  UNCONFIRMED) → mark paid with the bank reference. Batch lifecycle is
+  derived from timestamps with approved_by/paid_by audit fields. Upload and
+  authorisation stay human, deliberately — at this volume that is a control,
+  not a limitation.
+- Vendor onboarding: banking details (masked to last 4 on every surface
+  except the bank file) + versioned terms built from the same config the
+  ledger charges. A selling gate (409 at checkout for un-onboarded vendors)
+  is built and tested but OFF by default — see owner actions.
+- Backfill for pre-ledger PAID orders: dry-run every boot, commits only
+  under `PAYOUT_BACKFILL_COMMIT=true` for one deploy.
 
 **Tier 2 — PayFast Split Payments (the real answer).**
 Vendor's share is routed at payment time; it never touches our account.
@@ -173,3 +200,25 @@ So the trigger above fires only if PayFast is selected. Under Yoco:
 The `setup`-field signature landmine in section 2 stays true and stays
 dangerous, but it is now dormant code: it can only bite a deploy that switches
 back to PayFast AND starts sending splits.
+
+## 7. Outstanding owner actions (post-ledger, 2026-08-20)
+
+None of these are engineering decisions; the code carries placeholders with
+⚠ comments in `application.yml` until they are made:
+
+1. **Set the real commission %** (`PAYOUT_COMMISSION_RATE`; 0.125 is a
+   placeholder, not a decision — §5's pricing note applies) and the **payout
+   window** (`PAYOUT_WINDOW_DAYS`), and confirm the **weekly cadence** the
+   terms sentence promises.
+2. **Flip the selling gate** (`PAYOUT_SELLING_GATE=true`) in the same act —
+   it is off so vendors are not gated behind terms quoting placeholder
+   numbers. Flipping it also makes the public Fees section render the
+   commission sentence.
+3. **Confirm the real Nedbank NetBank bulk-payment CSV profile** and adjust
+   `NedbankBulkPaymentsExporter` (one file) to match.
+4. **Run the backfill once** (`PAYOUT_BACKFILL_COMMIT=true` for one deploy)
+   after reviewing the dry-run log — pre-ledger PAID orders (e.g. order #11's
+   two vendors) get their entries at TODAY'S rate, because no historical rate
+   ever existed.
+5. **Decide whether vendor balances sit in a ring-fenced account** while the
+   platform is collect-then-disburse (NPS Act / FICA posture, §5b).

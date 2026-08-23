@@ -31,6 +31,9 @@ const ProductFormPage = lazy(() => import('./pages/ProductFormPage').then(m => (
 const AdminPage = lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })))
 const AdminFeedbackPage = lazy(() => import('./pages/AdminFeedbackPage').then(m => ({ default: m.AdminFeedbackPage })))
 const AdminOrderDetailPage = lazy(() => import('./pages/AdminOrderDetailPage').then(m => ({ default: m.AdminOrderDetailPage })))
+// Added on main while this branch was open. Lazy like the rest of the admin
+// surface: it is reachable only by an admin and must not sit in the shopper bundle.
+const AdminPayoutsPage = lazy(() => import('./pages/AdminPayoutsPage').then(m => ({ default: m.AdminPayoutsPage })))
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -161,6 +164,7 @@ export default function App() {
           <Route path="/vendor/products/:id/edit" element={<RequireAuth><ProductFormPage /></RequireAuth>} />
           <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
           <Route path="/admin/feedback" element={<RequireAuth><AdminFeedbackPage /></RequireAuth>} />
+          <Route path="/admin/payouts" element={<RequireAuth><AdminPayoutsPage /></RequireAuth>} />
           <Route path="/admin/orders/:id" element={<RequireAuth><AdminOrderDetailPage /></RequireAuth>} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsPage />} />

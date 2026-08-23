@@ -57,7 +57,7 @@ export function ForgotPasswordPage() {
             style={{ width: '100%', boxSizing: 'border-box', minWidth: 0, padding: '9px 12px', border: '1.5px solid var(--line)', borderRadius: 'var(--r-sm)', fontFamily: 'var(--body)', fontSize: 14 }} />
         </label>
         <button type="submit" disabled={loading}
-          style={{ background: 'var(--ink)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', padding: '11px', fontWeight: 600, fontSize: 15, opacity: loading ? 0.6 : 1 }}>
+          style={{ background: 'var(--ink)', color: 'var(--paper)', border: 'none', borderRadius: 'var(--r-sm)', padding: '11px', fontWeight: 600, fontSize: 15, opacity: loading ? 0.6 : 1 }}>
           {loading ? 'Sending…' : 'Send reset link'}
         </button>
       </form>

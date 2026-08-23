@@ -1,5 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
+import { api } from '../lib/api'
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { FAQ_ENTRIES } from '../data/faqContent'
 
@@ -186,6 +187,40 @@ export function HelpPage() {
   )
 }
 
+/**
+ * The Fees section reads live numbers from the same config the payout
+ * ledger charges from — the page can never quote a rate the system does not
+ * apply. While commission is not live (the payout selling gate is off and
+ * the rate is unset business config), the section keeps its original
+ * "listing is free" copy rather than publishing a placeholder number as if
+ * it were a decision — the honest-signals rule.
+ */
+function FeesSection() {
+  const [fees, setFees] = React.useState<import('../lib/api').PublicFees | null>(null)
+  React.useEffect(() => {
+    api<import('../lib/api').PublicFees>('/api/v1/fees', { auth: false })
+      .then(setFees)
+      .catch(() => setFees(null)) // static copy below stays correct without it
+  }, [])
+
+  return (
+    <Section heading="Fees">
+      <p>
+        Listing is free. Payment processing happens at checkout through our secure payment provider.
+      </p>
+      {fees?.commissionLive && (
+        <p>
+          When your items sell, eRestyu keeps a {fees.commissionPercent}% commission
+          on the item total. Your delivery fee passes through to you in full. Your
+          share is paid by EFT within {fees.payoutWindowDays} days of the weekly
+          payout run following delivery confirmation — the same terms you accept in
+          your dashboard.
+        </p>
+      )}
+    </Section>
+  )
+}
+
 export function HowItWorksPage() {
   return (
     <InfoPage title="How to buy / how to sell">
@@ -209,11 +244,7 @@ export function HowItWorksPage() {
           number if you have one; the buyer is notified automatically.
         </p>
       </Section>
-      <Section heading="Fees">
-        <p>
-          Listing is free. Payment processing happens at checkout through our secure payment provider.
-        </p>
-      </Section>
+      <FeesSection />
     </InfoPage>
   )
 }

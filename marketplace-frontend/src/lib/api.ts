@@ -230,6 +230,33 @@ export async function draftListingFromPhoto(file: File, _retried = false): Promi
   return res.json()
 }
 
+/**
+ * Authenticated download of a text body (the payout bank CSV). NOT routed
+ * through api() because that helper parses JSON; this shares the same
+ * 401→refresh→retry logic instead of duplicating a bespoke auth path.
+ */
+export async function apiText(path: string, _retried = false): Promise<string> {
+  const headers: Record<string, string> = {}
+  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+
+  let res: Response
+  try {
+    res = await fetch(`${BASE}${path}`, { headers })
+  } catch {
+    throw new ApiError(0, 'Network error',
+      "Couldn't reach the server. Check your connection and try again.")
+  }
+
+  if (res.status === 401 && !_retried) {
+    if (await refreshSession()) return apiText(path, true)
+    clearSession()
+    window.dispatchEvent(new Event('mk:logout'))
+    throw await toApiError(res)
+  }
+  if (!res.ok) throw await toApiError(res)
+  return res.text()
+}
+
 // ---------- DTOs (mirrors backend) ----------
 
 /** POST /api/v1/vendor/products/draft — a suggestion, never a persisted product. */
@@ -306,6 +333,11 @@ export interface CategoryOption {
  * product-variants.md §2 for why. Price is ABSOLUTE, not a delta off the
  * product price.
  *
+ * Live on the buy path since V25: the cart endpoints take a variantId, the
+ * product page requires picking one before add-to-cart, and cart lines carry
+ * variantLabel. An earlier version of this comment said variants were inert,
+ * which described product-variants.md step 1 rather than the current state.
+ *
  * Buy path: POST /api/v1/cart/items with `{ productId, variantId, quantity }`.
  * Update/remove the line with PUT/DELETE
  * `/api/v1/cart/items/{productId}?variantId={id}`. Omit `variantId` only for
@@ -319,6 +351,20 @@ export interface VariantResponse {
   price: string
   stock: number
   imageUrl: string | null
+}
+
+/**
+ * Vendor create/update of one option — matches ProductDtos.VariantRequest
+ * field-for-field. Price is a decimal string ("120.00"), absolute like the
+ * response. Every variant endpoint returns the whole ProductResponse so the
+ * caller can replace its cached product without a follow-up fetch.
+ */
+export interface VariantRequest {
+  label: string
+  sku?: string | null
+  price: string
+  stock: number
+  position?: number | null
 }
 
 export interface ProductImage {
@@ -519,6 +565,65 @@ export interface ReviewResponse {
   rating: number
   comment?: string
   createdAt: string
+}
+
+// ---------- payouts (admin) ----------
+// Banking arrives MASKED from the server (last 4 only); the full account
+// number exists client-side in exactly one artifact — the downloaded bank
+// CSV — and never in application state.
+export interface MaskedBanking {
+  bankName: string | null
+  accountNumberLast4: string | null
+  complete: boolean
+}
+export interface PayoutPendingEntry {
+  id: number
+  orderId: number
+  orderNumber: string
+  kind: 'PRIMARY' | 'ADJUSTMENT'
+  createdAt: string
+  itemSubtotal: string
+  deliveryFee: string
+  commissionAmount: string
+  netPayable: string
+  note: string | null
+}
+export interface VendorPendingGroup {
+  vendorId: number
+  displayName: string
+  banking: MaskedBanking
+  entries: PayoutPendingEntry[]
+  totalNet: string
+}
+/** GET /api/v1/vendor/settings/payouts — the vendor's own onboarding state. */
+export interface PayoutSettingsStatus {
+  termsText: string
+  termsVersion: number
+  acceptedVersion: number | null
+  acceptedAt: string | null
+  termsCurrent: boolean
+  banking: MaskedBanking
+  gateEnabled: boolean
+  sellable: boolean
+}
+
+/** GET /api/v1/fees — public numbers for the How It Works Fees section. */
+export interface PublicFees {
+  commissionLive: boolean
+  commissionPercent: string
+  payoutWindowDays: number
+}
+
+export interface PayoutBatchSummary {
+  id: number
+  approvedAt: string
+  exportedAt: string | null
+  paidAt: string | null
+  paymentReference: string | null
+  entryCount: number
+  vendorCount: number
+  totalNet: string
+  state: 'APPROVED' | 'EXPORTED' | 'PAID'
 }
 
 // ---------- typed endpoints ----------

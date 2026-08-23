@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, Page, ProductResponse, VendorSettings } from '../lib/api'
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
+import { PayoutSetupCard } from '../components/vendor/PayoutSetupCard'
 
 /**
  * Inline editor for the vendor's flat delivery fee (Task 2.3). Charged once
@@ -126,6 +127,8 @@ export function VendorDashboardPage() {
             </Link>
           </div>
         </div>
+
+        <PayoutSetupCard />
 
         <DeliveryFeeEditor />
 

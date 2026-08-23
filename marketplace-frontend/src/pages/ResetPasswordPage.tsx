@@ -66,7 +66,7 @@ export function ResetPasswordPage() {
             onChange={e => setConfirm(e.target.value)} style={inputStyle} />
         </label>
         <button type="submit" disabled={loading}
-          style={{ background: 'var(--ink)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', padding: '11px', fontWeight: 600, fontSize: 15, opacity: loading ? 0.6 : 1 }}>
+          style={{ background: 'var(--ink)', color: 'var(--paper)', border: 'none', borderRadius: 'var(--r-sm)', padding: '11px', fontWeight: 600, fontSize: 15, opacity: loading ? 0.6 : 1 }}>
           {loading ? 'Saving…' : 'Set new password'}
         </button>
       </form>

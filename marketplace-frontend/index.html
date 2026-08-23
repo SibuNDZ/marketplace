@@ -7,6 +7,26 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="any" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <!-- Theme BEFORE first paint: saved manual choice wins, else the OS
+         preference. Inline and synchronous on purpose - this is the whole
+         no-flicker guarantee; React only reads the attribute afterwards. -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('mk.theme')
+          if (t !== 'light' && t !== 'dark') {
+            t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+          }
+          document.documentElement.dataset.theme = t
+        } catch (e) {
+          document.documentElement.dataset.theme = 'light'
+        }
+      })()
+    </script>
+    <!-- The Google Fonts <link>s that used to sit here are deliberately not
+         restored: this branch self-hosts the latin subsets via @fontsource in
+         main.tsx (audit 3.4), so re-adding them would put a render-blocking
+         third-party request back on the critical path. -->
   </head>
   <body>
     <div id="root"></div>

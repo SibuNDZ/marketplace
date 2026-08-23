@@ -43,6 +43,17 @@ Production fail-fast: `JWT_SECRET`, `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` /
 `GET /api/v1/payments/health` → `{provider, mode, configured, lastErrorType}`
 (no secrets).
 
+Vendor payouts (all optional; defaults carry PLACEHOLDER comments in
+`application.yml`, see `vendor-payouts.md` section 7 for the owner actions):
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `PAYOUT_COMMISSION_RATE` | `0.125` (placeholder) | Platform commission as a fraction; per-vendor overrides live on `users.commission_rate` |
+| `PAYOUT_WINDOW_DAYS` | `7` (placeholder) | Days after the weekly payout run promised in the vendor terms |
+| `PAYOUT_TERMS_VERSION` | `1` | Bump on any change to terms wording or numbers, which forces vendor re-acceptance |
+| `PAYOUT_SELLING_GATE` | `false` | When true, un-onboarded vendors (terms + banking) 409 at checkout |
+| `PAYOUT_BACKFILL_COMMIT` | `false` | Set true for ONE deploy to write ledger entries for pre-ledger PAID orders (dry-run logs otherwise) |
+
 ## Tests
 
 ~40 test classes against PostgreSQL 16 in Testcontainers (same Flyway

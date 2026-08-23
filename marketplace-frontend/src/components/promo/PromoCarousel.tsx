@@ -1,12 +1,17 @@
 import React, { useEffect, useState } from 'react'
 import { HERO_BANNERS } from '../../data/banners'
+import { useTheme } from '../../context/ThemeContext'
 
 const SLIDES = HERO_BANNERS
 
 /**
- * Editorial hero only. Category banners live in CategoryBannerRow underneath.
- * Autoplay respects prefers-reduced-motion. Hero CTAs are labels, not
- * buttons — they have nowhere to go.
+ * Editorial hero only. Category banners live in CategoryBannerRow underneath,
+ * which is where the clickable category tiles went. Autoplay respects
+ * prefers-reduced-motion.
+ *
+ * The CTA is a label, not a button: a hero slide has nowhere to go, and a
+ * button with no handler is a dead control. The slide dots below are the only
+ * interactive elements here.
  */
 export function PromoCarousel() {
   const [index, setIndex] = useState(0)
@@ -20,7 +25,11 @@ export function PromoCarousel() {
     return () => clearInterval(id)
   }, [paused, reducedMotion])
 
+  const { theme } = useTheme()
   const slide = SLIDES[index]
+  // Gradients are data, not CSS, so the theme fork happens here: the same
+  // slide composition on vivid daylight stops or obsidian-metallic ones.
+  const gradient = theme === 'dark' ? slide.gradientDark : slide.gradient
 
   return (
     <div
@@ -33,28 +42,31 @@ export function PromoCarousel() {
         height: 200, marginBottom: 16, boxShadow: 'var(--shadow)',
       }}>
       <div key={index} style={{
-        position: 'absolute', inset: 0, background: slide.gradient,
+        position: 'absolute', inset: 0, background: gradient,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 40px', animation: reducedMotion ? undefined : 'carousel-fade 0.4s ease',
       }}>
+        {/* Floating translucent geometry — pure decoration, so hidden from
+            AT and click-through (.hero-shape is pointer-events: none). */}
+        <span aria-hidden className="hero-shape" style={{
+          width: 120, height: 120, right: 180, top: 24, borderRadius: 18,
+          ['--tilt' as string]: '14deg',
+        }} />
+        <span aria-hidden className="hero-shape hero-shape--magenta" style={{
+          width: 70, height: 70, right: 320, bottom: 18, borderRadius: '50%',
+          animationDelay: '-4s',
+        }} />
+        <span aria-hidden className="hero-shape" style={{
+          width: 44, height: 44, right: 90, bottom: 42, borderRadius: 8,
+          ['--tilt' as string]: '-18deg', animationDelay: '-7s',
+        }} />
         <div style={{ maxWidth: 420, position: 'relative' }}>
-          <span style={{
-            display: 'inline-block',
-            background: 'rgba(255,255,255,0.22)', color: '#fff', fontSize: 11, fontWeight: 700,
-            padding: '3px 10px', borderRadius: 'var(--r-pill)', textTransform: 'uppercase', letterSpacing: '0.04em',
-            marginBottom: 8,
-          }}>{slide.badge}</span>
-          <h2 style={{ fontFamily: 'var(--display)', fontWeight: 800, fontSize: 30, color: '#fff', lineHeight: 1.15, marginBottom: 6 }}>
+          <span className="hero-badge">{slide.badge}</span>
+          <h2 className="chroma-text" style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 30, lineHeight: 1.15, marginBottom: 6 }}>
             {slide.title}
           </h2>
-          <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: 14, marginBottom: 14 }}>{slide.subtitle}</p>
-          <span style={{
-            display: 'inline-block',
-            background: '#fff', color: 'var(--ink)',
-            padding: '10px 22px', borderRadius: 'var(--r-pill)', fontWeight: 700, fontSize: 14,
-          }}>
-            {slide.cta}
-          </span>
+          <p style={{ color: 'rgba(255,255,255,0.82)', fontSize: 14, marginBottom: 14 }}>{slide.subtitle}</p>
+          <span className="hero-cta">{slide.cta} →</span>
         </div>
         <div style={{ fontSize: 96, opacity: 0.35, lineHeight: 1, pointerEvents: 'none' }} aria-hidden>{slide.icon}</div>
       </div>

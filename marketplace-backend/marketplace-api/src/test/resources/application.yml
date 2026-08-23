@@ -39,6 +39,22 @@ app:
     cancel-url: http://localhost:4200/checkout/cancelled
   payments:
     provider: stripe
+  payouts:
+    # This file REPLACES the main application.yml on the test classpath (same
+    # name), so every property the context needs must be restated here — the
+    # same trap documented for ai.model above. The rate matches the main
+    # yml's placeholder; CommissionLedgerTest asserts literal numbers
+    # derived from 0.125, so the two must move together.
+    commission-rate: 0.125
+    # Never commit backfill from a test boot; the runner's dry-run logs are
+    # harmless noise in a test context with an empty work list.
+    backfill-commit: false
+    payout-window-days: 7
+    terms-version: 1
+    # Off by default, matching production. PayoutTermsGateTest flips it on
+    # via @DynamicPropertySource; every OTHER suite's unbanked fixture
+    # vendors selling freely is the flag-off behaviour, proven constantly.
+    selling-gate-enabled: false
   yoco:
     # Deterministic so YocoSignatureTest/YocoWebhookTest can pre-compute
     # signatures by hand. The secret must be a real "whsec_<base64>" because

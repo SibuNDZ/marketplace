@@ -64,8 +64,18 @@ export const ProductCard = React.memo(function ProductCard({ product }: Props) {
   const isOutOfStock = product.stock === 0 && !product.deletedAt
   const imgSrc = productImageUrl(product, 640, 480)
 
+  // .product-card owns the material and hover lift; the mousemove only feeds
+  // the CSS spotlight (--mx/--my), so React re-renders nothing.
   return (
-    <div className="product-card">
+    <div
+      className="product-card"
+      onMouseMove={e => {
+        const el = e.currentTarget as HTMLDivElement
+        const rect = el.getBoundingClientRect()
+        el.style.setProperty('--mx', `${e.clientX - rect.left}px`)
+        el.style.setProperty('--my', `${e.clientY - rect.top}px`)
+      }}
+    >
       {/* Product image. Same tab: Back restores the catalogue's offset
           (ScrollToTop leaves POP alone), so a new tab is not needed to keep
           the shopper's place, filters or scroll. */}
@@ -114,15 +124,16 @@ export const ProductCard = React.memo(function ProductCard({ product }: Props) {
           {needsOptions ? (
             <Link
               to={`/products/${product.id}`}
-              className="product-card__cta product-card__cta--options"
+              className="product-card__cta product-card__cta--options neon-cta neon-cta--ghost"
+              style={{ display: 'inline-block' }}
             >
               Choose options
             </Link>
           ) : (
             <button
+              className="neon-cta product-card__cta product-card__cta--add"
               disabled={!canAdd || addToCart.isPending}
               onClick={() => addToCart.mutate()}
-              className="product-card__cta product-card__cta--add"
             >
               {added ? '✓ Added' : 'Add to cart'}
             </button>

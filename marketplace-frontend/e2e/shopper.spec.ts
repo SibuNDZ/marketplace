@@ -37,6 +37,39 @@ test('pay-error surface shows the RFC 7807 type', async ({ page }) => {
     })
   })
 
+  // Placing the order is a prerequisite, not the subject: the shipping form
+  // only renders once /api/v1/orders has answered. This was unmocked, so the
+  // POST fell through to the dev server, the mutation failed, and the test
+  // sat waiting for a form that could never appear.
+  await page.route(/\/api\/v1\/orders$/, async route => {
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 5001,
+        status: 'PENDING',
+        total: '80.00',
+        createdAt: '2026-08-23T10:00:00Z',
+        items: [{ productId: 10, productName: 'Cotton tee', quantity: 1, unitPrice: '80.00', lineTotal: '80.00' }],
+        deliveryFees: [],
+      }),
+    })
+  })
+
+  // The actual subject: pay returns RFC 7807 and the surface shows the type.
+  await page.route(/\/api\/v1\/orders\/\d+\/pay$/, async route => {
+    await route.fulfill({
+      status: 503,
+      contentType: 'application/problem+json',
+      body: JSON.stringify({
+        type: 'payments:provider-misconfigured',
+        title: 'Payment provider is not configured',
+        status: 503,
+        detail: 'The payment provider is missing credentials.',
+      }),
+    })
+  })
+
   await page.goto('/cart')
   await page.getByRole('button', { name: /Continue to payment/ }).click()
   await page.getByLabel('Recipient name').fill('Ada')

@@ -1,6 +1,7 @@
-// Banner config: 3 editorial hero slides plus 5 category tiles. The hero
-// carousel stays hero-only; CategoryBannerRow renders the tiles as their
-// own segmented row. Same honesty rule: no discount claims, no countdowns.
+// Banner config: 3 editorial hero slides plus 5 category tiles. Both kinds
+// share one carousel, interleaved hero/category (H1 C1 H2 C2 H3 C3 C4 C5), so
+// they cycle in the same space rather than stacking down the page. Same
+// honesty rule: no discount claims, no countdowns.
 
 export interface BannerConfig {
   format: 'hero' | 'tile'

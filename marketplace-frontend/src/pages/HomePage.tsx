@@ -7,6 +7,9 @@ import { useCategoryTree } from '../hooks/useCategoryTree'
 import heroImg from '../assets/landing/hero-editorial.jpg'
 import deptPantry from '../assets/landing/dept-pantry.jpg'
 import deptFashion from '../assets/landing/dept-fashion.jpg'
+import deptJewellery from '../assets/landing/dept-jewellery.jpg'
+import deptHomeLiving from '../assets/landing/dept-home-living.jpg'
+import deptBeauty from '../assets/landing/dept-beauty.jpg'
 import '../styles/landing.css'
 
 /**
@@ -21,10 +24,15 @@ import '../styles/landing.css'
  * RootSwitch in App.tsx).
  */
 
-/** Department slugs with commissioned photography; the rest get type tiles. */
+/** Department slugs with real photography; the rest get type tiles. */
 const DEPT_IMAGES: Record<string, string> = {
   pantry: deptPantry,
   fashion: deptFashion,
+  // The Jewellery DEPARTMENT's root slug is jewellery-collections;
+  // plain "jewellery" is a subcategory under Fashion.
+  'jewellery-collections': deptJewellery,
+  'home-and-living': deptHomeLiving,
+  'beauty-and-personal-care': deptBeauty,
 }
 
 function DepartmentsSection() {

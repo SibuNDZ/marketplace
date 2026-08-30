@@ -220,8 +220,10 @@ const TRUST_ITEMS = [
     body: 'Changed your mind before paying? Cancel instantly and the stock is released. Our team handles anything after.',
   },
   {
-    title: 'Local support',
-    body: 'A South African team answers at hello@erestyu.com.',
+    // No nationality claim on the team - the platform is South African,
+    // the people answering may be from anywhere (owner directive).
+    title: 'Real support',
+    body: 'A real person answers at hello@erestyu.com.',
   },
 ]
 

@@ -152,6 +152,30 @@ public class TestFixtures {
         return user;
     }
 
+    /**
+     * Cart holding one VARIANT line. Same REQUIRES_NEW contract as
+     * customerWithCart: the concurrency tests spawn real threads with their
+     * own transactions, so the cart must be committed before they run.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public User customerWithVariantCart(String username, Product product,
+                                        ProductVariant variant, int quantity) {
+        User user = persistUser(username, UserRole.CUSTOMER);
+
+        Cart cart = new Cart();
+        cart.setUser(user);
+
+        CartItem item = new CartItem();
+        item.setCart(cart);
+        item.setProduct(productRepository.getReferenceById(product.getId()));
+        item.setVariant(variant);
+        item.setQuantity(quantity);
+        cart.getItems().add(item);
+
+        cartRepository.save(cart);
+        return user;
+    }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public User vendor(String username) {
         return userRepository.findByEmail(username + "@test.local")

@@ -104,3 +104,37 @@ Multi-stage Dockerfile, non-root runtime. Railway: `PORT`,
 `/actuator/health` probes, `forward-headers-strategy` in prod. Frontend is
 Cloudflare Pages at `https://erestyu.com`. Payment cutover checklist:
 `OWNER-ACTIONS.md`.
+
+### Environments
+
+| | URL | Database | Email | Payments |
+|---|---|---|---|---|
+| production | `https://api.erestyu.com` | prod Postgres | **live Resend** | Yoco, test mode |
+| staging | `https://marketplace-staging-0636.up.railway.app` | own Postgres, empty | **disabled** | Yoco, test mode |
+
+Staging was duplicated from production, then deliberately de-fanged. Four
+things differ, and each one is a safety property rather than a convenience:
+
+- **`RESEND_API_KEY` is REMOVED, not blanked.** `EmailService` treats an
+  absent key as "log the link instead of sending" — its documented dev path.
+  This is the important one: without it, a staging test order would email
+  real vendors and real buyers, because production mail works now.
+- **Its own Postgres.** The datasource vars use template refs
+  (`${{Postgres.*}}`) rather than production's hardcoded literals, so
+  staging can never point at production data. Verified by the resolved
+  password differing and by the catalogue being empty.
+- **Its own `JWT_SECRET`,** so a staging token cannot authenticate against
+  production, in either direction.
+- **Its own bootstrap admin password,** and CORS/frontend URLs pointing at
+  staging plus `localhost:5173`.
+
+Deliberately SHARED with production, with eyes open: the R2 image bucket
+(staging uploads become orphaned objects there, harmless but not free) and
+the Anthropic/Voyage keys (the listing drafter costs real money per call).
+Both were kept so staging stays faithful; change them if that stops being
+the right trade.
+
+```bash
+railway variable list --service marketplace --environment staging --json
+railway logs --service marketplace --environment staging
+```

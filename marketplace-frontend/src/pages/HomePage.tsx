@@ -7,6 +7,7 @@ import { useCategoryTree } from '../hooks/useCategoryTree'
 import heroImg from '../assets/landing/hero-editorial.jpg'
 import deptPantry from '../assets/landing/dept-pantry.jpg'
 import deptFashion from '../assets/landing/dept-fashion.jpg'
+import deptHomeLiving from '../assets/landing/dept-home-living.jpg'
 import '../styles/landing.css'
 
 /**
@@ -21,10 +22,19 @@ import '../styles/landing.css'
  * RootSwitch in App.tsx).
  */
 
-/** Department slugs with commissioned photography; the rest get type tiles. */
+/**
+ * Department slugs with photography; the rest get type tiles.
+ *
+ * Curation rule (owner directive, 2026-08-30): tile imagery must SUPPORT
+ * the locally-curated positioning — South African subjects only (the
+ * veldskoen, the custom-made SA oak table). International brand
+ * photography is the same dishonesty as a fake badge; departments without
+ * a local photo keep their typographic tile until one exists.
+ */
 const DEPT_IMAGES: Record<string, string> = {
   pantry: deptPantry,
   fashion: deptFashion,
+  'home-and-living': deptHomeLiving,
 }
 
 function DepartmentsSection() {

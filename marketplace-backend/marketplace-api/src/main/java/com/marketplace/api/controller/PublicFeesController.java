@@ -1,7 +1,7 @@
 package com.marketplace.api.controller;
 
 import com.marketplace.api.payout.PayoutTerms;
-import com.marketplace.api.payout.SellingGate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -11,10 +11,12 @@ import org.springframework.web.bind.annotation.RestController;
  * meet the commission rate in public copy before meeting it inside a terms
  * checkbox, and both must be the SAME config value (PayoutTerms).
  *
- * commissionLive mirrors the selling gate flag: while the rate is still the
+ * commissionLive is the commission-confirmed flag: while the rate was a
  * config placeholder, the public page must not present it as a live fee —
  * the same honest-signals rule that keeps fabricated urgency off the PDP.
- * The frontend renders the commission sentence only when this is true.
+ * It used to mirror the selling gate; the two split when the owner decided
+ * the rate (10%, 2026-08-30) while the gate stayed off — the number being
+ * real is a display fact, the gate blocking checkout is a rollout event.
  */
 @RestController
 @RequestMapping("/api/v1/fees")
@@ -27,17 +29,19 @@ public class PublicFeesController {
     ) {}
 
     private final PayoutTerms terms;
-    private final SellingGate gate;
+    private final boolean commissionConfirmed;
 
-    public PublicFeesController(PayoutTerms terms, SellingGate gate) {
+    public PublicFeesController(
+            PayoutTerms terms,
+            @Value("${app.payouts.commission-confirmed}") boolean commissionConfirmed) {
         this.terms = terms;
-        this.gate = gate;
+        this.commissionConfirmed = commissionConfirmed;
     }
 
     @GetMapping
     public FeesResponse fees() {
         return new FeesResponse(
-                gate.isEnabled(),
+                commissionConfirmed,
                 terms.commissionPercentDisplay(),
                 terms.payoutWindowDays());
     }

@@ -42,10 +42,14 @@ app:
   payouts:
     # This file REPLACES the main application.yml on the test classpath (same
     # name), so every property the context needs must be restated here — the
-    # same trap documented for ai.model above. The rate matches the main
-    # yml's placeholder; CommissionLedgerTest asserts literal numbers
-    # derived from 0.125, so the two must move together.
+    # same trap documented for ai.model above. The production rate is the
+    # DECIDED 10%; tests stay at 0.125 because CommissionLedgerTest asserts
+    # literal numbers hand-computed at that rate (and pins it in its own
+    # DynamicPropertySource as well, belt and braces).
     commission-rate: 0.125
+    # Mirrors the main yml's display switch; PublicFeesTest pins the decided
+    # public contract (commissionLive true, 10%) with its own overrides.
+    commission-confirmed: true
     # Never commit backfill from a test boot; the runner's dry-run logs are
     # harmless noise in a test context with an empty work list.
     backfill-commit: false

@@ -39,9 +39,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * code it is testing would pass through any drift. 12.5% of 100.00 is 12.50
  * as a fact, written down.
  *
- * The platform default rate in test context is application.yml's 0.125
- * placeholder; tests that need a different rate use the per-vendor override,
- * which is also how the override path earns its coverage.
+ * The rate is PINNED to 0.125 below (it was application.yml's placeholder
+ * when these numbers were hand-computed; the production default is now the
+ * decided 10%). Pinning keeps every literal assertion valid regardless of
+ * future rate decisions. Tests that need a different rate use the
+ * per-vendor override, which is also how the override path earns its
+ * coverage.
  */
 @Testcontainers
 @SpringBootTest
@@ -57,6 +60,9 @@ class CommissionLedgerTest {
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("app.jwt.secret",
                 () -> "dGhpcy1pcy1hLXRlc3Qtb25seS1zZWNyZXQta2V5LTMyYnl0ZXM=");
+        // Every arithmetic assertion in this class was hand-computed at
+        // 12.5%; pin it so rate decisions never silently invalidate them.
+        registry.add("app.payouts.commission-rate", () -> "0.125");
     }
 
     @Autowired OrderService                orderService;

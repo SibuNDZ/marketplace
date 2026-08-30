@@ -249,6 +249,26 @@ class DiscoveryTest {
     }
 
     @Test
+    void favoriteIds_returnsLiveHearts_excludesDeleted() {
+        Product live  = fixtures.product("Live Fav",  "SKU-FAVIDS-1", new BigDecimal("10"), 5);
+        Product ghost = fixtures.product("Ghost Fav", "SKU-FAVIDS-2", new BigDecimal("10"), 5);
+        User u = fixtures.customer("favids-user1");
+
+        favoriteService.add(u.getId(), live.getId());
+        favoriteService.add(u.getId(), ghost.getId());
+
+        User vendor = userRepository.findByEmail("test-vendor@test.local").orElseThrow();
+        productService.delete(ghost.getId(), UserPrincipal.from(vendor));
+
+        // The heart-state set the frontend caches: live favorites only. The
+        // ghost's Favorite ROW survives (relisting restores the heart), but
+        // its id must not leak into the UI's set.
+        assertThat(favoriteService.ids(u.getId()))
+                .contains(live.getId())
+                .doesNotContain(ghost.getId());
+    }
+
+    @Test
     void retentionSweep_deletesOnlyOldRows() {
         Product p = fixtures.product("Sweep Widget", "SKU-SWEEP-1", new BigDecimal("10"), 5);
         User u = fixtures.customer("sweep-user1");

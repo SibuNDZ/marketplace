@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, ProductResponse, ReviewSummary, ApiError } from '../lib/api'
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { StockBadge } from '../components/ui/StockBadge'
+import { FavoriteHeart } from '../components/product/FavoriteHeart'
 import { vendorHue } from '../lib/vendorHue'
 import { ErrorSurface } from '../components/ui/ErrorSurface'
 import { ProductReviews } from '../components/product/ProductReviews'
@@ -305,6 +306,7 @@ export function ProductDetailPage() {
                   : hasVariants && !selected ? 'Choose an option'
                   : 'Add to cart'}
               </button>
+              <FavoriteHeart productId={product.id} className="fav-heart fav-heart--pdp" />
             </div>
             <p className="pdp-sku">SKU: <span className="num">{product.sku ?? '-'}</span></p>
 

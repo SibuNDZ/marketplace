@@ -110,6 +110,16 @@ public class DiscoveryController {
                 favoriteService.list(me.getId(), pageable).map(Favorite::getProduct));
     }
 
+    /**
+     * Heart-state bootstrap: ids of every live favorited product, one call.
+     * The wishlist PAGE uses /me/favorites; this exists so a catalogue of N
+     * cards needs one request for hearts, not N.
+     */
+    @GetMapping("/api/v1/me/favorites/ids")
+    public List<Long> favoriteIds(@AuthenticationPrincipal UserPrincipal me) {
+        return favoriteService.ids(me.getId());
+    }
+
     @PutMapping("/api/v1/products/{id}/favorite")
     public ResponseEntity<Void> favorite(@PathVariable Long id,
                                          @AuthenticationPrincipal UserPrincipal me) {

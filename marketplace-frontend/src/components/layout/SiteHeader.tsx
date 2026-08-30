@@ -1,6 +1,6 @@
 import React, { FormEvent, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, ChevronDown, Menu, Search, ShoppingCart, UserRound, X } from 'lucide-react'
+import { Bell, ChevronDown, Heart, Menu, Search, ShoppingCart, UserRound, X } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
 import { api, CartResponse } from '../../lib/api'
@@ -199,6 +199,13 @@ export function SiteHeader() {
                 </button>
               )}
               <ThemeToggle />
+              {/* Signed-out visitors reach the wishlist pitch via any heart
+                  on a card; a dead chrome link for them is clutter. */}
+              {user && (
+                <Link to="/wishlist" className="main-action" aria-label="Wishlist">
+                  <Heart size={20} strokeWidth={1.75} /><span>Wishlist</span>
+                </Link>
+              )}
               <div className="account-action js-account">
                 <button
                   className="main-action"
@@ -214,6 +221,7 @@ export function SiteHeader() {
                       <>
                         <span>{user.email}</span>
                         <Link to="/orders" onClick={() => setAccountOpen(false)}>Orders</Link>
+                        <Link to="/wishlist" onClick={() => setAccountOpen(false)}>Wishlist</Link>
                         {user.role !== 'CUSTOMER' && <Link to={roleDestination} onClick={() => setAccountOpen(false)}>{roleLabel}</Link>}
                         <Link to="/account" onClick={() => setAccountOpen(false)}>Account settings</Link>
                         <Link to="/feedback" onClick={() => setAccountOpen(false)}>Give feedback</Link>
@@ -322,6 +330,7 @@ export function SiteHeader() {
               {user ? (
                 <>
                   <Link to="/orders" onClick={() => setDrawerOpen(false)}>Orders</Link>
+                  <Link to="/wishlist" onClick={() => setDrawerOpen(false)}>Wishlist</Link>
                   {user.role !== 'CUSTOMER' && <Link to={roleDestination} onClick={() => setDrawerOpen(false)}>{roleLabel}</Link>}
                   <Link to="/account" onClick={() => setDrawerOpen(false)}>Account settings</Link>
                   <Link to="/feedback" onClick={() => setDrawerOpen(false)}>Give feedback</Link>

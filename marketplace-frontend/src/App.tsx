@@ -26,6 +26,7 @@ const CheckEmailPage = lazy(() => import('./pages/CheckEmailPage').then(m => ({ 
 const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage').then(m => ({ default: m.VerifyEmailPage })))
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })))
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })))
+const WishlistPage = lazy(() => import('./pages/WishlistPage').then(m => ({ default: m.WishlistPage })))
 const VendorDashboardPage = lazy(() => import('./pages/VendorDashboardPage').then(m => ({ default: m.VendorDashboardPage })))
 const VendorOrdersPage = lazy(() => import('./pages/VendorOrdersPage').then(m => ({ default: m.VendorOrdersPage })))
 const ProductFormPage = lazy(() => import('./pages/ProductFormPage').then(m => ({ default: m.ProductFormPage })))
@@ -174,6 +175,7 @@ export default function App() {
           <Route path="/vendor" element={<RequireAuth><VendorDashboardPage /></RequireAuth>} />
           <Route path="/vendor/orders" element={<RequireAuth><VendorOrdersPage /></RequireAuth>} />
           <Route path="/account" element={<RequireAuth><AccountSettingsPage /></RequireAuth>} />
+          <Route path="/wishlist" element={<RequireAuth><WishlistPage /></RequireAuth>} />
           <Route path="/feedback" element={<RequireAuth><FeedbackPage /></RequireAuth>} />
           <Route path="/vendor/products/new" element={<RequireAuth><ProductFormPage /></RequireAuth>} />
           <Route path="/vendor/products/:id/edit" element={<RequireAuth><ProductFormPage /></RequireAuth>} />

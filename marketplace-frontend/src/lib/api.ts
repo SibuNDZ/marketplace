@@ -643,6 +643,21 @@ export const categories = {
   },
 }
 
+/**
+ * Wishlist. Both mutations are idempotent server-side (a heart tapped twice
+ * is one heart), so optimistic UI retries are structurally harmless.
+ */
+export const favorites = {
+  /** Every live favorited product id, one call — heart-state for the whole UI. */
+  ids: () => api<number[]>('/api/v1/me/favorites/ids'),
+  list: (page = 0, size = 24) =>
+    api<Page<ProductResponse>>(`/api/v1/me/favorites?page=${page}&size=${size}`),
+  add: (productId: number) =>
+    api<void>(`/api/v1/products/${productId}/favorite`, { method: 'PUT' }),
+  remove: (productId: number) =>
+    api<void>(`/api/v1/products/${productId}/favorite`, { method: 'DELETE' }),
+}
+
 export const auth = {
   async login(email: string, password: string) {
     const r = await api<AuthResponse>('/api/v1/auth/login', {

@@ -6,6 +6,7 @@ import { StockBadge, OutOfStockOverlay } from '../ui/StockBadge'
 import { productImageUrl, productImageSrcSet, IMAGE_WIDTHS, IMAGE_SIZES } from '../../lib/productImage'
 import { RatingLine } from './RatingLine'
 import { PriceBlock } from './PriceBlock'
+import { FavoriteHeart } from './FavoriteHeart'
 
 interface Props {
   product: ProductResponse
@@ -99,6 +100,7 @@ export const ProductCard = React.memo(function ProductCard({ product }: Props) {
         )}
         {isNewIn(product) && <span className="product-card__new">New in</span>}
         {isOutOfStock && <OutOfStockOverlay />}
+        <FavoriteHeart productId={product.id} />
       </Link>
 
       <div className="product-card__body">

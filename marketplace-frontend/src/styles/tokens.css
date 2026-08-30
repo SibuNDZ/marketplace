@@ -3,20 +3,24 @@
    Import once in main.tsx. Components consume var(--x), never raw values. */
 
 :root {
-  /* palette — LIGHT (the classic storefront). The cyberpunk dark palette
-     lives in the [data-theme="dark"] block below; an inline script in
-     index.html stamps data-theme on <html> BEFORE first paint (saved
-     choice, else prefers-color-scheme), so neither theme ever flashes. */
-  --paper: #F5F7F3;
+  /* palette — LIGHT: "Bold & Energetic" editorial boutique. Cream ground,
+     charcoal ink, one loud ember accent — the Avant-Garde Boutique
+     direction ported from the design prototype (2026-08-30). The cyberpunk
+     dark palette lives in the [data-theme="dark"] block below; an inline
+     script in index.html stamps data-theme on <html> BEFORE first paint
+     (saved choice, else prefers-color-scheme), so neither theme ever
+     flashes. Token NAMES are load-bearing and unchanged — only values
+     pivot, same contract as the dark block. */
+  --paper: #FAF9F7;
   --card: #FFFFFF;
-  --ink: #182420;
-  --ink-soft: #4A5A52;
-  --line: #DDE4DE;
+  --ink: #1F1D1B;
+  --ink-soft: #6B6763;
+  --line: #E4E1DB;
 
-  --aloe: #1F6B4A;
-  --aloe-deep: #145036;
-  --aloe-tint: #E4F0E9;
-  --neon-cyan: #1F6B4A;     /* focus/glow accent; only actually neon in dark */
+  --aloe: #2E6B4F;          /* success/in-stock — earthier to sit with ember */
+  --aloe-deep: #1F4F3A;
+  --aloe-tint: #E9F0EB;
+  --neon-cyan: #E2582F;     /* focus accent; only actually neon in dark */
 
   --marigold: #E8A020;      /* low-stock heat + star ratings ONLY */
   --marigold-tint: #FBF1DC;
@@ -24,24 +28,23 @@
   --clay: #B4432F;          /* errors ONLY */
   --clay-tint: #F7E6E1;
 
-  /* Temu/Alibaba-style promotional accent — CTAs and brand highlights.
-     Deliberately loud; the marketplace's calmer --aloe green stays in play
-     for positive/neutral state (in-stock, success). */
-  --flame: #FF4626;
-  --flame-deep: #D6331A;
-  --flame-tint: #FFE7E1;
-  --flame-gradient: linear-gradient(135deg, #FF9A3D 0%, #FF4626 60%, #E31C3D 100%);
+  /* Ember — the single promotional accent of the editorial palette. CTAs
+     and brand highlights; --aloe green stays for positive/neutral state
+     (in-stock, success). */
+  --flame: #E2582F;
+  --flame-deep: #B84424;
+  --flame-tint: #FAEAE3;
+  --flame-gradient: linear-gradient(135deg, #F0793F 0%, #E2582F 55%, #C93E20 100%);
 
-  --sun: #FFB020;           /* secondary accent — notices, highlights */
-  --sun-deep: #C97D00;
-  --sun-tint: #FFF3D6;
+  --sun: #E89B4E;           /* secondary accent — notices, highlights */
+  --sun-deep: #A96A2A;
+  --sun-tint: #FAF0E4;
 
   --trust-blue: #1E6FE0;    /* informational accent (links, info chips) */
   --trust-blue-tint: #E7EFFD;
 
-  /* footer — deliberately darker than --ink so it reads as a distinct
-     "bookend" band under the busy product grid, not just more page */
-  --footer-bg: #0E1512;
+  /* footer — charcoal bookend band, slightly deeper than --ink */
+  --footer-bg: #191715;
   --footer-line: rgba(255,255,255,0.10);
   --footer-heading: #ffffff;
   --footer-text: rgba(255,255,255,0.62);
@@ -51,11 +54,12 @@
      placeholder wells. Both flip with the theme so components never have
      to hardcode a side of the inversion. */
   --on-accent: #ffffff;
-  --img-well: #EAEEED;
+  --img-well: #EFEDE8;
 
-  /* typography */
-  --display: "Bricolage Grotesque", system-ui, sans-serif;
-  --body: "Instrument Sans", system-ui, sans-serif;
+  /* typography — Space Grotesk display over DM Sans body (the editorial
+     pairing); mono unchanged, numbers are still facts */
+  --display: "Space Grotesk", "Bricolage Grotesque", system-ui, sans-serif;
+  --body: "DM Sans", "Instrument Sans", system-ui, sans-serif;
   --mono: "Spline Sans Mono", ui-monospace, "SF Mono", monospace;
 
   /* shape */
@@ -449,8 +453,11 @@ body {
   height: 28px;
   background: var(--footer-bg);
   color: var(--footer-text);
-  font-size: 11px;
-  letter-spacing: 0;
+  /* announcement-bar register: small caps tracking, editorial style */
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .utility-bar__inner,

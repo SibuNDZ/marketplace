@@ -1,10 +1,11 @@
 import React, { lazy, Suspense, useLayoutEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigationType } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigationType, useSearchParams } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import { RightPanelProvider } from './context/RightPanelContext'
 import { Footer } from './components/layout/Footer'
 import { FaqWidget } from './components/support/FaqWidget'
 import { CatalogPage } from './pages/CatalogPage'
+import { HomePage } from './pages/HomePage'
 import { ProductDetailPage } from './pages/ProductDetailPage'
 import { VendorShopPage } from './pages/VendorShopPage'
 import { SimilarItemsPage } from './pages/SimilarItemsPage'
@@ -48,6 +49,20 @@ const AUTH_ROUTES = new Set([
   '/login', '/register', '/check-email', '/verify-email',
   '/forgot-password', '/reset-password',
 ])
+
+/**
+ * "/" serves two audiences with zero broken links: a bare visit gets the
+ * editorial landing, while ANY catalogue parameter (?category, ?name,
+ * ?filters, or the landing's own ?shop=all CTA) renders the classic
+ * catalogue. Every pre-existing link, bookmark, and header flow that
+ * navigates with query params keeps working without touching a call site.
+ */
+function RootSwitch() {
+  const [searchParams] = useSearchParams()
+  const wantsCatalog = ['category', 'name', 'filters', 'shop']
+    .some(key => searchParams.has(key))
+  return wantsCatalog ? <CatalogPage /> : <HomePage />
+}
 
 function ChromeFooter() {
   const { pathname } = useLocation()
@@ -139,7 +154,7 @@ export default function App() {
         <ScrollToTop />
         <Suspense fallback={<div className="page-shell">Loading…</div>}>
         <Routes>
-          <Route path="/" element={<CatalogPage />} />
+          <Route path="/" element={<RootSwitch />} />
           <Route path="/products/:id" element={<ProductDetailPage />} />
           <Route path="/products/:id/similar" element={<SimilarItemsPage />} />
           {/* Public storefront. Declared before the auth-gated /vendor

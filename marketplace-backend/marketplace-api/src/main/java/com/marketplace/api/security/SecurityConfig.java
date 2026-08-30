@@ -58,6 +58,9 @@ public class SecurityConfig {
                     session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                     .requestMatchers("/api/v1/auth/**").permitAll()
+                    // Newsletter signup: unauthenticated by nature, 202
+                    // always, rate-limited alongside the auth endpoints.
+                    .requestMatchers("/api/v1/newsletter/subscribe").permitAll()
                     .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
                     // Chip row and sidebar render before anyone signs in.

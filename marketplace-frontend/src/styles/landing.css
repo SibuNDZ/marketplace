@@ -1,0 +1,357 @@
+/* Editorial landing ("/"). The Avant-Garde Boutique composition: full-bleed
+   hero, staggered departments, featured rail, charcoal vendor spotlight,
+   trust band, newsletter. Everything consumes the theme tokens, so the
+   cyberpunk dark theme reinterprets the same bones with its own palette. */
+
+.landing {
+  padding-top: var(--header-height);
+  background: var(--paper);
+  overflow-x: hidden;
+}
+
+.landing section { padding-inline: var(--gutter); }
+
+/* ---------- hero ---------- */
+.landing-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 40px;
+  align-items: center;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding-block: 48px 72px;
+}
+.landing-hero__copy { display: flex; flex-direction: column; align-items: flex-start; gap: 22px; }
+.landing-kicker {
+  padding: 6px 14px;
+  background: var(--flame);
+  color: var(--on-accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.landing-hero h1 {
+  font-family: var(--display);
+  font-size: clamp(52px, 8.5vw, 108px);
+  font-weight: 700;
+  line-height: 0.92;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+.landing-hero h1 em {
+  font-style: italic;
+  color: var(--flame);
+}
+.landing-hero__sub {
+  max-width: 34ch;
+  color: var(--ink-soft);
+  font-size: 17px;
+  line-height: 1.6;
+}
+.landing-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 28px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  transition: background 0.2s, transform 0.2s;
+}
+.landing-cta:hover { background: var(--flame); color: var(--on-accent); transform: translateY(-1px); }
+.landing-hero__art { position: relative; min-height: 380px; }
+.landing-hero__art img {
+  width: 100%;
+  height: 100%;
+  max-height: 680px;
+  object-fit: cover;
+  display: block;
+}
+
+/* ---------- shared section heading ---------- */
+.landing-heading {
+  margin: 0 auto 14px;
+  font-family: var(--display);
+  font-size: clamp(34px, 4.5vw, 52px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-align: center;
+  color: var(--ink);
+}
+.landing-heading--left { margin: 0 0 6px; text-align: left; }
+.landing-rule {
+  width: 84px;
+  height: 4px;
+  margin: 0 auto 48px;
+  background: var(--flame);
+  border: 0;
+}
+
+/* ---------- departments ---------- */
+.landing-departments { max-width: 1440px; margin: 0 auto; padding-block: 64px; }
+.dept-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  align-items: start;
+}
+/* the stagger: middle column drops, giving the editorial offset rhythm */
+.dept-tile:nth-child(3n + 2) { margin-top: 64px; }
+.dept-tile {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--img-well);
+}
+.dept-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(1) contrast(1.02);
+  transition: filter 0.45s ease, transform 0.6s ease;
+}
+.dept-tile:hover img { filter: grayscale(0); transform: scale(1.03); }
+.dept-tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(20, 18, 16, 0.72) 0%, rgba(20, 18, 16, 0.05) 45%);
+  pointer-events: none;
+}
+/* imageless departments: typographic tiles on alternating grounds */
+.dept-tile--type { display: grid; place-items: center; }
+.dept-tile--type::after { display: none; }
+.dept-tile--type .dept-tile__glyph { font-size: 64px; opacity: 0.35; }
+.dept-tile--ember { background: var(--flame); }
+.dept-tile--charcoal { background: var(--ink); }
+.dept-tile__label {
+  position: absolute;
+  left: 24px;
+  bottom: 20px;
+  z-index: 1;
+  color: #fff;
+}
+.dept-tile__label h3 {
+  font-family: var(--display);
+  font-style: italic;
+  font-size: clamp(26px, 3vw, 38px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.dept-tile__label .num {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+/* ---------- featured rail ---------- */
+.landing-featured { max-width: 1440px; margin: 0 auto; padding-block: 64px; }
+.landing-featured__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 18px;
+}
+.landing-link {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.landing-link:hover { color: var(--flame-deep); }
+.featured-rail {
+  display: flex;
+  gap: 24px;
+  padding-block: 28px 8px;
+}
+.featured-card { flex: 0 0 min(260px, 72vw); display: block; }
+.featured-card__well {
+  /* the card's children are <span>s inside a Link; without display:block
+     the aspect-ratio collapses to text height and the images free-size */
+  display: block;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--line);
+}
+.featured-card__well img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: transform 0.5s ease;
+}
+.featured-card:hover .featured-card__well img { transform: scale(1.04); }
+.featured-card__vendor {
+  display: block;
+  margin-top: 14px;
+  color: var(--ink-soft);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.featured-card__name {
+  display: block;
+  margin-top: 4px;
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.featured-card__price { display: block; margin-top: 6px; color: var(--flame-deep); font-size: 14px; font-weight: 700; }
+
+/* ---------- vendor spotlight ---------- */
+.landing-spotlight { background: var(--footer-bg); color: #fff; }
+.landing-spotlight__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: 56px;
+  align-items: center;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-block: 80px;
+}
+.landing-spotlight__art { position: relative; }
+.landing-spotlight__art img {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  display: block;
+  background: #fff;
+}
+.landing-spotlight__caption {
+  margin-top: 12px;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--footer-text-dim);
+}
+.landing-spotlight__body { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; }
+.landing-spotlight h2 {
+  font-family: var(--display);
+  font-size: clamp(38px, 5vw, 64px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.landing-spotlight__blurb { max-width: 46ch; color: var(--footer-text); font-size: 16px; line-height: 1.65; }
+.landing-spotlight__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  width: 100%;
+  padding-top: 26px;
+  border-top: 1px solid var(--footer-line);
+}
+.landing-spotlight__stats strong {
+  display: block;
+  color: var(--flame);
+  font-family: var(--display);
+  font-size: 34px;
+  font-weight: 700;
+}
+.landing-spotlight__stats span {
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--footer-text-dim);
+}
+.landing-spotlight .landing-link { color: #fff; }
+.landing-spotlight .landing-link:hover { color: var(--flame); }
+
+/* ---------- trust band ---------- */
+.landing-trust { background: var(--img-well); }
+.landing-trust__inner {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 36px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-block: 56px;
+}
+.landing-trust__item { display: flex; flex-direction: column; gap: 8px; }
+.landing-trust__item svg { color: var(--flame-deep); }
+.landing-trust__item h3 { font-family: var(--display); font-size: 16px; font-weight: 700; color: var(--ink); }
+.landing-trust__item p { color: var(--ink-soft); font-size: 13.5px; line-height: 1.55; }
+
+/* ---------- newsletter ---------- */
+.landing-newsletter { max-width: 640px; margin: 0 auto; padding-block: 80px; text-align: center; }
+.landing-newsletter p { margin: 0 auto 32px; max-width: 44ch; color: var(--ink-soft); font-size: 15px; line-height: 1.6; }
+.landing-newsletter form { display: flex; gap: 0; }
+.landing-newsletter input {
+  flex: 1;
+  min-width: 0;
+  padding: 15px 18px;
+  border: 1.5px solid var(--line);
+  border-right: 0;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+}
+.landing-newsletter input:focus { outline: none; border-color: var(--flame); }
+.landing-newsletter button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 26px;
+  border: 0;
+  background: var(--flame);
+  color: var(--on-accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.landing-newsletter button:hover:not(:disabled) { background: var(--flame-deep); }
+.landing-newsletter button:disabled { opacity: 0.6; cursor: default; }
+.landing-newsletter__fine {
+  margin-top: 18px;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.landing-newsletter__done { color: var(--aloe-deep); font-weight: 700; font-size: 15px; }
+.landing-newsletter__error { margin-top: 12px; color: var(--clay); font-size: 13px; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1023px) {
+  .landing-trust__inner { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .landing-spotlight__inner { grid-template-columns: 1fr; gap: 36px; padding-block: 56px; }
+}
+@media (max-width: 767px) {
+  .landing-hero { grid-template-columns: 1fr; padding-block: 24px 48px; gap: 28px; }
+  .landing-hero__art { order: -1; min-height: 0; }
+  .landing-hero__art img { max-height: 44vh; }
+  .dept-grid { grid-template-columns: 1fr; gap: 18px; }
+  .dept-tile:nth-child(3n + 2) { margin-top: 0; }
+  .dept-tile { aspect-ratio: 16 / 10; }
+  .landing-departments, .landing-featured { padding-block: 44px; }
+  .landing-trust__inner { grid-template-columns: 1fr; gap: 24px; padding-block: 40px; }
+  .landing-newsletter { padding-block: 56px; }
+  .landing-newsletter form { flex-direction: column; gap: 10px; }
+  .landing-newsletter input { border-right: 1.5px solid var(--line); }
+  .landing-newsletter button { justify-content: center; padding: 15px 26px; }
+}
+
+/* the featured rail scrolls horizontally on every width */
+.featured-rail { overflow-x: auto; scrollbar-width: none; }
+.featured-rail::-webkit-scrollbar { display: none; }

@@ -8,6 +8,8 @@ import heroImg from '../assets/landing/hero-editorial.jpg'
 import deptPantry from '../assets/landing/dept-pantry.jpg'
 import deptFashion from '../assets/landing/dept-fashion.jpg'
 import deptHomeLiving from '../assets/landing/dept-home-living.jpg'
+import deptJewellery from '../assets/landing/dept-jewellery.jpg'
+import deptBeauty from '../assets/landing/dept-beauty.jpg'
 import '../styles/landing.css'
 
 /**
@@ -35,6 +37,10 @@ const DEPT_IMAGES: Record<string, string> = {
   pantry: deptPantry,
   fashion: deptFashion,
   'home-and-living': deptHomeLiving,
+  // The Jewellery DEPARTMENT's root slug is jewellery-collections;
+  // plain "jewellery" is a subcategory under Fashion.
+  'jewellery-collections': deptJewellery,
+  'beauty-and-personal-care': deptBeauty,
 }
 
 function DepartmentsSection() {

@@ -2024,6 +2024,65 @@ button { cursor: pointer; font: inherit; }
   background: #EAEEED;
 }
 .product-card__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* ============================================================
+   Wishlist heart — card overlay + product-page variant
+   ============================================================ */
+/* On the card: a frosted disc in the media corner opposite the "New in"
+   badge. Filled state is the ember/flame accent in both themes. */
+.fav-heart {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: var(--ink-soft);
+  transition: color 0.15s, border-color 0.15s, transform 0.15s;
+}
+.fav-heart:hover { color: var(--flame-deep); border-color: var(--flame); }
+.fav-heart:active { transform: scale(0.88); }
+.fav-heart.is-favorite { color: var(--flame); border-color: var(--flame); }
+/* On the product page: sits in the buy row beside Add to cart, so it is a
+   plain boxed control at the row's height rather than a floating disc. */
+.fav-heart--pdp {
+  position: static;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--r-sm);
+  background: var(--card);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  flex: 0 0 auto;
+}
+
+/* Wishlist page chrome */
+.wishlist-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.wishlist-head h1 { font-family: var(--display); font-size: 26px; font-weight: 750; }
+.wishlist-count { color: var(--ink-soft); font-size: 13px; }
+.wishlist-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 36px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.wishlist-empty__cta { margin-top: 8px; padding: 10px 20px; font-size: 13px; }
+
 .product-card__new {
   position: absolute;
   top: 8px;

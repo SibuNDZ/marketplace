@@ -63,4 +63,9 @@ class FavoriteService {
     public Page<Favorite> list(Long userId, Pageable pageable) {
         return favoriteRepository.findByUserIdAndProductDeletedAtIsNull(userId, pageable);
     }
+
+    @Transactional(readOnly = true)
+    public java.util.List<Long> ids(Long userId) {
+        return favoriteRepository.liveProductIds(userId);
+    }
 }

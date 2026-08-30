@@ -34,6 +34,18 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: {
       port: 5173,
+      // Dev-only opt-in for browsing with real data: set VITE_API_URL to an
+      // EMPTY string in .env.development.local and /api requests proxy to
+      // the live API server-side, sidestepping CORS (the API rightly
+      // refuses localhost origins). Same pattern the Electron app uses.
+      // Opt-in on purpose: with the default VITE_API_URL, dev talks to a
+      // local backend and cannot accidentally write to production.
+      proxy: {
+        '/api': {
+          target: env.VITE_DEV_PROXY_TARGET || 'https://api.erestyu.com',
+          changeOrigin: true,
+        },
+      },
     },
     test: {
       environment: 'jsdom',

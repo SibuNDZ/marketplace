@@ -22,9 +22,10 @@ import java.time.Duration;
 
 /**
  * Per-IP token bucket on the auth endpoints — the brute-force / enumeration
- * countermeasure. Scope is deliberately ONLY /api/v1/auth/**: login guessing
- * and register enumeration are the attacks. A global limiter is a self-
- * inflicted launch-day outage.
+ * countermeasure. Scope is deliberately ONLY /api/v1/auth/** plus the
+ * newsletter signup (the one other unauthenticated write): login guessing,
+ * register enumeration, and signup spam are the attacks. A global limiter
+ * is a self-inflicted launch-day outage.
  *
  * Sizing defaults: capacity 10, refill 10/min per IP.
  *   Human forgets password: fine (10 tries, then a 1-min breather).
@@ -95,7 +96,12 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         if (HttpMethod.OPTIONS.matches(request.getMethod())) {
             return true;
         }
-        return !request.getRequestURI().startsWith("/api/v1/auth/");
+        // Newsletter signup shares the bucket: an unauthenticated write is
+        // the same abuse class as login guessing, and a legitimate visitor
+        // subscribes once, nowhere near the per-IP budget.
+        String uri = request.getRequestURI();
+        return !uri.startsWith("/api/v1/auth/")
+                && !uri.startsWith("/api/v1/newsletter/");
     }
 
     @Override

@@ -150,9 +150,9 @@ app:
     # One-time catch-up for pre-ledger PAID orders. Dry-run (log only) by
     # default; set true for a single deploy, then unset. See PayoutBackfillRunner.
     backfill-commit: ${PAYOUT_BACKFILL_COMMIT:false}
-    # ⚠ PLACEHOLDER, same status as commission-rate: the payout window is an
-    # operator promise to vendors and has not been decided (owner action:
-    # confirm weekly cadence and the days-after-delivery window together).
+    # DECIDED by the owner, 2026-08-30, together with the 10% commission:
+    # weekly payout run, EFT within 7 days of it. This is the public promise
+    # on How It Works and the number quoted in the vendor terms.
     payout-window-days: ${PAYOUT_WINDOW_DAYS:7}
     # Version of the payout terms text. Bumping this invalidates every
     # vendor's prior acceptance and forces re-acceptance — bump on ANY change

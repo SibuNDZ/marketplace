@@ -148,7 +148,7 @@ class GoogleSignInTest {
                 "sub-uv", "victim@test.local", false, "Not", "Proved"));
 
         assertThatThrownBy(() -> authService.googleSignIn("cred-unverified"))
-                .isInstanceOf(BadCredentialsException.class);
+                .isInstanceOf(GoogleIdentityVerifier.InvalidGoogleCredentialException.class);
         assertThat(userRepository.findByEmail("victim@test.local")).isEmpty();
     }
 

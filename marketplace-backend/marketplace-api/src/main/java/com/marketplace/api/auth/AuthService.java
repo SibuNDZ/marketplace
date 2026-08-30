@@ -225,7 +225,9 @@ public class AuthService {
         if (!identity.emailVerified()) {
             // Without this check, anyone who can register an unverified
             // address at Google could take over the matching account here.
-            throw new BadCredentialsException("Google account email is not verified");
+            throw new GoogleIdentityVerifier.InvalidGoogleCredentialException(
+                    "Your Google account's email address is not verified with Google. "
+                    + "Verify it there first, or register with email and password.");
         }
 
         User bySub = userRepository.findByGoogleSub(identity.sub()).orElse(null);

@@ -3,6 +3,7 @@ package com.marketplace.api.web;
 import com.marketplace.api.auth.AuthService.EmailAlreadyRegisteredException;
 import com.marketplace.api.auth.AuthService.EmailNotVerifiedException;
 import com.marketplace.api.auth.AuthService.GoogleSignInUnavailableException;
+import com.marketplace.api.auth.GoogleIdentityVerifier;
 import com.marketplace.api.auth.AuthService.UsernameTakenException;
 import com.marketplace.api.ai.DraftExceptions.DraftProviderException;
 import com.marketplace.api.ai.DraftExceptions.DraftRateLimitExceededException;
@@ -210,6 +211,19 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(GoogleSignInUnavailableException.class)
     public ProblemDetail googleSignInUnavailable(GoogleSignInUnavailableException ex) {
         return problem(HttpStatus.SERVICE_UNAVAILABLE, "Google sign-in unavailable", ex.getMessage());
+    }
+
+    /**
+     * 401 with the exception's own message, unlike BadCredentialsException's
+     * fixed text. Login's "Invalid email or password" is deliberate
+     * anti-enumeration; on the Google path that sentence is simply wrong
+     * (there is no password involved), and a signature or expiry failure
+     * enumerates nothing.
+     */
+    @ExceptionHandler(GoogleIdentityVerifier.InvalidGoogleCredentialException.class)
+    public ProblemDetail invalidGoogleCredential(
+            GoogleIdentityVerifier.InvalidGoogleCredentialException ex) {
+        return problem(HttpStatus.UNAUTHORIZED, "Google sign-in failed", ex.getMessage());
     }
 
     /** Expired, already-used, and unknown tokens are one case on purpose. */

@@ -10,6 +10,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByEmail(String email);
 
+    // Google sign-in join key (V30): lookup is sub-first because emails can
+    // change at Google while sub cannot.
+    Optional<User> findByGoogleSub(String googleSub);
+
     boolean existsByEmail(String email);
 
     /** Usernames are stored lowercase; callers must normalise before asking. */

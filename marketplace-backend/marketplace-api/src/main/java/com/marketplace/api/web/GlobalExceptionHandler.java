@@ -2,6 +2,7 @@ package com.marketplace.api.web;
 
 import com.marketplace.api.auth.AuthService.EmailAlreadyRegisteredException;
 import com.marketplace.api.auth.AuthService.EmailNotVerifiedException;
+import com.marketplace.api.auth.AuthService.GoogleSignInUnavailableException;
 import com.marketplace.api.auth.AuthService.UsernameTakenException;
 import com.marketplace.api.ai.DraftExceptions.DraftProviderException;
 import com.marketplace.api.ai.DraftExceptions.DraftRateLimitExceededException;
@@ -199,6 +200,16 @@ public class GlobalExceptionHandler {
         ProblemDetail pd = problem(HttpStatus.FORBIDDEN, "Email not verified", ex.getMessage());
         pd.setProperty("code", "EMAIL_NOT_VERIFIED");
         return pd;
+    }
+
+    /**
+     * 503, not 404: the endpoint exists, this environment just has no
+     * GOOGLE_CLIENT_ID. The frontend hides the button when unconfigured, so
+     * only direct API calls ever see this.
+     */
+    @ExceptionHandler(GoogleSignInUnavailableException.class)
+    public ProblemDetail googleSignInUnavailable(GoogleSignInUnavailableException ex) {
+        return problem(HttpStatus.SERVICE_UNAVAILABLE, "Google sign-in unavailable", ex.getMessage());
     }
 
     /** Expired, already-used, and unknown tokens are one case on purpose. */

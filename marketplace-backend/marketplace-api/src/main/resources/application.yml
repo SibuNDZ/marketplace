@@ -58,6 +58,12 @@ management:
 
 # Application Configuration
 app:
+  google:
+    # OAuth client ID for "Continue with Google" (google-signin.md). A client
+    # ID is public by design - not a secret. Blank (the default) keeps the
+    # feature dark: /api/v1/auth/google answers 503 and the frontend hides
+    # the button behind its own VITE_GOOGLE_CLIENT_ID.
+    client-id: ${GOOGLE_CLIENT_ID:}
   jwt:
     # No default — app fails fast at startup if JWT_SECRET is not set.
     # Dev fallback lives in application-dev.yml only.

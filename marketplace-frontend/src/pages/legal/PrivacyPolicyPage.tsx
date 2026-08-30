@@ -17,12 +17,20 @@ import { LegalPage, LegalSection } from './LegalPage'
 // is a statement about code rather than a policy promise.
 export function PrivacyPolicyPage() {
   return (
-    <LegalPage title="Privacy Policy" lastUpdated="2026-07-13">
+    <LegalPage title="Privacy Policy" lastUpdated="2026-08-30">
       <LegalSection heading="What we collect">
         <p>
           <strong>Account details</strong>: your email address, name, and a hash
           of your password (never the password itself, which is bcrypt-hashed
           before storage).
+        </p>
+        <p>
+          <strong>Google sign-in</strong>: if you continue with Google, Google
+          shares your name and email address with us, and we store a Google
+          account identifier so we can recognise your sign-in. We receive
+          nothing else from your Google account: no contacts, no calendar, no
+          files. Accounts created this way have no password until you choose to
+          set one.
         </p>
         <p>
           <strong>Order history</strong>: the products, quantities, and prices of

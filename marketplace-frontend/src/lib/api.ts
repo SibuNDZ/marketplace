@@ -652,6 +652,19 @@ export const auth = {
     return r
   },
   /**
+   * "Continue with Google": exchanges the GIS credential for the same
+   * session a password login yields. Works for new and existing accounts
+   * alike (the server links or creates), and skips email verification
+   * because Google already proved the inbox.
+   */
+  async googleSignIn(credential: string) {
+    const r = await api<AuthResponse>('/api/v1/auth/google', {
+      method: 'POST', body: { credential }, auth: false,
+    })
+    setSession(r.accessToken, r.refreshToken)
+    return r
+  },
+  /**
    * Returns a receipt, NOT a session. Login is gated on email verification,
    * so there is no token to store here and the caller must route to the
    * "check your inbox" screen rather than into the app.

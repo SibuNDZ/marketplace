@@ -1,10 +1,11 @@
-import React, { FormEvent, useState } from 'react'
+import React, { FormEvent, useCallback, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { ApiError, auth as authApi } from '../lib/api'
+import { GoogleSignInButton } from '../components/auth/GoogleSignInButton'
 
 export function LoginPage() {
-  const { login } = useAuth()
+  const { login, googleSignIn } = useAuth()
   const navigate = useNavigate()
   const { state } = useLocation()
   const [email, setEmail] = useState('')
@@ -56,6 +57,16 @@ export function LoginPage() {
       setLoading(false)
     }
   }
+
+  const googleCredential = useCallback(async (credential: string) => {
+    setError(undefined); setNeedsVerification(false)
+    try {
+      await googleSignIn(credential)
+      navigate(from, { replace: true })
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail || err.title : 'Something went wrong')
+    }
+  }, [googleSignIn, navigate, from])
 
   const resend = async () => {
     try {
@@ -115,6 +126,7 @@ export function LoginPage() {
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
+        <GoogleSignInButton onCredential={googleCredential} />
         <p style={{ textAlign: 'center', marginTop: 16, fontSize: 13 }}>
           <Link to="/forgot-password" style={{ color: 'var(--ink-soft)' }}>Forgot your password?</Link>
         </p>

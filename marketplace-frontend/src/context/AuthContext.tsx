@@ -13,6 +13,8 @@ interface AuthCtx {
   user: AuthUser | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
+  /** Sign in (or sign up) with a Google GIS credential. Sets the user like login. */
+  googleSignIn: (credential: string) => Promise<void>
   /**
    * Resolves to the registration receipt, NOT a logged-in user. Verification
    * gating means there is no session to set here; the caller routes to the
@@ -28,6 +30,7 @@ interface AuthCtx {
 const Ctx = createContext<AuthCtx>({
   user: null, loading: true,
   login: async () => {},
+  googleSignIn: async () => {},
   register: async () => ({ email: '', emailSent: false }),
   logout: async () => {},
 })
@@ -58,6 +61,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(toUser(r))
   }, [])
 
+  const googleSignIn = useCallback(async (credential: string) => {
+    const r = await auth.googleSignIn(credential)
+    setUser(toUser(r))
+  }, [])
+
   // Deliberately does NOT setUser: the account exists but cannot sign in
   // until the email is confirmed, so there is no session to reflect here.
   const register = useCallback(async (input: Parameters<typeof auth.register>[0]) => {
@@ -71,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <Ctx.Provider value={{ user, loading, login, register, logout }}>
+    <Ctx.Provider value={{ user, loading, login, googleSignIn, register, logout }}>
       {children}
     </Ctx.Provider>
   )

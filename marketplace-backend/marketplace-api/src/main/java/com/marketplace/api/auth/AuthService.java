@@ -53,19 +53,22 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final UserTokenService userTokenService;
     private final EmailService emailService;
+    private final GoogleIdentityVerifier googleIdentityVerifier;
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
                        RefreshTokenService refreshTokenService,
                        UserTokenService userTokenService,
-                       EmailService emailService) {
+                       EmailService emailService,
+                       GoogleIdentityVerifier googleIdentityVerifier) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.refreshTokenService = refreshTokenService;
         this.userTokenService = userTokenService;
         this.emailService = emailService;
+        this.googleIdentityVerifier = googleIdentityVerifier;
     }
 
     /**
@@ -177,10 +180,14 @@ public class AuthService {
 
         User user = userRepository.findByEmail(email).orElse(null);
 
-        String hashToCheck = user != null ? user.getPassword() : DUMMY_HASH;
+        // A NULL hash (Google-only account, V30) takes the same dummy-hash
+        // path as an unknown email: same generic 401 in the same time. The
+        // endpoint must not disclose that an account is Google-backed.
+        String storedHash = user != null ? user.getPassword() : null;
+        String hashToCheck = storedHash != null ? storedHash : DUMMY_HASH;
         boolean matches = passwordEncoder.matches(request.password(), hashToCheck);
 
-        if (user == null || !matches) {
+        if (user == null || storedHash == null || !matches) {
             throw new BadCredentialsException("Invalid email or password");
         }
 
@@ -191,6 +198,93 @@ public class AuthService {
         }
 
         return issueSession(user);
+    }
+
+    /**
+     * "Continue with Google" (google-signin.md): verify the GIS credential,
+     * then link-or-create and issue the same session a password login would.
+     *
+     * Lookup order is sub first, email second. sub is Google's stable key;
+     * email can change at Google, and the stored email is our order and
+     * notification identity, so it is never silently synced from Google.
+     *
+     * Linking by email is safe ONLY because unverified Google emails are
+     * rejected first: Google's email_verified is proof of inbox control
+     * strictly stronger than our own link, which is also why a linked or
+     * created account is marked verified.
+     */
+    @Transactional
+    public AuthResponse googleSignIn(String credential) {
+        if (!googleIdentityVerifier.isConfigured()) {
+            throw new GoogleSignInUnavailableException();
+        }
+
+        GoogleIdentityVerifier.GoogleIdentity identity =
+                googleIdentityVerifier.verify(credential);
+
+        if (!identity.emailVerified()) {
+            // Without this check, anyone who can register an unverified
+            // address at Google could take over the matching account here.
+            throw new BadCredentialsException("Google account email is not verified");
+        }
+
+        User bySub = userRepository.findByGoogleSub(identity.sub()).orElse(null);
+        if (bySub != null) {
+            return issueSession(bySub);
+        }
+
+        String email = identity.email().trim().toLowerCase();
+        User byEmail = userRepository.findByEmail(email).orElse(null);
+        if (byEmail != null) {
+            byEmail.setGoogleSub(identity.sub());
+            byEmail.setIsVerified(true);
+            log.info("Linked Google sign-in to existing user {}", byEmail.getId());
+            return issueSession(byEmail);
+        }
+
+        User user = new User();
+        user.setEmail(email);
+        user.setUsername(availableUsernameFrom(email));
+        user.setPassword(null); // Google-only account; resetPassword can add one later
+        user.setFirstName(orFallback(identity.givenName(), email.substring(0, email.indexOf('@'))));
+        user.setLastName(orFallback(identity.familyName(), ""));
+        user.setRole(UserRole.CUSTOMER);
+        user.setIsVerified(true);
+        user.setGoogleSub(identity.sub());
+
+        User saved = userRepository.save(user);
+        log.info("Created user {} via Google sign-in", saved.getId());
+        return issueSession(saved);
+    }
+
+    private static String orFallback(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value.trim();
+    }
+
+    /**
+     * Derive a free username from the email local part, normalised to the
+     * column's [a-z0-9_]/3-30 shape, with a numeric suffix on collision.
+     */
+    private String availableUsernameFrom(String email) {
+        String base = email.substring(0, email.indexOf('@'))
+                .toLowerCase().replaceAll("[^a-z0-9_]", "_");
+        base = base.substring(0, Math.min(base.length(), 30));
+        if (base.length() < 3) {
+            base = (base + "_user").substring(0, Math.min(base.length() + 5, 30));
+        }
+        if (!userRepository.existsByUsername(base)) {
+            return base;
+        }
+        for (int i = 1; i < 10_000; i++) {
+            String suffix = String.valueOf(i);
+            String candidate = base.substring(0, Math.min(base.length(), 30 - suffix.length()))
+                    + suffix;
+            if (!userRepository.existsByUsername(candidate)) {
+                return candidate;
+            }
+        }
+        // 10k collisions on one local part does not happen by accident.
+        throw new IllegalStateException("Could not derive a free username for " + email);
     }
 
     /** Consume a verification token and mark the account verified. */
@@ -321,6 +415,17 @@ public class AuthService {
 
         public Map<String, List<String>> getFieldErrors() {
             return fieldErrors;
+        }
+    }
+
+    /**
+     * GOOGLE_CLIENT_ID is not set in this environment — the feature is dark.
+     * Maps to 503: the frontend hides the button when unconfigured, so this
+     * only fires for direct API calls, and "unavailable" is the honest answer.
+     */
+    public static class GoogleSignInUnavailableException extends RuntimeException {
+        public GoogleSignInUnavailableException() {
+            super("Google sign-in is not available");
         }
     }
 

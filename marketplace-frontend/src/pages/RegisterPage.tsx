@@ -1,7 +1,8 @@
-import React, { FormEvent, useEffect, useState } from 'react'
+import React, { FormEvent, useCallback, useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { ApiError, auth as authApi, fieldErrorsFrom } from '../lib/api'
+import { GoogleSignInButton } from '../components/auth/GoogleSignInButton'
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,30}$/
 
@@ -13,7 +14,7 @@ type UsernameState =
   | { kind: 'free' }
 
 export function RegisterPage() {
-  const { register, user, loading: authLoading } = useAuth()
+  const { register, googleSignIn, user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
   // ?role=vendor preselects the seller card: the "Sell on eRestyu" entry
   // points land here with intent already declared, so don't ask twice.
@@ -71,6 +72,23 @@ export function RegisterPage() {
   // just shouting at someone mid-sentence.
   const passwordMismatch =
     form.confirmPassword.length > 0 && form.password !== form.confirmPassword
+
+  // Unlike form registration, this lands straight in the app: Google already
+  // proved the inbox, so there is no check-your-email step to route to.
+  //
+  // A Google signup is always a CUSTOMER account (the server has no business
+  // name to work with), so someone who chose the seller card is routed to
+  // account settings, where the become-a-seller form collects exactly the
+  // fields selling requires.
+  const googleCredential = useCallback(async (credential: string) => {
+    setError(undefined); setFieldErrors({})
+    try {
+      await googleSignIn(credential)
+      navigate(role === 'VENDOR' ? '/account' : '/', { replace: true })
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail || err.title : 'Something went wrong')
+    }
+  }, [googleSignIn, navigate, role])
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -285,6 +303,7 @@ export function RegisterPage() {
             {loading ? 'Creating account…' : 'Create account'}
           </button>
         </form>
+        <GoogleSignInButton onCredential={googleCredential} />
         <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: 'var(--ink-soft)' }}>
           Already have an account? <Link to="/login" style={{ color: 'var(--aloe)', fontWeight: 600 }}>Sign in</Link>
         </p>

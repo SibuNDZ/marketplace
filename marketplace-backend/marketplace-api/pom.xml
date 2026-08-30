@@ -44,6 +44,15 @@
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
 
+		<!-- Verifies Google ID tokens for "Continue with Google" (google-signin.md).
+		     Just the Nimbus JOSE/JWT decoder integration - deliberately NOT the
+		     oauth2-client starter: the GIS token flow has no redirect dance, no
+		     client secret, and no server-side OAuth session. -->
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-oauth2-jose</artifactId>
+		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>

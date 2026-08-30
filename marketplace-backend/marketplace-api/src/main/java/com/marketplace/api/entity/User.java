@@ -3,7 +3,6 @@ package com.marketplace.api.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -25,10 +24,18 @@ public class User {
     @NotBlank(message = "Email is required")
     private String email;
 
-    @Column(nullable = false)
-    @NotBlank(message = "Password is required")
-    @Size(min = 8, message = "Password must be at least 8 characters")
+    // NULL for Google-only accounts (V30). Length/blank rules live on the
+    // request DTOs in AuthDtos — entity-level @NotBlank here would refuse to
+    // persist a passwordless Google signup. Login treats a NULL hash exactly
+    // like an unknown email: same generic 401 against the dummy hash, so the
+    // endpoint never discloses that an account is Google-backed.
     private String password;
+
+    // Google's stable subject ID — the join key for Google sign-in. Emails
+    // can change at Google; sub cannot, which is why lookup goes sub-first
+    // and the stored email is never synced from Google silently.
+    @Column(name = "google_sub", unique = true)
+    private String googleSub;
 
     @Column(name = "first_name", nullable = false)
     @NotBlank(message = "First name is required")
@@ -180,6 +187,14 @@ public class User {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getGoogleSub() {
+        return googleSub;
+    }
+
+    public void setGoogleSub(String googleSub) {
+        this.googleSub = googleSub;
     }
 
     public String getFirstName() {

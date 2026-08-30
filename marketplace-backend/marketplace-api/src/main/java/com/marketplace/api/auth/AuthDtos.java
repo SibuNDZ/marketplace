@@ -87,6 +87,11 @@ public class AuthDtos {
             @NotBlank String password
     ) {}
 
+    /** The GIS "credential": a Google-signed ID token from the frontend button. */
+    public record GoogleSignInRequest(
+            @NotBlank String credential
+    ) {}
+
     public record RefreshRequest(
             @NotBlank String refreshToken
     ) {}

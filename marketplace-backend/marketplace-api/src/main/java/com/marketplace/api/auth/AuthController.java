@@ -2,6 +2,7 @@ package com.marketplace.api.auth;
 
 import com.marketplace.api.auth.AuthDtos.AuthResponse;
 import com.marketplace.api.auth.AuthDtos.ForgotPasswordRequest;
+import com.marketplace.api.auth.AuthDtos.GoogleSignInRequest;
 import com.marketplace.api.auth.AuthDtos.LoginRequest;
 import com.marketplace.api.auth.AuthDtos.LogoutRequest;
 import com.marketplace.api.auth.AuthDtos.RefreshRequest;
@@ -85,6 +86,17 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    /**
+     * "Continue with Google": takes the GIS credential, returns the same
+     * AuthResponse shape as /login. 503 when GOOGLE_CLIENT_ID is unset in
+     * this environment. Sits behind the same per-IP auth rate limiter as
+     * everything else under /api/v1/auth/**.
+     */
+    @PostMapping("/google")
+    public ResponseEntity<AuthResponse> google(@Valid @RequestBody GoogleSignInRequest request) {
+        return ResponseEntity.ok(authService.googleSignIn(request.credential()));
     }
 
     /**

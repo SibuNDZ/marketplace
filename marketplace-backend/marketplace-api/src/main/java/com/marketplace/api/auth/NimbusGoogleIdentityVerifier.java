@@ -1,7 +1,6 @@
 package com.marketplace.api.auth;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -54,8 +53,10 @@ public class NimbusGoogleIdentityVerifier implements GoogleIdentityVerifier {
                     jwt.getClaimAsString("family_name"));
         } catch (JwtException e) {
             // One generic failure for bad signature, expiry, wrong audience,
-            // wrong issuer alike - same no-oracle stance as login.
-            throw new BadCredentialsException("Invalid Google credential", e);
+            // wrong issuer alike. The message is shown to the user, so it
+            // says what to do, not what failed.
+            throw new InvalidGoogleCredentialException(
+                    "Google sign-in could not be verified. Please try again.", e);
         }
     }
 

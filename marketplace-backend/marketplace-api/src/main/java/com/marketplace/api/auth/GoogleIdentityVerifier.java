@@ -26,11 +26,25 @@ public interface GoogleIdentityVerifier {
     /**
      * Verify signature, issuer, audience, and expiry.
      *
-     * @throws org.springframework.security.authentication.BadCredentialsException
-     *         for any invalid, expired, or wrong-audience credential — one
-     *         exception for every failure mode, mirroring login's refusal to
-     *         explain itself to an attacker.
+     * @throws InvalidGoogleCredentialException for any invalid, expired, or
+     *         wrong-audience credential — one exception for every technical
+     *         failure mode. Distinct from BadCredentialsException on purpose:
+     *         that handler's fixed "Invalid email or password" text is
+     *         deliberate anti-enumeration for login, but on the Google path
+     *         it is simply the wrong sentence, and there is nothing to
+     *         enumerate in a signature failure.
      * @throws IllegalStateException if called while not configured.
      */
     GoogleIdentity verify(String credential);
+
+    /** 401 with its own message — see {@link #verify}. */
+    class InvalidGoogleCredentialException extends RuntimeException {
+        public InvalidGoogleCredentialException(String message) {
+            super(message);
+        }
+
+        public InvalidGoogleCredentialException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
 }

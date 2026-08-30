@@ -77,8 +77,13 @@ function FeaturedSection() {
   return (
     <section className="landing-featured" aria-labelledby="featured-heading">
       <div className="landing-featured__head">
+        {/* "Featured", not "Featured locally": the rail shows whatever the
+            live catalogue holds, and today that includes international
+            brands. A locality claim the products do not back is the same
+            dishonesty as a fake badge — reinstate the word only if the
+            rail is ever filtered to local makers. */}
         <h2 className="landing-heading landing-heading--left" id="featured-heading">
-          Featured locally
+          Featured
         </h2>
         <Link to="/?shop=all" className="landing-link">Shop all <span aria-hidden>→</span></Link>
       </div>

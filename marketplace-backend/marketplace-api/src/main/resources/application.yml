@@ -135,14 +135,18 @@ app:
     # provider (payfast-port.md).
     provider: ${PAYMENTS_PROVIDER:stripe}
   payouts:
-    # ⚠ PLACEHOLDER — the commission percentage is UNSET BUSINESS CONFIG, not
-    # a decision (vendor-payouts.md §5: it must cover the processor's ~3% cut
-    # plus margin, and setting it is the operator's call). 0.125 exists so the
-    # ledger arithmetic is testable; it must be confirmed or overridden via
-    # PAYOUT_COMMISSION_RATE before any payout statement reaches a vendor.
-    # A FRACTION in [0..1]: 0.125 = 12.5%. Per-vendor overrides live on
-    # users.commission_rate; the resolved rate is snapshotted per entry.
-    commission-rate: ${PAYOUT_COMMISSION_RATE:0.125}
+    # DECIDED by the owner, 2026-08-30: 10% platform commission. Covers the
+    # processor's ~3% cut plus margin (vendor-payouts.md §5; platform absorbs
+    # processing fees). A FRACTION in [0..1]: 0.10 = 10%. Per-vendor
+    # overrides live on users.commission_rate; the resolved rate is
+    # snapshotted per ledger entry.
+    commission-rate: ${PAYOUT_COMMISSION_RATE:0.10}
+    # Display switch for the DECIDED rate, separate from the selling gate:
+    # true means the public How It Works page presents the commission as a
+    # live fee. The gate (below) stays the ENFORCEMENT switch - flipping it
+    # blocks checkout for vendors without accepted terms and banking, which
+    # is a rollout event of its own, not a copy change.
+    commission-confirmed: ${PAYOUT_COMMISSION_CONFIRMED:true}
     # One-time catch-up for pre-ledger PAID orders. Dry-run (log only) by
     # default; set true for a single deploy, then unset. See PayoutBackfillRunner.
     backfill-commit: ${PAYOUT_BACKFILL_COMMIT:false}
@@ -153,14 +157,14 @@ app:
     # Version of the payout terms text. Bumping this invalidates every
     # vendor's prior acceptance and forces re-acceptance — bump on ANY change
     # to the terms wording or the numbers it quotes.
-    terms-version: ${PAYOUT_TERMS_VERSION:2}
+    # v3: commission decided at 10% (was the 12.5% placeholder).
+    terms-version: ${PAYOUT_TERMS_VERSION:3}
     # The selling gate: when true, a vendor with unaccepted terms or
     # incomplete banking details cannot be checked out from (server-enforced
-    # 409 at placeOrder). DEFAULT OFF deliberately: flipping it on while
-    # commission-rate is a placeholder would make every existing vendor
-    # unsellable under terms quoting a number nobody decided. Turning this on
-    # is the same owner action as setting the real rate and window — do all
-    # three together, then vendors accept honest terms.
+    # 409 at placeOrder). Still OFF: the commission is now decided (10%),
+    # but flipping this blocks checkout for every vendor who has not yet
+    # accepted terms and completed banking - an operational rollout (get the
+    # live vendors through the flow first), not a config flip to make casually.
     selling-gate-enabled: ${PAYOUT_SELLING_GATE:false}
   yoco:
     # Blank defaults, NOT sandbox defaults: Yoco test keys are per-merchant

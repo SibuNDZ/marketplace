@@ -52,7 +52,7 @@ class R2Config {
         secret = secret.trim();
         endpointOverride = endpointOverride.trim();
 
-        // endpointOverride exists ONLY so tests can point this at a MinIO
+        // endpointOverride exists ONLY so tests can point this at an S3Mock
         // testcontainer; blank in every real environment.
         String endpoint = endpointOverride.isBlank()
                 ? "https://" + accountId + ".r2.cloudflarestorage.com"
@@ -70,7 +70,7 @@ class R2Config {
                     .region(Region.of("auto"))
                     .credentialsProvider(StaticCredentialsProvider.create(
                             AwsBasicCredentials.create(accessKeyId, secret)))
-                    .forcePathStyle(true)   // required by MinIO; harmless on R2
+                    .forcePathStyle(true)   // required by the S3Mock test container; harmless on R2
                     .build();
         } catch (IllegalArgumentException e) {
             log.error("R2 endpoint '{}' is not a valid URI - check R2_ACCOUNT_ID is the bare " +

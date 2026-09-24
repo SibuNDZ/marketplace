@@ -107,5 +107,5 @@ app:
       public-base-url: https://images.erestyu.com
       # Individual tests that actually exercise storage (e.g.
       # ProductImageServiceTest) override account-id/keys/endpoint-override
-      # via @DynamicPropertySource to point at a real MinIO testcontainer —
+      # via @DynamicPropertySource to point at a real S3Mock testcontainer —
       # these are safe no-op placeholders for every other test.

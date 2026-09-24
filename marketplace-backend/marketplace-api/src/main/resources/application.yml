@@ -255,7 +255,7 @@ app:
       secret-access-key: ${R2_SECRET_ACCESS_KEY}
       bucket: erestyu-images
       public-base-url: https://images.erestyu.com
-      # Blank in every real environment — tests point this at a MinIO
+      # Blank in every real environment — tests point this at an S3Mock
       # testcontainer via @DynamicPropertySource.
       endpoint-override: ${R2_ENDPOINT_OVERRIDE:}
 

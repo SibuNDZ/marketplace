@@ -32,10 +32,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Real S3-protocol round-trip against a MinIO testcontainer — R2Config's
+ * Real S3-protocol round-trip against an S3Mock testcontainer — R2Config's
  * endpoint-override property exists solely for this. Two containers this
- * time (Postgres, house pattern, plus MinIO); each gets its own
+ * time (Postgres, house pattern, plus S3Mock); each gets its own
  * @DynamicPropertySource block for clarity.
+ *
+ * S3Mock, not MinIO: MinIO stopped publishing community images, and
+ * minio/minio (Docker Hub and quay.io) stopped being pullable, which broke
+ * CI on 2026-09-24 while local runs kept passing on a cached image. The tag
+ * is pinned so a moving "latest" cannot do that again.
  */
 @Testcontainers
 @SpringBootTest
@@ -44,17 +49,16 @@ class ProductImageServiceTest {
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
 
-    private static final String MINIO_ACCESS_KEY = "test-access-key";
-    private static final String MINIO_SECRET_KEY = "test-secret-key";
+    // S3Mock accepts any credentials; these only have to be non-blank for
+    // the SDK to sign requests.
+    private static final String ACCESS_KEY = "test-access-key";
+    private static final String SECRET_KEY = "test-secret-key";
     private static final String TEST_BUCKET = "erestyu-images-test";
 
     @Container
-    static GenericContainer<?> minio = new GenericContainer<>(DockerImageName.parse("minio/minio:latest"))
-            .withExposedPorts(9000)
-            .withEnv("MINIO_ROOT_USER", MINIO_ACCESS_KEY)
-            .withEnv("MINIO_ROOT_PASSWORD", MINIO_SECRET_KEY)
-            .withCommand("server", "/data")
-            .waitingFor(Wait.forLogMessage(".*API:.*\\n", 1));
+    static GenericContainer<?> s3mock = new GenericContainer<>(DockerImageName.parse("adobe/s3mock:5.2.3"))
+            .withExposedPorts(9090)
+            .waitingFor(Wait.forHttp("/").forPort(9090).forStatusCode(200));
 
     @DynamicPropertySource
     static void datasource(DynamicPropertyRegistry registry) {
@@ -66,12 +70,12 @@ class ProductImageServiceTest {
 
         // R2Config's endpoint-override — the whole reason that property exists.
         registry.add("app.storage.r2.account-id", () -> "unused-when-endpoint-overridden");
-        registry.add("app.storage.r2.access-key-id", () -> MINIO_ACCESS_KEY);
-        registry.add("app.storage.r2.secret-access-key", () -> MINIO_SECRET_KEY);
+        registry.add("app.storage.r2.access-key-id", () -> ACCESS_KEY);
+        registry.add("app.storage.r2.secret-access-key", () -> SECRET_KEY);
         registry.add("app.storage.r2.bucket", () -> TEST_BUCKET);
         registry.add("app.storage.r2.public-base-url", () -> "https://images.erestyu.com");
         registry.add("app.storage.r2.endpoint-override",
-                () -> "http://" + minio.getHost() + ":" + minio.getMappedPort(9000));
+                () -> "http://" + s3mock.getHost() + ":" + s3mock.getMappedPort(9090));
     }
 
     @Autowired ProductImageService productImageService;
@@ -80,7 +84,7 @@ class ProductImageServiceTest {
     @Autowired S3Client s3;
     @Autowired TestFixtures fixtures;
 
-    /** MinIO doesn't auto-create buckets — do it once before any upload test runs. */
+    /** A fresh container has no buckets; create it once before any upload test runs. */
     @BeforeAll
     static void ensureBucket(@Autowired S3Client s3) {
         try {
@@ -108,7 +112,7 @@ class ProductImageServiceTest {
         assertThat(url).startsWith("https://images.erestyu.com/products/" + product.getId() + "/");
         assertThat(url).endsWith(".png");
 
-        // Object genuinely exists in MinIO, not just a URL string.
+        // Object genuinely exists in the S3 store, not just a URL string.
         String key = url.substring("https://images.erestyu.com/".length());
         assertThat(s3.headObject(b -> b.bucket(TEST_BUCKET).key(key)).contentType()).isEqualTo("image/png");
     }

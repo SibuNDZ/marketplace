@@ -3,13 +3,14 @@ import { LegalPage, LegalSection } from './LegalPage'
 
 // Short and honest rather than borrowed legalese. Facts verified against
 // the code: 30-minute payment window (StripeCheckoutService.PAYMENT_WINDOW_MINUTES,
+// the expiry cutoff for every provider,
 // swept with a 5-minute grace by OrderExpiryJob), customer cancel on PENDING
 // restores stock (OrderService.cancelOrder), prices snapshot at purchase,
 // reviews require a delivered purchase (ReviewService), uploaded photos are
 // served from a public URL with no auth required to view (ObjectStorageService.publicUrl).
 export function TermsPage() {
   return (
-    <LegalPage title="Terms of Service" lastUpdated="2026-07-13">
+    <LegalPage title="Terms of Service" lastUpdated="2026-09-24">
       <LegalSection heading="Orders">
         <p>
           An order is defined by your cart at the moment you place it. Prices are
@@ -21,7 +22,7 @@ export function TermsPage() {
       <LegalSection heading="Payment window">
         <p>
           After placing an order you have <strong>30 minutes</strong> to complete
-          payment on Stripe. Unpaid orders are automatically cancelled shortly
+          payment with our secure payment provider. Unpaid orders are automatically cancelled shortly
           after the window closes and the reserved stock is released back to the
           catalog.
         </p>

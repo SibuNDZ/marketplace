@@ -1,9 +1,17 @@
 package com.marketplace.api.payment;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.marketplace.api.dto.ShippingDtos.ShippingAddressRequest;
+import com.marketplace.api.security.UserPrincipal;
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 /**
  * Plain unit test for PaymentController.extractOrderId — no Spring context,
@@ -15,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PaymentControllerTest {
 
     private final PaymentController controller =
-            new PaymentController(null, null, null, null, new ObjectMapper(), "whsec_test", "stripe");
+            new PaymentController(null, null, null, null, null, new ObjectMapper(), "whsec_test", "stripe");
 
     // Real-shaped: trimmed to the fields extractOrderId actually reads, but
     // same nesting Stripe sends for checkout.session.completed.
@@ -53,5 +61,40 @@ class PaymentControllerTest {
     @Test
     void extractOrderId_malformedJson_returnsNullNotException() {
         assertThat(controller.extractOrderId("not json")).isNull();
+    }
+
+    // --- provider dispatch ---------------------------------------------------
+
+    private static final ShippingAddressRequest ADDRESS = new ShippingAddressRequest(
+            "Thandi Mokoena", "+27 82 000 0000", "12 Milkwood Lane",
+            null, "Gqeberha", "Eastern Cape", "6001");
+    private static final UserPrincipal BUYER =
+            new UserPrincipal(3L, "buyer@example.com", "x", "CUSTOMER", true);
+
+    @Test
+    void paddedMixedCaseProvider_dispatchesToPaystack_notStripe() {
+        // The validator and health endpoint trim and lowercase; pay() must
+        // agree, or "paystack " boots healthy and 502s every checkout.
+        StripeCheckoutService stripe = mock(StripeCheckoutService.class);
+        PaystackCheckoutService paystack = mock(PaystackCheckoutService.class);
+        when(paystack.createCheckout(7L, 3L, ADDRESS)).thenReturn("https://checkout.paystack.com/x");
+        PaymentController c = new PaymentController(
+                stripe, null, null, paystack, null, new ObjectMapper(), "", " Paystack ");
+
+        assertThat(c.pay(7L, ADDRESS, BUYER))
+                .isEqualTo(Map.of("checkoutUrl", "https://checkout.paystack.com/x"));
+        verifyNoInteractions(stripe);
+    }
+
+    @Test
+    void unknownProvider_neverFallsThroughToStripe() {
+        StripeCheckoutService stripe = mock(StripeCheckoutService.class);
+        PaymentController c = new PaymentController(
+                stripe, null, null, null, null, new ObjectMapper(), "", "paystak");
+
+        assertThatThrownBy(() -> c.pay(7L, ADDRESS, BUYER))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("paystak");
+        verifyNoInteractions(stripe);
     }
 }

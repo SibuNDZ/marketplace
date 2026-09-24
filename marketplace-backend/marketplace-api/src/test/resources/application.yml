@@ -74,6 +74,13 @@ app:
     cancel-url: http://localhost:4200/checkout/cancelled
     failure-url: http://localhost:4200/checkout/cancelled
     webhook-tolerance-seconds: 180
+  paystack:
+    # Deterministic so PaystackWebhookTest can pre-compute signatures. No
+    # outbound call happens: the checkout test points initialize-url at a stub.
+    secret-key: sk_test_paystack_placeholder_for_tests
+    initialize-url: http://localhost:9/transaction/initialize
+    success-url: http://localhost:4200/checkout/success
+    cancel-url: http://localhost:4200/checkout/cancelled
   payfast:
     # Deterministic values so PayfastItnTest can pre-compute signatures.
     # No outbound calls happen in tests: the validator seam is stubbed.

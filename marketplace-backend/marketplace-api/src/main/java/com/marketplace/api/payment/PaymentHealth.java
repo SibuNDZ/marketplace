@@ -21,12 +21,13 @@ public class PaymentHealth {
     public PaymentHealth(@Value("${app.payments.provider:stripe}") String provider,
                          @Value("${app.stripe.secret-key:}") String stripeSecret,
                          @Value("${app.yoco.secret-key:}") String yocoSecret,
+                         @Value("${app.paystack.secret-key:}") String paystackSecret,
                          @Value("${app.payfast.merchant-id:}") String payfastMerchantId,
                          @Value("${app.payfast.merchant-key:}") String payfastMerchantKey,
                          @Value("${app.payfast.process-url:}") String payfastProcessUrl) {
         this.provider = provider == null ? "stripe" : provider.trim().toLowerCase();
-        this.mode = inferMode(this.provider, stripeSecret, yocoSecret, payfastProcessUrl);
-        this.configured = isConfigured(this.provider, stripeSecret, yocoSecret,
+        this.mode = inferMode(this.provider, stripeSecret, yocoSecret, paystackSecret, payfastProcessUrl);
+        this.configured = isConfigured(this.provider, stripeSecret, yocoSecret, paystackSecret,
                 payfastMerchantId, payfastMerchantKey);
     }
 
@@ -38,10 +39,12 @@ public class PaymentHealth {
         this.lastErrorType = type;
     }
 
-    static String inferMode(String provider, String stripeSecret, String yocoSecret, String processUrl) {
+    static String inferMode(String provider, String stripeSecret, String yocoSecret,
+                            String paystackSecret, String processUrl) {
         return switch (provider) {
             case "stripe" -> modeFromKey(stripeSecret);
             case "yoco" -> modeFromKey(yocoSecret);
+            case "paystack" -> modeFromKey(paystackSecret);
             case "payfast" -> modeFromPayfastUrl(processUrl);
             default -> "unknown";
         };
@@ -64,10 +67,12 @@ public class PaymentHealth {
     }
 
     private static boolean isConfigured(String provider, String stripeSecret, String yocoSecret,
+                                        String paystackSecret,
                                         String payfastMerchantId, String payfastMerchantKey) {
         return switch (provider) {
             case "stripe" -> notBlank(stripeSecret);
             case "yoco" -> notBlank(yocoSecret);
+            case "paystack" -> notBlank(paystackSecret);
             case "payfast" -> notBlank(payfastMerchantId) && notBlank(payfastMerchantKey);
             default -> false;
         };

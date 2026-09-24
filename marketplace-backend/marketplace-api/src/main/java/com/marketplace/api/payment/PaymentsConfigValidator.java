@@ -16,7 +16,7 @@ import java.util.List;
  * Replaces the Yoco-only {@code YocoConfigValidator}: Stripe used to fail
  * at property-bind time even when PayFast was selected (no default), and
  * PayFast could never fail (public sandbox defaults). Same shape for all
- * three now.
+ * providers now.
  */
 @Component
 public class PaymentsConfigValidator implements InitializingBean {
@@ -26,6 +26,7 @@ public class PaymentsConfigValidator implements InitializingBean {
     private final String stripeWebhook;
     private final String yocoSecret;
     private final String yocoWebhook;
+    private final String paystackSecret;
     private final String payfastMerchantId;
     private final String payfastMerchantKey;
     private final String payfastProcessUrl;
@@ -37,6 +38,7 @@ public class PaymentsConfigValidator implements InitializingBean {
             @Value("${app.stripe.webhook-secret:}") String stripeWebhook,
             @Value("${app.yoco.secret-key:}") String yocoSecret,
             @Value("${app.yoco.webhook-secret:}") String yocoWebhook,
+            @Value("${app.paystack.secret-key:}") String paystackSecret,
             @Value("${app.payfast.merchant-id:}") String payfastMerchantId,
             @Value("${app.payfast.merchant-key:}") String payfastMerchantKey,
             @Value("${app.payfast.process-url:}") String payfastProcessUrl,
@@ -46,6 +48,7 @@ public class PaymentsConfigValidator implements InitializingBean {
         this.stripeWebhook = stripeWebhook;
         this.yocoSecret = yocoSecret;
         this.yocoWebhook = yocoWebhook;
+        this.paystackSecret = paystackSecret;
         this.payfastMerchantId = payfastMerchantId;
         this.payfastMerchantKey = payfastMerchantKey;
         this.payfastProcessUrl = payfastProcessUrl;
@@ -59,8 +62,9 @@ public class PaymentsConfigValidator implements InitializingBean {
             case "stripe" -> validateStripe();
             case "yoco" -> validateYoco();
             case "payfast" -> validatePayfast();
+            case "paystack" -> validatePaystack();
             default -> throw new IllegalStateException(
-                    "PAYMENTS_PROVIDER='" + provider + "' is not one of stripe, yoco, payfast.");
+                    "PAYMENTS_PROVIDER='" + provider + "' is not one of stripe, yoco, payfast, paystack.");
         }
     }
 
@@ -99,6 +103,24 @@ public class PaymentsConfigValidator implements InitializingBean {
             throw new IllegalStateException(
                     "PAYMENTS_PROVIDER=yoco but YOCO_WEBHOOK_SECRET does not start with whsec_. "
                     + "The secret is returned once when you register the webhook.");
+        }
+    }
+
+    /**
+     * One key, not two: Paystack signs webhooks with the secret key itself,
+     * so there is no webhook secret to forget. The public key (pk_) is never
+     * needed server-side and pasting it here is the likely mistake.
+     */
+    private void validatePaystack() {
+        List<String> missing = new ArrayList<>();
+        if (isBlank(paystackSecret)) missing.add("PAYSTACK_SECRET_KEY (app.paystack.secret-key)");
+        failIfMissing("paystack", missing);
+        if ("unknown".equals(PaymentHealth.modeFromKey(paystackSecret))) {
+            throw new IllegalStateException(
+                    "PAYMENTS_PROVIDER=paystack but PAYSTACK_SECRET_KEY does not start with "
+                    + "sk_test_ or sk_live_, so the mode cannot be determined. "
+                    + "Copy the Secret Key (not the Public Key) from Paystack "
+                    + "Settings -> API Keys & Webhooks.");
         }
     }
 

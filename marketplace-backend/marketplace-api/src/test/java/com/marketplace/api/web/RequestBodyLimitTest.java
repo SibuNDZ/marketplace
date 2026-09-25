@@ -134,7 +134,8 @@ class RequestBodyLimitTest {
     void multipartUploadOverTheJsonCap_isNotAnsweredByTheFilter() throws Exception {
         // A 1 MB image is a normal upload, so the filter must step aside for
         // multipart. Reaching Spring Security's 401 rather than a 413 is the
-        // proof; the part is never parsed, which the next test covers.
+        // proof. The part itself is never parsed here: security answers
+        // before DispatcherServlet gets to it.
         HttpRequest request = HttpRequest.newBuilder(uri("/api/v1/products/1/image"))
                 .header("Content-Type", "multipart/form-data; boundary=" + BOUNDARY)
                 .POST(BodyPublishers.ofByteArray(multipart(

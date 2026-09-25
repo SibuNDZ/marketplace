@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -93,9 +94,16 @@ public class RequestBodyLimitFilter extends OncePerRequestFilter {
     public static final int DEFAULT_MAX_BYTES = 256 * 1024;
 
     private final CorsOrigins allowedOrigins;
+    private final int maxParameterCount;
 
-    public RequestBodyLimitFilter(CorsOrigins allowedOrigins) {
+    /**
+     * maxParameterCount is Tomcat's own form-parsing limit, read from the same
+     * property, so the replay below never parses more than Tomcat would have.
+     */
+    public RequestBodyLimitFilter(CorsOrigins allowedOrigins,
+                                  @Value("${server.tomcat.max-parameter-count:10000}") int maxParameterCount) {
         this.allowedOrigins = allowedOrigins;
+        this.maxParameterCount = maxParameterCount;
     }
 
     /** The cap for this request, or -1 when the multipart limits already bound it. */
@@ -143,7 +151,7 @@ public class RequestBodyLimitFilter extends OncePerRequestFilter {
             reject(request, response, limit, "chunked body past " + limit + " bytes");
             return;
         }
-        chain.doFilter(new BufferedBodyRequest(request, body), response);
+        chain.doFilter(new BufferedBodyRequest(request, body, maxParameterCount), response);
     }
 
     private void reject(HttpServletRequest request, HttpServletResponse response,
@@ -181,11 +189,13 @@ public class RequestBodyLimitFilter extends OncePerRequestFilter {
     static final class BufferedBodyRequest extends HttpServletRequestWrapper {
 
         private final byte[] body;
+        private final int maxParameterCount;
         private Map<String, String[]> parameters;
 
-        BufferedBodyRequest(HttpServletRequest request, byte[] body) {
+        BufferedBodyRequest(HttpServletRequest request, byte[] body, int maxParameterCount) {
             super(request);
             this.body = body;
+            this.maxParameterCount = maxParameterCount;
         }
 
         @Override
@@ -285,11 +295,26 @@ public class RequestBodyLimitFilter extends OncePerRequestFilter {
          */
         private Map<String, String[]> queryThenBodyParameters() {
             Map<String, List<String>> merged = new LinkedHashMap<>();
-            super.getParameterMap().forEach((name, values) ->
-                    merged.computeIfAbsent(name, k -> new ArrayList<>()).addAll(List.of(values)));
+            int count = 0;
+            for (Map.Entry<String, String[]> query : super.getParameterMap().entrySet()) {
+                merged.computeIfAbsent(query.getKey(), k -> new ArrayList<>()).addAll(List.of(query.getValue()));
+                count += query.getValue().length;
+            }
 
+            // Stops at the same parameter count Tomcat does, and walks the
+            // body by hand because split("&") would build every pair before
+            // any limit could apply. Unbounded, 256 KB of a1&a2&... became
+            // tens of thousands of map entries: megabytes of heap bought with
+            // a body the size cap had already let through.
             Charset charset = charset();
-            for (String pair : new String(body, charset).split("&")) {
+            String form = new String(body, charset);
+            int start = 0;
+            while (start <= form.length() && count < maxParameterCount) {
+                int amp = form.indexOf('&', start);
+                int end = amp < 0 ? form.length() : amp;
+                String pair = form.substring(start, end);
+                start = end + 1;
+
                 int eq = pair.indexOf('=');
                 String rawName = eq < 0 ? pair : pair.substring(0, eq);
                 if (rawName.isEmpty()) {
@@ -305,6 +330,7 @@ public class RequestBodyLimitFilter extends OncePerRequestFilter {
                     continue;
                 }
                 merged.computeIfAbsent(name, k -> new ArrayList<>()).add(value);
+                count++;
             }
 
             Map<String, String[]> result = new LinkedHashMap<>();

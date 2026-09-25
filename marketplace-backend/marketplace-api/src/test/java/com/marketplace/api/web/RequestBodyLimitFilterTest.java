@@ -35,7 +35,7 @@ class RequestBodyLimitFilterTest {
 
     private static final String FRONTEND = "http://localhost:5173";
 
-    private final RequestBodyLimitFilter filter = new RequestBodyLimitFilter(new CorsOrigins(FRONTEND));
+    private final RequestBodyLimitFilter filter = new RequestBodyLimitFilter(new CorsOrigins(FRONTEND), 10_000);
 
     // --- payment callbacks: 64 KB, any content type ------------------------
 
@@ -227,6 +227,29 @@ class RequestBodyLimitFilterTest {
         assertThat(downstream.getParameter("note")).isEqualTo("a&b");
         assertThat(downstream.getParameter("bad")).isNull();
         assertThat(Collections.list(downstream.getParameterNames())).hasSize(7);
+    }
+
+    @Test
+    void chunkedFormPost_parsesNoMoreParametersThanTomcatWould() throws Exception {
+        // Tomcat stops at server.tomcat.max-parameter-count and keeps what it
+        // has; the replay must not be the one parser without a ceiling. The
+        // query string counts toward the limit, as it does in Tomcat.
+        StringBuilder form = new StringBuilder();
+        for (int i = 0; i < 50; i++) {
+            form.append(i == 0 ? "" : "&").append("p").append(i).append("=v");
+        }
+        MockHttpServletRequest request = streamed("POST", "/api/v1/newsletter/subscribe",
+                new ByteArrayInputStream(form.toString().getBytes(StandardCharsets.UTF_8)), -1);
+        request.setContentType("application/x-www-form-urlencoded");
+        request.setQueryString("q=1");
+        request.addParameter("q", "1");
+
+        RequestBodyLimitFilter capped = new RequestBodyLimitFilter(new CorsOrigins(FRONTEND), 10);
+        MockFilterChain chain = new MockFilterChain();
+        capped.doFilter(request, new MockHttpServletResponse(), chain);
+
+        assertThat(chain.getRequest().getParameterMap().keySet()).containsExactly(
+                "q", "p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8");
     }
 
     // --- helpers -----------------------------------------------------------

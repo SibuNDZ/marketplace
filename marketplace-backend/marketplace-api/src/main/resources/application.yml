@@ -6,8 +6,10 @@ server:
     # Bounds what Tomcat holds in memory for form fields, including the
     # non-file parts of a multipart body, which RequestBodyLimitFilter leaves
     # to the container. Boot's 2 MB default let an anonymous multipart request
-    # to any path hold eight times the 256 KB a JSON body gets. File parts go
-    # to disk and are bounded by spring.servlet.multipart instead.
+    # to any path Spring Security lets through without a token (auth,
+    # newsletter, payments, product reads) hold eight times the 256 KB a JSON
+    # body gets. File parts go to disk and are bounded by
+    # spring.servlet.multipart instead.
     max-http-form-post-size: 256KB
 
 # Spring Configuration

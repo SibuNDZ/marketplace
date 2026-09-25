@@ -6,12 +6,13 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * Single parse of app.cors.allowed-origins. Two call sites need this list —
- * SecurityConfig's CorsFilter and AuthRateLimitFilter's hand-stamped 429 (the
- * filter runs before the security chain, so it can't rely on CorsFilter) —
- * and each parsing its own copy of the raw property is a footgun: the day the
- * Railway origin is added, an edit to one copy and not the other regresses
- * the 429 path silently for exactly the production origin.
+ * Single parse of app.cors.allowed-origins. Three call sites need this list:
+ * SecurityConfig's CorsFilter, plus AuthRateLimitFilter's 429 and
+ * RequestBodyLimitFilter's 413, both stamped by hand because those filters
+ * run before the security chain and can't rely on CorsFilter. Each parsing
+ * its own copy of the raw property is a footgun: the day the Railway origin
+ * is added, an edit to one copy and not another regresses an error path
+ * silently for exactly the production origin.
  */
 @Component
 public class CorsOrigins {

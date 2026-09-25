@@ -13,6 +13,7 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.UrlPathHelper;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -29,92 +30,148 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Caps the request body on the payment provider callbacks: the Stripe and
- * Yoco webhooks, the PayFast ITN, and whatever provider comes next.
+ * Caps request bodies before anything reads them.
  *
- * Those endpoints are permitAll, so no JWT stands in front of them, and each
- * controller takes the body as @RequestBody String and checks the signature
- * only once the whole body is in memory. Nothing else bounds that body:
- * spring.servlet.multipart covers uploads and Tomcat's form-post limit covers
- * its own parameter parsing, not JSON. A few concurrent multi-hundred-MB
- * POSTs could exhaust the heap of the single Railway instance. Real
- * provider events are a few KB, so 64 KB leaves generous headroom without
- * being worth a config knob.
+ * Nothing else bounds a JSON body. spring.servlet.multipart covers uploads
+ * and Tomcat's form-post limit covers only its own parameter parsing, so
+ * Jackson (or a @RequestBody String) would take whatever arrived. That hurt
+ * in three places: the payment callbacks are permitAll and read the whole
+ * body before checking the signature; auth and newsletter are permitAll by
+ * nature; and any account holder can sign in and post to the rest. A few
+ * concurrent multi-hundred-MB bodies could exhaust the heap of the single
+ * Railway instance.
+ *
+ * The limits, first match wins:
+ *  - /api/v1/payments/: 64 KB, whatever the content type. Real provider
+ *    events are a few KB. Matched by prefix rather than a list of provider
+ *    paths, so a new provider's callback cannot ship without the cap.
+ *  - multipart/*: left to the container, because the product image and
+ *    listing draft uploads legitimately exceed the JSON cap. Tomcat spools
+ *    file parts to disk under spring.servlet.multipart (5 MB file, 6 MB
+ *    request) and holds plain form fields in memory only up to
+ *    server.tomcat.max-http-form-post-size, which application.yml sets to
+ *    the same 256 KB so a multipart body buys no more heap than JSON does.
+ *  - everything else: 256 KB. The largest fixed-shape body is a product
+ *    (200-character name, 2000-character description, 64-character SKU,
+ *    ten 30-character tags), about 16 KB even fully escaped, so this is
+ *    sixteen-fold headroom. The one body that grows with data is the admin
+ *    payout approval's list of entry ids, which reaches the cap at roughly
+ *    30,000 entries. Whatever outgrows it shows up as a logged 413, not a
+ *    silent failure.
  *
  * The size is not always known up front, hence two paths:
  *  - Content-Length present: over the cap is a 413 before a byte is read.
  *    Under it, the request goes through untouched, because Tomcat never
  *    reads past the declared length.
- *  - No Content-Length (chunked): read at most cap + 1 bytes here and 413 if
- *    that extra byte shows up; otherwise the chain gets a request replaying
- *    the buffered body. Reading ahead, rather than capping the stream as the
- *    controller consumes it, matters for two reasons. A cap that trips inside
- *    Spring MVC surfaces as HttpMessageNotReadableException, which
- *    GlobalExceptionHandler reports as a 400 blaming the sender's JSON. And
- *    for a form POST (the PayFast ITN) Spring never calls getInputStream():
- *    it rebuilds the body from getParameterMap(), which Tomcat fills by
- *    reading the connection directly, so a wrapped stream would cap nothing.
- *
- * Scoped by prefix rather than a list of provider paths, so a new provider's
- * callback cannot ship without the cap. The only other endpoint under it is
- * the bodyless GET /api/v1/payments/health. Every method is covered because
- * FormContentFilter reads PUT/PATCH/DELETE form bodies in full before any
- * controller or security check runs.
+ *  - Transfer-Encoding (chunked): read at most cap + 1 bytes here and 413
+ *    if that extra byte shows up; otherwise the chain gets a request
+ *    replaying the buffered body. Reading ahead, rather than capping the
+ *    stream as the controller consumes it, matters for two reasons. A cap
+ *    that trips inside Spring MVC surfaces as HttpMessageNotReadableException,
+ *    which GlobalExceptionHandler reports as a 400 blaming the sender's JSON.
+ *    And for a form POST without a query string (the PayFast ITN) Spring
+ *    never calls getInputStream(): it rebuilds the body from
+ *    getParameterMap(), which Tomcat fills by reading the connection
+ *    directly, so a wrapped stream would cap nothing.
+ *  - Neither header: HTTP/1.1 has no body, so there is nothing to read and
+ *    the request (every plain GET) is not wrapped.
  *
  * Runs after CorrelationIdFilter so a 413 carries a requestId, and before
- * FormContentFilter and Spring Security so nothing downstream reads first.
+ * Spring Security, so the cap holds on authenticated paths too and nothing
+ * downstream reads first. FormContentFilter, which used to parse
+ * PUT/PATCH/DELETE form bodies ahead of security, is switched off in
+ * application.yml.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 2)
-public class WebhookBodyLimitFilter extends OncePerRequestFilter {
+public class RequestBodyLimitFilter extends OncePerRequestFilter {
 
-    private static final Logger log = LoggerFactory.getLogger(WebhookBodyLimitFilter.class);
+    private static final Logger log = LoggerFactory.getLogger(RequestBodyLimitFilter.class);
 
-    static final String SCOPE = "/api/v1/payments/";
-    public static final int MAX_BODY_BYTES = 64 * 1024;
+    static final String PAYMENTS_PREFIX = "/api/v1/payments/";
+    public static final int PAYMENT_CALLBACK_MAX_BYTES = 64 * 1024;
+    public static final int DEFAULT_MAX_BYTES = 256 * 1024;
+
+    private final CorsOrigins allowedOrigins;
+
+    public RequestBodyLimitFilter(CorsOrigins allowedOrigins) {
+        this.allowedOrigins = allowedOrigins;
+    }
+
+    /** The cap for this request, or -1 when the multipart limits already bound it. */
+    static int limitFor(HttpServletRequest request) {
+        // The path Spring routes on, not getRequestURI(): the raw URI still
+        // carries percent-encoding (/api/v1/%70ayments/... reaches the same
+        // controller) and, behind ForwardedHeaderFilter in prod, whatever
+        // X-Forwarded-Prefix the caller sent. Either would drop a payment
+        // callback from 64 KB to the general cap.
+        String path = UrlPathHelper.defaultInstance.getPathWithinApplication(request);
+        if (path.startsWith(PAYMENTS_PREFIX)) {
+            return PAYMENT_CALLBACK_MAX_BYTES;
+        }
+        // Same test Spring's multipart resolver uses, so anything it will
+        // parse (and bound) is exactly what this filter skips.
+        String contentType = request.getContentType();
+        if (contentType != null && contentType.regionMatches(true, 0, "multipart/", 0, 10)) {
+            return -1;
+        }
+        return DEFAULT_MAX_BYTES;
+    }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !request.getRequestURI().startsWith(SCOPE);
+        return limitFor(request) < 0;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
+        int limit = limitFor(request);
         long declared = request.getContentLengthLong();
-        if (declared > MAX_BODY_BYTES) {
-            reject(request, response, "Content-Length " + declared);
+        if (declared > limit) {
+            reject(request, response, limit, "Content-Length " + declared);
             return;
         }
-        if (declared >= 0) {
+        if (declared >= 0 || request.getHeader("Transfer-Encoding") == null) {
             chain.doFilter(request, response);
             return;
         }
 
-        byte[] body = request.getInputStream().readNBytes(MAX_BODY_BYTES + 1);
-        if (body.length > MAX_BODY_BYTES) {
-            reject(request, response, "chunked body past " + MAX_BODY_BYTES + " bytes");
+        byte[] body = request.getInputStream().readNBytes(limit + 1);
+        if (body.length > limit) {
+            reject(request, response, limit, "chunked body past " + limit + " bytes");
             return;
         }
         chain.doFilter(new BufferedBodyRequest(request, body), response);
     }
 
-    private static void reject(HttpServletRequest request, HttpServletResponse response,
-                               String reason) throws IOException {
+    private void reject(HttpServletRequest request, HttpServletResponse response,
+                        int limit, String reason) throws IOException {
         // Logged because nothing downstream will be: the controller never
-        // runs, so without this line a misbehaving provider (or an attack)
+        // runs, so without this line a misbehaving client (or an attack)
         // leaves no trace beyond the access log.
-        log.warn("Payment callback body too large: {} {} from {} ({}) - returning 413",
+        log.warn("Request body too large: {} {} from {} ({}) - returning 413",
                 request.getMethod(), request.getRequestURI(),
                 AuthRateLimitFilter.clientIp(request), reason);
 
+        // CORS headers by hand, as AuthRateLimitFilter does for its 429: this
+        // runs before the security chain's CorsFilter, and a browser can get
+        // here (the product form's description has no length limit, so a big
+        // paste does it). Without them the frontend sees an opaque network
+        // error instead of a 413 it can explain.
+        String origin = request.getHeader("Origin");
+        if (origin != null && allowedOrigins.contains(origin)) {
+            response.setHeader("Access-Control-Allow-Origin", origin);
+            response.addHeader("Vary", "Origin");
+            response.setHeader("Access-Control-Expose-Headers", "X-Request-Id");
+        }
         response.setStatus(HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE);
         response.setContentType("application/problem+json");
         response.getWriter().write("""
                 {"type":"about:blank","title":"Payload too large",\
-                "status":413,"detail":"Payment callback bodies are limited to \
-                %d bytes."}""".formatted(MAX_BODY_BYTES));
+                "status":413,"detail":"Request bodies on this endpoint are \
+                limited to %d bytes."}""".formatted(limit));
     }
 
     /**
@@ -167,8 +224,8 @@ public class WebhookBodyLimitFilter extends OncePerRequestFilter {
 
                 @Override
                 public void setReadListener(ReadListener listener) {
-                    // The payment controllers are blocking; nothing here
-                    // switches to async IO.
+                    // Every controller in this app reads its body blocking;
+                    // nothing switches to servlet async IO.
                     throw new UnsupportedOperationException("Replayed body supports blocking reads only");
                 }
             };
@@ -221,9 +278,10 @@ public class WebhookBodyLimitFilter extends OncePerRequestFilter {
 
         /**
          * Query string first, then body, in wire order: the order Tomcat
-         * itself produces. Order is load-bearing, since PayFast signs the
-         * fields in the order they were sent and Spring rebuilds the body
-         * from this map.
+         * itself produces, so anything reading parameters sees what it would
+         * have without the filter. Body order is load-bearing: with no query
+         * string Spring rebuilds a form body from this map, and PayFast signs
+         * its fields in the order they were sent.
          */
         private Map<String, String[]> queryThenBodyParameters() {
             Map<String, List<String>> merged = new LinkedHashMap<>();

@@ -2,6 +2,13 @@
 server:
   port: ${PORT:8080}  # Railway injects PORT; without this mapping Spring listens
                        # on 8080 while Railway probes the injected port — deploy loops.
+  tomcat:
+    # Bounds what Tomcat holds in memory for form fields, including the
+    # non-file parts of a multipart body, which RequestBodyLimitFilter leaves
+    # to the container. Boot's 2 MB default let an anonymous multipart request
+    # to any path hold eight times the 256 KB a JSON body gets. File parts go
+    # to disk and are bounded by spring.servlet.multipart instead.
+    max-http-form-post-size: 256KB
 
 # Spring Configuration
 spring:
@@ -12,6 +19,15 @@ spring:
     multipart:
       max-file-size: 5MB
       max-request-size: 6MB   # headroom over the file cap for multipart framing
+
+  mvc:
+    formcontent:
+      filter:
+        # Off: FormContentFilter parses PUT/PATCH/DELETE form bodies on every
+        # path before Spring Security runs. Nothing in this JSON API sends
+        # them (the cart's variantId rides in the query string), so it was
+        # only a pre-authentication parser for anyone to feed.
+        enabled: false
 
   # JPA/Hibernate Configuration — Flyway owns the schema; Hibernate audits it
   jpa:

@@ -10,6 +10,22 @@ spring:
   datasource:
     hikari:
       auto-commit: false
+  # The request-size settings below are restated from application.yml, which
+  # this file replaces on the test classpath, so RequestBodyLimitTest runs
+  # against production limits rather than Boot's defaults. BodyLimitConfigTest
+  # fails if the two files drift apart.
+  mvc:
+    formcontent:
+      filter:
+        enabled: false
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+
+server:
+  tomcat:
+    max-http-form-post-size: 256KB
 
 app:
   cors:

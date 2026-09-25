@@ -71,9 +71,10 @@ public class SecurityConfig {
                     // should meet the commission rate in public copy before
                     // meeting it inside a terms checkbox.
                     .requestMatchers(HttpMethod.GET, "/api/v1/fees").permitAll()
-                    // Provider callbacks stay under /api/v1/payments/ because
-                    // WebhookBodyLimitFilter caps bodies by that prefix. One
-                    // mounted elsewhere would be unauthenticated AND unbounded.
+                    // Provider callbacks stay under /api/v1/payments/:
+                    // RequestBodyLimitFilter holds that prefix to 64 KB. A
+                    // callback mounted elsewhere would only get the general
+                    // 256 KB cap, four times the room for an unauthenticated caller.
                     .requestMatchers("/api/v1/payments/stripe/webhook").permitAll()
                     // PayFast ITN: unauthenticated like the Stripe webhook;
                     // authenticity comes from the signed-payload gauntlet.

@@ -30,7 +30,7 @@ import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 
-import static com.marketplace.api.web.WebhookBodyLimitFilter.MAX_BODY_BYTES;
+import static com.marketplace.api.web.RequestBodyLimitFilter.PAYMENT_CALLBACK_MAX_BYTES;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -76,7 +76,7 @@ class WebhookBodyLimitTest {
         // Correctly signed, so the controller WOULD pay this order. Still
         // PENDING afterwards means the filter answered, not the signature check.
         Long orderId = placedOrder("BIG1");
-        String body = paddedTo(YocoWebhookTest.successBody(orderId), MAX_BODY_BYTES + 1);
+        String body = paddedTo(YocoWebhookTest.successBody(orderId), PAYMENT_CALLBACK_MAX_BYTES + 1);
 
         assertThat(postYoco(body, false)).isEqualTo(413);
         assertThat(statusOf(orderId)).isEqualTo(OrderStatus.PENDING);
@@ -85,7 +85,7 @@ class WebhookBodyLimitTest {
     @Test
     void signedWebhookAtTheCap_stillPays() throws Exception {
         Long orderId = placedOrder("CAP1");
-        String body = paddedTo(YocoWebhookTest.successBody(orderId), MAX_BODY_BYTES);
+        String body = paddedTo(YocoWebhookTest.successBody(orderId), PAYMENT_CALLBACK_MAX_BYTES);
 
         assertThat(postYoco(body, false)).isEqualTo(200);
         assertThat(statusOf(orderId)).isEqualTo(OrderStatus.PAID);
@@ -101,7 +101,7 @@ class WebhookBodyLimitTest {
         // PayFast 415, so a 413 can only have come from the cap.
         HttpRequest request = HttpRequest.newBuilder(uri(path))
                 .header("Content-Type", "application/json")
-                .POST(publisher("x".repeat(MAX_BODY_BYTES + 1), false))
+                .POST(publisher("x".repeat(PAYMENT_CALLBACK_MAX_BYTES + 1), false))
                 .build();
 
         assertThat(http.send(request, BodyHandlers.discarding()).statusCode()).isEqualTo(413);
@@ -112,7 +112,7 @@ class WebhookBodyLimitTest {
     @Test
     void chunkedWebhookOverTheCap_isCutOff_413() throws Exception {
         Long orderId = placedOrder("CHK1");
-        String body = paddedTo(YocoWebhookTest.successBody(orderId), MAX_BODY_BYTES + 8 * 1024);
+        String body = paddedTo(YocoWebhookTest.successBody(orderId), PAYMENT_CALLBACK_MAX_BYTES + 8 * 1024);
 
         assertThat(postYoco(body, true)).isEqualTo(413);
         assertThat(statusOf(orderId)).isEqualTo(OrderStatus.PENDING);

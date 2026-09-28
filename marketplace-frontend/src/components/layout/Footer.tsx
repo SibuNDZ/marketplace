@@ -2,6 +2,7 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { PaymentMarks } from './PaymentMarks'
 import { useSellerEntry } from '../../hooks/useSellerEntry'
+import { SOCIAL_LINKS, SocialLink, publishableSocialLinks } from '../../data/socialLinks'
 
 // Footer rule: every item is a real destination. Topics we want but haven't
 // written yet exist as pages that say "under construction" (Careers, Contact)
@@ -22,8 +23,21 @@ function Column({ title, children }: { title: string; children: React.ReactNode 
   )
 }
 
-export function Footer() {
+// External, so a plain <a> rather than a router Link. noopener stops the
+// opened page reaching back into ours through window.opener; noreferrer
+// keeps the page path out of the platform's referrer logs.
+function ExternalItem({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer"
+      style={{ fontSize: 13, color: 'var(--footer-text)' }}>
+      {children}
+    </a>
+  )
+}
+
+export function Footer({ socialLinks = SOCIAL_LINKS }: { socialLinks?: SocialLink[] } = {}) {
   const sellerEntry = useSellerEntry()
+  const social = publishableSocialLinks(socialLinks)
   return (
     <footer className="site-footer" aria-label="Site footer" style={{ background: 'var(--footer-bg)', marginTop: 48, color: 'var(--footer-text)' }}>
       <div style={{ maxWidth: 'var(--content-max)', margin: '0 auto', padding: '48px var(--gutter) 32px' }}>
@@ -60,6 +74,15 @@ export function Footer() {
             <LinkItem to="/how-it-works">How to Buy / How to Sell</LinkItem>
             <LinkItem to="/orders">Check Order Status</LinkItem>
           </Column>
+
+          {/* Rendered only once a real page URL is configured: an empty
+              "Follow us" heading is a dead end, and a guessed handle could
+              point at someone else's account. See data/socialLinks.ts. */}
+          {social.length > 0 && (
+            <Column title="Follow us">
+              {social.map(s => <ExternalItem key={s.href} href={s.href}>{s.label}</ExternalItem>)}
+            </Column>
+          )}
         </div>
 
         {/* Trust row — honest equivalents, not fabricated certifications.

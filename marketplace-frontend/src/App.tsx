@@ -19,6 +19,7 @@ import { FeedbackPage } from './pages/FeedbackPage'
 import { PrivacyPolicyPage } from './pages/legal/PrivacyPolicyPage'
 import { TermsPage } from './pages/legal/TermsPage'
 import { AboutPage, CareersPage, ContactPage, ReturnsPage, ShippingInfoPage, HelpPage, HowItWorksPage } from './pages/InfoPages'
+import { SellPage } from './pages/SellPage'
 
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })))
 const RegisterPage = lazy(() => import('./pages/RegisterPage').then(m => ({ default: m.RegisterPage })))
@@ -192,6 +193,9 @@ export default function App() {
           <Route path="/shipping" element={<ShippingInfoPage />} />
           <Route path="/help" element={<HelpPage />} />
           <Route path="/how-it-works" element={<HowItWorksPage />} />
+          {/* Public on purpose: it is the page a seller campaign points at,
+              and it has to be readable by someone with no account. */}
+          <Route path="/sell" element={<SellPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </Suspense>

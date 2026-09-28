@@ -184,7 +184,16 @@ export function SiteHeader() {
             <div className="utility-bar__claims">
               <span>Secure checkout</span><span aria-hidden>·</span><span>Supporting local artisans</span><span aria-hidden>·</span><span>Unpaid orders cancel free</span>
             </div>
-            <nav aria-label="Utility navigation">{user && <Link to="/orders">Orders</Link>}</nav>
+            {/* The desktop seller door. Mobile has two (the drawer link and
+                the seller strip under the hero); desktop had only the footer,
+                which is the "buried in the footer" complaint in as many
+                words. The utility bar is the right home for it: on every
+                page, above the fold, and not competing with cart or account
+                for attention. Destination follows the role, as everywhere. */}
+            <nav aria-label="Utility navigation">
+              {sellerEntry && <Link to={sellerEntry.to}>{sellerEntry.label}</Link>}
+              {user && <Link to="/orders">Orders</Link>}
+            </nav>
           </div>
         </div>
 

@@ -77,7 +77,8 @@ export function AboutPage() {
       </Section>
       <Section heading="Want to sell here?">
         <p>
-          <Link to="/register">Create an account</Link> to get started, or read{' '}
+          <Link to="/sell">What it costs and how you get paid</Link> is the
+          place to start, or read{' '}
           <Link to="/how-it-works">how buying and selling works</Link>.
         </p>
       </Section>
@@ -190,10 +191,11 @@ export function HelpPage() {
 /**
  * The Fees section reads live numbers from the same config the payout
  * ledger charges from — the page can never quote a rate the system does not
- * apply. While commission is not live (the payout selling gate is off and
- * the rate is unset business config), the section keeps its original
- * "listing is free" copy rather than publishing a placeholder number as if
- * it were a decision — the honest-signals rule.
+ * apply. The rate was decided by the owner on 2026-08-30 (10%) and
+ * commission-confirmed is now true, so the commission paragraph renders. The
+ * conditional stays because the flag is what makes it honest: if the rate
+ * ever goes back to being unset config, the page drops the number rather
+ * than publishing a placeholder as if it were a decision.
  */
 function FeesSection() {
   const [fees, setFees] = React.useState<import('../lib/api').PublicFees | null>(null)
@@ -213,7 +215,7 @@ function FeesSection() {
           When your items sell, eRestyu keeps a {fees.commissionPercent}% commission
           on the item total. Your delivery fee passes through to you in full. Your
           share is paid by EFT within {fees.payoutWindowDays} days of the weekly
-          payout run following delivery confirmation — the same terms you accept in
+          payout run following delivery confirmation, the same terms you accept in
           your dashboard.
         </p>
       )}
@@ -235,7 +237,7 @@ export function HowItWorksPage() {
       </Section>
       <Section heading="Selling">
         <p>
-          <Link to="/register">Create an account</Link>, then set up your
+          <Link to="/sell">Create an account</Link>, then set up your
           stall: list products with photos, prices, and stock, and set your
           flat delivery fee in your dashboard. When a customer pays for an
           order with your items, you get an email with exactly your items and

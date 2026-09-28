@@ -1,6 +1,7 @@
 package com.marketplace.api.controller;
 
 import com.marketplace.api.auth.AuthService;
+import com.marketplace.api.entity.ReferralSource;
 import com.marketplace.api.entity.User;
 import com.marketplace.api.entity.UserRole;
 import com.marketplace.api.repository.UserRepository;
@@ -75,8 +76,20 @@ public class AccountController {
             @NotBlank(message = "Business name is required. This is what buyers see on your listings")
             @Size(max = 200) String businessName,
             @NotBlank(message = "Last name is required for seller accounts")
-            @Size(max = 100) String lastName
-    ) {}
+            @Size(max = 100) String lastName,
+            /**
+             * Attribution (V33), same question the seller registration asks,
+             * because this door produces the same kind of account. Unknown
+             * values are discarded, not rejected: see ReferralSource.
+             */
+            @Size(max = 40) String referralSource,
+            @Size(max = 120) String referralSourceDetail
+    ) {
+        /** The pre-V33 arity, for callers with no attribution to record. */
+        public BecomeVendorRequest(String businessName, String lastName) {
+            this(businessName, lastName, null, null);
+        }
+    }
 
     @GetMapping
     @Transactional(readOnly = true)
@@ -135,6 +148,15 @@ public class AccountController {
         }
         user.setBusinessName(request.businessName().strip());
         user.setLastName(request.lastName().strip());
+
+        // First answer wins. This endpoint is idempotent for vendors, so a
+        // vendor who opens the form again to rename their stall must not be
+        // able to rewrite how they were attributed, and a customer who
+        // registered through a campaign keeps that answer even though the
+        // registration form only asks sellers.
+        user.recordReferralSourceIfAbsent(
+                ReferralSource.parseOrNull(request.referralSource()),
+                request.referralSourceDetail());
         return AccountResponse.from(user);
     }
 }

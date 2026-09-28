@@ -3,7 +3,7 @@ import React, {
 } from 'react'
 import { auth, bootstrapSession, clearSession, AuthResponse, RegisterResponse } from '../lib/api'
 
-interface AuthUser {
+export interface AuthUser {
   userId: number
   email: string
   role: 'CUSTOMER' | 'VENDOR' | 'ADMIN'

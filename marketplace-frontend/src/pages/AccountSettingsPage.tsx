@@ -15,9 +15,14 @@ interface AccountProfile {
   businessName?: string | null
 }
 
+// color is load-bearing alongside background. Form controls do not inherit
+// colour: the UA gives an <input> and a <select> a near-black default, so
+// pairing a dark var(--card) background with no colour rendered every field
+// on this page as black text on #101016 in dark mode. Set the two together
+// or neither.
 const inputStyle: React.CSSProperties = {
   padding: '10px 12px', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)',
-  fontSize: 14, background: 'var(--card)',
+  fontSize: 14, background: 'var(--card)', color: 'var(--ink)',
 }
 const fieldStyle: React.CSSProperties = {
   display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 500,
@@ -240,7 +245,7 @@ function BecomeSeller() {
             How did you hear about eRestyu?
             <select required value={referralSource}
               onChange={e => setReferralSource(e.target.value)}
-              style={{ ...inputStyle, background: 'var(--card)' }}>
+              style={inputStyle}>
               <option value="">Choose one</option>
               {REFERRAL_SOURCES.map(s => (
                 <option key={s.value} value={s.value}>{s.label}</option>

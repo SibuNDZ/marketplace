@@ -140,10 +140,15 @@ export function RegisterPage() {
   }
 
   const card = (r: 'CUSTOMER' | 'VENDOR', icon: string, title: string, sub: string) => (
+    // color is NOT decoration here. A <button> does not inherit color: the UA
+    // sets it to `buttontext`, which is black, so the card titles rendered
+    // black on a dark card and were unreadable in dark mode. The subtitle
+    // escaped it only because it names var(--ink-soft) itself. Any bare
+    // <button> carrying text needs this.
     <button type="button" onClick={() => setRole(r)} style={{
       flex: 1, padding: '18px 16px', border: `2px solid ${role === r ? 'var(--aloe)' : 'var(--line)'}`,
       borderRadius: 'var(--r)', background: role === r ? 'var(--aloe-tint)' : 'var(--card)',
-      textAlign: 'left', cursor: 'pointer',
+      color: 'var(--ink)', textAlign: 'left', cursor: 'pointer',
     }}>
       <div style={{ fontSize: 22, marginBottom: 6 }}>{icon}</div>
       <div style={{ fontWeight: 700, fontSize: 15 }}>{title}</div>
@@ -280,9 +285,15 @@ export function RegisterPage() {
           {isVendor && (
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 500 }}>
               How did you hear about eRestyu?
+              {/* inputStyle unmodified, deliberately. Overriding the
+                  background to var(--card) put near-black UA text on a
+                  near-black box in dark mode, and made this one field look
+                  unlike every other field on the form. A select inherits the
+                  same UA text colour as an input, so it has to keep the same
+                  background as one too. */}
               <select required value={form.referralSource}
                 onChange={e => set('referralSource', e.target.value)}
-                style={{ ...inputStyle, background: 'var(--card)' }}>
+                style={inputStyle}>
                 <option value="">Choose one</option>
                 {REFERRAL_SOURCES.map(s => (
                   <option key={s.value} value={s.value}>{s.label}</option>

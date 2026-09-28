@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { PaymentMarks } from './PaymentMarks'
 import { useSellerEntry } from '../../hooks/useSellerEntry'
 import { SOCIAL_LINKS, SocialLink, publishableSocialLinks } from '../../data/socialLinks'
+import { SocialIcon } from './SocialIcon'
 
 // Footer rule: every item is a real destination. Topics we want but haven't
 // written yet exist as pages that say "under construction" (Careers, Contact)
@@ -23,14 +24,29 @@ function Column({ title, children }: { title: string; children: React.ReactNode 
   )
 }
 
-// External, so a plain <a> rather than a router Link. noopener stops the
-// opened page reaching back into ours through window.opener; noreferrer
-// keeps the page path out of the platform's referrer logs.
-function ExternalItem({ href, children }: { href: string; children: React.ReactNode }) {
+// Tile styling lives in tokens.css (.footer-social) so hover can change it.
+//
+// A live link is a plain <a>, since it is external. noopener stops the opened
+// page reaching back into ours through window.opener; noreferrer keeps the
+// page path out of the platform's referrer logs.
+//
+// A placeholder is deliberately NOT a link: it has nowhere to go, and a link
+// that goes nowhere is the dead end the footer rule forbids. It is a dimmed
+// image with "coming soon" in its accessible name, so a screen reader says
+// what a sighted visitor infers from the dimming.
+function SocialItem({ link }: { link: SocialLink }) {
+  if (!link.href) {
+    return (
+      <span role="img" aria-label={`${link.label}, coming soon`} title={`${link.label}: coming soon`}
+        className="footer-social footer-social--soon">
+        <SocialIcon icon={link.icon} />
+      </span>
+    )
+  }
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer"
-      style={{ fontSize: 13, color: 'var(--footer-text)' }}>
-      {children}
+    <a href={link.href} target="_blank" rel="noopener noreferrer"
+      aria-label={link.label} title={link.label} className="footer-social">
+      <SocialIcon icon={link.icon} />
     </a>
   )
 }
@@ -75,12 +91,14 @@ export function Footer({ socialLinks = SOCIAL_LINKS }: { socialLinks?: SocialLin
             <LinkItem to="/orders">Check Order Status</LinkItem>
           </Column>
 
-          {/* Rendered only once a real page URL is configured: an empty
-              "Follow us" heading is a dead end, and a guessed handle could
-              point at someone else's account. See data/socialLinks.ts. */}
+          {/* Rendered only when there is at least one entry: an empty
+              "Follow us" heading is a dead end. See data/socialLinks.ts for
+              the live-link vs placeholder rules. */}
           {social.length > 0 && (
             <Column title="Follow us">
-              {social.map(s => <ExternalItem key={s.href} href={s.href}>{s.label}</ExternalItem>)}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {social.map(s => <SocialItem key={s.icon} link={s} />)}
+              </div>
             </Column>
           )}
         </div>

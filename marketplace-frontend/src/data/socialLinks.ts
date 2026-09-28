@@ -1,21 +1,24 @@
 // eRestyu's official social pages, shown in the footer's "Follow us" column.
 //
-// EMPTY ON PURPOSE until the owner supplies the exact page URLs. The pages
-// exist, but no URL for them is recorded anywhere, and a guessed handle risks
-// the footer of the store linking to someone else's account (a lookalike, an
-// abandoned page, an impostor). While this list is empty the footer column
-// does not render at all: same rule as the rest of the footer, no dead links.
+// Only ever add URLs supplied by the owner and copied from the page itself,
+// never a guessed handle: a wrong one puts someone else's account (a
+// lookalike, an abandoned page, an impostor) in the footer of the store. If
+// this list is emptied, the footer column stops rendering entirely: same rule
+// as the rest of the footer, no dead links.
 //
-// To publish: add an entry with the full https URL copied from the page
-// itself, e.g.
-//   { label: 'TikTok', href: 'https://www.tiktok.com/@<handle>' },
-//   { label: 'Facebook', href: 'https://www.facebook.com/<page>' },
+// The Facebook entry is a numeric profile.php?id= URL because the page has no
+// vanity username yet. If one is claimed later, the numeric URL keeps working,
+// so there is no rush to change it.
 export interface SocialLink {
   label: string
   href: string
 }
 
-export const SOCIAL_LINKS: SocialLink[] = []
+// Supplied by the owner, 2026-09-28.
+export const SOCIAL_LINKS: SocialLink[] = [
+  { label: 'Facebook', href: 'https://www.facebook.com/profile.php?id=61591684209144' },
+  { label: 'TikTok', href: 'https://www.tiktok.com/@erestyu' },
+]
 
 // The platforms the footer is allowed to link to. A pasted URL on any other
 // host (a link shortener, a tracking redirect, a typo'd domain) is dropped

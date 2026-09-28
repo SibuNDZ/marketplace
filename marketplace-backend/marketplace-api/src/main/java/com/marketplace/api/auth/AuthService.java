@@ -5,6 +5,7 @@ import com.marketplace.api.auth.AuthDtos.LoginRequest;
 import com.marketplace.api.auth.AuthDtos.RegisterRequest;
 import com.marketplace.api.auth.AuthDtos.RegisterResponse;
 import com.marketplace.api.email.EmailService;
+import com.marketplace.api.entity.ReferralSource;
 import com.marketplace.api.entity.TokenPurpose;
 import com.marketplace.api.entity.User;
 import com.marketplace.api.entity.UserRole;
@@ -124,6 +125,16 @@ public class AuthService {
         user.setRole(UserRole.valueOf(request.roleOrDefault()));
         user.setBusinessName(request.businessNameOrNull());
         user.setIsVerified(false);
+
+        // Attribution, vendors only (V33). A buyer is never asked, so a
+        // buyer payload carrying a source is ignored rather than stored:
+        // otherwise a single field decides what the seller-recruitment
+        // numbers mean, and a stray client value could inflate them.
+        if (request.isVendor()) {
+            user.recordReferralSourceIfAbsent(
+                    ReferralSource.parseOrNull(request.referralSource()),
+                    request.referralSourceDetail());
+        }
 
         User saved = userRepository.save(user);
 

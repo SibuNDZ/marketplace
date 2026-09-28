@@ -614,6 +614,21 @@ export interface PublicFees {
   payoutWindowDays: number
 }
 
+/**
+ * GET /api/v1/admin/sellers/sources — self-reported seller attribution.
+ *
+ * unknown is separate from sources rather than an entry in it: it counts the
+ * vendors who registered before the question existed, and it must not read as
+ * a channel.
+ */
+export interface SellerSourcesResponse {
+  totalVendors: number
+  answered: number
+  unknown: number
+  sources: { source: string; count: number }[]
+  otherLabels: string[]
+}
+
 export interface PayoutBatchSummary {
   id: number
   approvedAt: string
@@ -693,6 +708,14 @@ export const auth = {
     username: string; role: 'CUSTOMER' | 'VENDOR'
     /** Required by the API for VENDOR, ignored for CUSTOMER. */
     businessName?: string
+    /**
+     * Attribution, sellers only. A ReferralSource enum name; the API
+     * discards a value it does not recognise rather than failing the
+     * registration, so a stale client can never block a signup.
+     */
+    referralSource?: string
+    /** Free text, only read when referralSource is OTHER. */
+    referralSourceDetail?: string
   }) {
     return api<RegisterResponse>('/api/v1/auth/register', {
       method: 'POST', body: input, auth: false,

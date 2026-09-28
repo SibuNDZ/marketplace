@@ -49,10 +49,15 @@ export function Footer() {
           </Column>
 
           <Column title="Sell on eRestyu">
-            <LinkItem to="/how-it-works">How to Buy / How to Sell</LinkItem>
+            <LinkItem to="/sell">Why sell on eRestyu</LinkItem>
             {/* Same role-aware destination as the mobile seller strip: this
-                used to send a signed-in seller to a signup form. */}
-            {sellerEntry && <LinkItem to={sellerEntry.to}>{sellerEntry.label}</LinkItem>}
+                used to send a signed-in seller to a signup form. Skipped when
+                it resolves to /sell, which it does for a signed-out visitor,
+                because the line above already goes there. */}
+            {sellerEntry && sellerEntry.to !== '/sell' && (
+              <LinkItem to={sellerEntry.to}>{sellerEntry.label}</LinkItem>
+            )}
+            <LinkItem to="/how-it-works">How to Buy / How to Sell</LinkItem>
             <LinkItem to="/orders">Check Order Status</LinkItem>
           </Column>
         </div>

@@ -4,6 +4,8 @@ import com.marketplace.api.dto.OrderResponse;
 import com.marketplace.api.dto.ShippingDtos;
 import com.marketplace.api.entity.*;
 import com.marketplace.api.exception.OrderExceptions.*;
+import com.marketplace.api.payment.PaymentHealth;
+import com.marketplace.api.payout.CommissionLedgerService;
 import com.marketplace.api.payout.SellingGate;
 import com.marketplace.api.repository.CartRepository;
 import com.marketplace.api.repository.OrderRepository;
@@ -58,19 +60,25 @@ public class OrderService {
     private final ProductVariantRepository variantRepository;
     private final OrderStatusRecorder recorder;
     private final SellingGate sellingGate;
+    private final CommissionLedgerService ledger;
+    private final PaymentHealth paymentHealth;
 
     public OrderService(CartRepository cartRepository,
                         OrderRepository orderRepository,
                         ProductRepository productRepository,
                         ProductVariantRepository variantRepository,
                         OrderStatusRecorder recorder,
-                        SellingGate sellingGate) {
+                        SellingGate sellingGate,
+                        CommissionLedgerService ledger,
+                        PaymentHealth paymentHealth) {
         this.cartRepository = cartRepository;
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.variantRepository = variantRepository;
         this.recorder = recorder;
         this.sellingGate = sellingGate;
+        this.ledger = ledger;
+        this.paymentHealth = paymentHealth;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -277,6 +285,76 @@ public class OrderService {
                     + " is " + order.getStatus());
         }
 
+        restoreStock(order);
+        order.setStatus(OrderStatus.CANCELLED);
+        recorder.record(order, OrderStatus.PENDING, OrderStatus.CANCELLED, changedBy, note);
+        return toResponse(order);
+    }
+
+    /** What an admin sees after a void: the new status, and anything to check by hand. */
+    public record VoidResult(Long orderId, String status, List<String> warnings) {}
+
+    /**
+     * Voids an order whose payment was a TEST payment: it moved no money, so
+     * the sale never happened, and the order must stop behaving like one.
+     *
+     * This is a correction of records, not a business transition, which is
+     * why it sits outside OrderTransitions: the state machine describes what
+     * can happen to a real order, and PAID -> CANCELLED is deliberately absent
+     * there until refunds exist. What makes it safe to allow here is that it
+     * is ONLY possible while the payment provider runs test credentials. In
+     * that state no order can hold real money. Once live keys are in, this
+     * refuses every order, and real orders go through refunds.
+     *
+     * Effects, all in one transaction:
+     *  - stock goes back, exactly as a PENDING cancel restores it
+     *  - payout entries are voided (refused outright if the vendor was already
+     *    paid, since then real money moved and it is not test data)
+     *  - status becomes CANCELLED, so it drops out of every sold count
+     *    (they count PAID, SHIPPED and DELIVERED only)
+     *  - the reason and the admin are written to the order's history
+     *  - no emails: the order email listener fires on PAID and SHIPPED only,
+     *    and a surprise "cancelled" email to a vendor who has already been
+     *    told it was a test would do more harm than good
+     */
+    @Transactional
+    public VoidResult voidTestOrder(Long orderId, Long adminId, String reason) {
+        if (!paymentHealth.isTestMode()) {
+            throw new InvalidOrderStateException(
+                    "Orders can only be voided while payments run in test mode. With live "
+                    + "payments an order may hold real money, so it must be refunded instead.");
+        }
+        if (reason == null || reason.isBlank()) {
+            throw new InvalidOrderStateException("A reason is required to void an order");
+        }
+
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+        OrderStatus current = order.getStatus();
+        if (current != OrderStatus.PAID && current != OrderStatus.SHIPPED
+                && current != OrderStatus.DELIVERED) {
+            throw new InvalidOrderStateException(
+                    "Only PAID, SHIPPED or DELIVERED orders can be voided; order " + orderId
+                    + " is " + current
+                    + (current == OrderStatus.PENDING ? ". Cancel a PENDING order instead." : ""));
+        }
+
+        // Ledger first: it is the one step that can refuse (vendor already
+        // paid), and refusing before the stock moves keeps the rollback trivial.
+        List<String> warnings = ledger.voidForTestOrder(order);
+        restoreStock(order);
+        order.setStatus(OrderStatus.CANCELLED);
+        recorder.record(order, current, OrderStatus.CANCELLED, adminId,
+                "Voided as test order: " + reason.strip());
+        return new VoidResult(order.getId(), order.getStatus().name(), warnings);
+    }
+
+    /**
+     * Puts back the stock an order consumed. Shared by cancellation of a
+     * PENDING order and voiding of a test order: both are "this sale did not
+     * happen", and the stock must come back the same way in both.
+     */
+    private void restoreStock(Order order) {
         // Restore to whichever side it came FROM. Giving a variant order's
         // units back to the product's own count would leak stock: the option
         // stays sold out while a number nobody displays quietly grows.
@@ -312,10 +390,6 @@ public class OrderService {
             VariantSelection.setStock(product, variant,
                     VariantSelection.stockOf(product, variant) + entry.getValue());
         }
-
-        order.setStatus(OrderStatus.CANCELLED);
-        recorder.record(order, OrderStatus.PENDING, OrderStatus.CANCELLED, changedBy, note);
-        return toResponse(order);
     }
 
     @Transactional(readOnly = true)

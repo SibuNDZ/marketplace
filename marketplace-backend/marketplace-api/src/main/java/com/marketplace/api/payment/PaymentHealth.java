@@ -34,6 +34,16 @@ public class PaymentHealth {
         return new Snapshot(provider, mode, configured, lastErrorType);
     }
 
+    /**
+     * True only when the active provider is positively identified as running
+     * test credentials. "unknown" is NOT test: anything that relaxes a money
+     * rule on the strength of this (voiding orders, admin-only checkout) must
+     * fail closed when the mode cannot be read.
+     */
+    public boolean isTestMode() {
+        return "test".equals(mode);
+    }
+
     public void recordErrorType(String type) {
         this.lastErrorType = type;
     }

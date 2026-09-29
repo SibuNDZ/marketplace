@@ -203,6 +203,58 @@ public class CommissionLedgerService {
     }
 
     /**
+     * Ledger side of voiding a TEST order (OrderService.voidTestOrder): the
+     * payment never moved money, so the vendor was never owed anything and
+     * every entry for the order is voided outright.
+     *
+     * Stricter than {@link #reverseOnRefund} on purpose. A refund of a real
+     * order that was already paid out is a normal event with a clawback. A
+     * "test" order that was already PAID OUT means real money reached a
+     * vendor, which makes it not a test at all; quietly voiding it would lose
+     * a real payment from the books. So any PAID entry refuses the whole void,
+     * and the caller rolls back with nothing changed.
+     *
+     * An APPROVED entry is voided but reported: its batch may already exist as
+     * a bank file, and whoever uploads that file must take the line out.
+     *
+     * @return warnings for the admin, one line each; empty when nothing needs
+     *         checking by hand
+     */
+    @Transactional
+    public List<String> voidForTestOrder(Order order) {
+        List<VendorPayoutEntry> entries = entryRepository.findByOrderId(order.getId());
+        if (entries.stream().anyMatch(e -> e.getStatus() == PayoutEntryStatus.PAID)) {
+            throw new com.marketplace.api.exception.OrderExceptions.InvalidOrderStateException(
+                    "Order " + order.getId() + " has already been paid out to the vendor, so it is "
+                    + "not test data. Handle it as a refund with a clawback, not a void.");
+        }
+
+        List<String> warnings = new ArrayList<>();
+        for (VendorPayoutEntry e : entries) {
+            switch (e.getStatus()) {
+                case PENDING, ADJUSTED -> {
+                    e.setStatus(PayoutEntryStatus.VOID);
+                    e.setNote(appendNote(e.getNote(), "Voided: test order, no real payment"));
+                }
+                case APPROVED -> {
+                    e.setStatus(PayoutEntryStatus.VOID);
+                    e.setNote(appendNote(e.getNote(),
+                            "Voided: test order, was approved in batch " + e.getBatchId()));
+                    warnings.add("Payout batch " + e.getBatchId() + " included this order for "
+                            + e.getVendor().getStorefrontName() + " (R" + e.getNetPayable()
+                            + "). If that batch was exported, remove the line from the bank file "
+                            + "before uploading it.");
+                    log.warn("Voided APPROVED payout entry {} for test order {} - batch {} may "
+                            + "already be exported; CHECK THE BANK FILE", e.getId(), order.getId(),
+                            e.getBatchId());
+                }
+                case PAID, VOID -> { /* PAID refused above; VOID already terminal */ }
+            }
+        }
+        return warnings;
+    }
+
+    /**
      * Partial-refund adjustment. DORMANT BY DESIGN: no partial-refund flow
      * exists in the codebase yet, so nothing calls this over HTTP — it is the
      * ledger mechanism, built and tested now so the future refund feature

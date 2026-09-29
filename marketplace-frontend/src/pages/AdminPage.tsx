@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, Page, AdminOrderSummary, SellerSourcesResponse } from '../lib/api'
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { StatusChip } from '../components/ui/StatusChip'
+import { TestOrderChip } from '../components/ui/TestOrderChip'
 import { REFERRAL_SOURCES } from '../data/referralSources'
 
 // Legal next transitions — the UI never offers what the state machine rejects.
@@ -74,7 +75,11 @@ export function AdminPage() {
                   </td>
                   <td style={{ padding: '14px 12px', color: 'var(--ink-soft)', fontSize: 13 }}>{o.customerEmail}</td>
                   <td className="num" style={{ padding: '14px 12px' }}>R{Number(o.total).toFixed(2)}</td>
-                  <td style={{ padding: '14px 12px' }}><StatusChip status={o.status} /></td>
+                  <td style={{ padding: '14px 12px' }}>
+                    <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                      <StatusChip status={o.status} />{o.testOrder && <TestOrderChip />}
+                    </span>
+                  </td>
                   <td style={{ padding: '14px 12px', display: 'flex', gap: 8 }}>
                     {(LEGAL[o.status] ?? []).map(next => (
                       <button key={next} onClick={() => runTransition(o.id, next)}

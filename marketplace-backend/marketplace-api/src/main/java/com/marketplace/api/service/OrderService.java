@@ -4,6 +4,7 @@ import com.marketplace.api.dto.OrderResponse;
 import com.marketplace.api.dto.ShippingDtos;
 import com.marketplace.api.entity.*;
 import com.marketplace.api.exception.OrderExceptions.*;
+import com.marketplace.api.payment.CheckoutPolicy;
 import com.marketplace.api.payment.PaymentHealth;
 import com.marketplace.api.payout.CommissionLedgerService;
 import com.marketplace.api.payout.SellingGate;
@@ -62,6 +63,7 @@ public class OrderService {
     private final SellingGate sellingGate;
     private final CommissionLedgerService ledger;
     private final PaymentHealth paymentHealth;
+    private final CheckoutPolicy checkoutPolicy;
 
     public OrderService(CartRepository cartRepository,
                         OrderRepository orderRepository,
@@ -70,7 +72,8 @@ public class OrderService {
                         OrderStatusRecorder recorder,
                         SellingGate sellingGate,
                         CommissionLedgerService ledger,
-                        PaymentHealth paymentHealth) {
+                        PaymentHealth paymentHealth,
+                        CheckoutPolicy checkoutPolicy) {
         this.cartRepository = cartRepository;
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
@@ -79,6 +82,7 @@ public class OrderService {
         this.sellingGate = sellingGate;
         this.ledger = ledger;
         this.paymentHealth = paymentHealth;
+        this.checkoutPolicy = checkoutPolicy;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -105,6 +109,11 @@ public class OrderService {
         if (cartId == null) throw new CartNotFoundException(userId);
         Cart cart = cartRepository.findById(cartId)
                 .orElseThrow(() -> new CartNotFoundException(userId));
+
+        // Before any stock is touched. While payments are in test mode only
+        // admins may check out; the cart is left as it is, so a shopper who
+        // is turned away loses nothing.
+        checkoutPolicy.requireCanCheckOut(cart.getUser().getRole().name());
 
         if (cart.getItems().isEmpty()) {
             throw new EmptyCartException();
@@ -186,6 +195,9 @@ public class OrderService {
         order.setOrderNumber("ORD-" + UUID.randomUUID().toString().replace("-", "").toUpperCase().substring(0, 16));
         order.setUser(cart.getUser());
         order.setStatus(OrderStatus.PENDING);
+        // Recorded once, from the conditions right now: an order placed while
+        // checkout is guarded is a test order for its whole life.
+        order.setTestOrder(checkoutPolicy.flagsNewOrdersAsTest());
 
         BigDecimal total = BigDecimal.ZERO;
         List<CartItem> sortedItems = cart.getItems().stream()
@@ -497,7 +509,8 @@ public class OrderService {
                 items,
                 fees,
                 shippingFor(order, viewerIsPrivileged),
-                order.getTrackingNumber());
+                order.getTrackingNumber(),
+                order.isTestOrder());
     }
 
     /**

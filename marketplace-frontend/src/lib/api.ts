@@ -498,6 +498,9 @@ export interface OrderResponse {
   shippingAddress?: ShippingAddress | null
   // Waybill reference captured at the SHIPPED transition; null until provided.
   trackingNumber?: string | null
+  // Placed by an admin while payments ran test keys (backend CheckoutPolicy):
+  // not a sale. No vendor was notified and no payout is owed.
+  testOrder?: boolean
 }
 
 export interface DeliveryFeeLine {
@@ -555,6 +558,8 @@ export interface AdminOrderSummary {
   status: string
   total: string
   createdAt: string
+  /** See OrderResponse.testOrder. */
+  testOrder?: boolean
 }
 
 export interface ReviewResponse {

@@ -70,14 +70,21 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
      * no business seeing carts that may still expire unpaid). DISTINCT because
      * the item join multiplies rows; the explicit count query keeps Spring
      * Data from mis-deriving one over the join.
+     *
+     * Test orders (V34) are excluded: a paid order in a vendor's dashboard is
+     * an instruction to pack and send it, and a test order must never be one.
+     * The single-order view and the ship action load by id instead, and apply
+     * the same rule in VendorOrderService.vendorVisible.
      */
     @Query(value = """
             select distinct o from Order o join o.orderItems i
             where i.product.vendor.id = :vendorId and o.status in :statuses
+              and o.testOrder = false
             """,
             countQuery = """
             select count(distinct o) from Order o join o.orderItems i
             where i.product.vendor.id = :vendorId and o.status in :statuses
+              and o.testOrder = false
             """)
     Page<Order> findVendorOrders(@Param("vendorId") Long vendorId,
                                  @Param("statuses") Collection<OrderStatus> statuses,
@@ -116,10 +123,16 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
      * Orders that reached PAID (in any of its later states too) before the
      * commission ledger existed — i.e. with money kept but no payout entries.
      * The backfill runner's work list. Ascending id: oldest debt first.
+     *
+     * Test orders (V34) are excluded, and they MUST be: every one of them is
+     * PAID with no payout entry, on purpose, so without this line a backfill
+     * run would "repair" them by writing the vendor payouts that
+     * PaymentEventService deliberately skipped.
      */
     @Query("""
             SELECT o.id FROM Order o
             WHERE o.status IN :statuses
+              AND o.testOrder = false
               AND NOT EXISTS (SELECT 1 FROM VendorPayoutEntry e WHERE e.order.id = o.id)
             ORDER BY o.id ASC
             """)

@@ -69,7 +69,9 @@ public class AdminOrderController {
             String customerEmail,
             String status,
             BigDecimal total,
-            LocalDateTime createdAt
+            LocalDateTime createdAt,
+            /** Placed while checkout was guarded (V34): not a sale. */
+            boolean testOrder
     ) {
         static AdminOrderSummary from(Order o) {
             return new AdminOrderSummary(
@@ -78,7 +80,8 @@ public class AdminOrderController {
                     o.getUser().getEmail(),
                     o.getStatus().name(),
                     o.getTotalAmount(),
-                    o.getCreatedAt());
+                    o.getCreatedAt(),
+                    o.isTestOrder());
         }
     }
 

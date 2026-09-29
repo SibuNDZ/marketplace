@@ -73,6 +73,24 @@ public class Order {
     @Column(name = "tracking_number", length = 100)
     private String trackingNumber;
 
+    /**
+     * Placed while checkout was guarded (V34, CheckoutPolicy): payments in test
+     * mode, checkout limited to admins. Such an order has no effect as a sale
+     * anywhere: no vendor email, no payout entry, no vendor dashboard entry,
+     * no sold count, no review eligibility. Set once at placeOrder, never
+     * changed.
+     */
+    @Column(name = "test_order", nullable = false)
+    private boolean testOrder = false;
+
+    public boolean isTestOrder() {
+        return testOrder;
+    }
+
+    public void setTestOrder(boolean testOrder) {
+        this.testOrder = testOrder;
+    }
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

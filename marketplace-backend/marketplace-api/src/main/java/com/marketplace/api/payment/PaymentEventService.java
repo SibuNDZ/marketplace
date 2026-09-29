@@ -90,6 +90,16 @@ public class PaymentEventService {
         // This is the ONLY setStatus(PAID) site in the codebase (admin manual
         // PAID is rejected in OrderAdminService), so this one call covers
         // every provider.
+        //
+        // Except a test order (placed while checkout was guarded, V34): its
+        // payment moved no money, so no vendor is owed anything and there is
+        // nothing to write. Skipping here, at the one PAID site, is what keeps
+        // it off the payout list the admin approves from.
+        if (order.isTestOrder()) {
+            log.info("Order {} PENDING -> PAID via {} webhook (TEST order: no payout entry)",
+                    orderId, provider);
+            return;
+        }
         ledger.recordOnPaid(order);
         log.info("Order {} PENDING -> PAID via {} webhook", orderId, provider);
     }

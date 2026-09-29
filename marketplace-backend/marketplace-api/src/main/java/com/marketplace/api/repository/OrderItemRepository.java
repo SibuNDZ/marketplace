@@ -50,6 +50,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
            JOIN products p ON p.id = oi.product_id
            WHERE oi.product_id = :productId
              AND o.status IN ('PAID', 'SHIPPED', 'DELIVERED')
+             AND NOT o.test_order
              AND o.created_at > now() - INTERVAL '24 hours'
              AND o.user_id IS DISTINCT FROM p.vendor_id
            """, nativeQuery = true)

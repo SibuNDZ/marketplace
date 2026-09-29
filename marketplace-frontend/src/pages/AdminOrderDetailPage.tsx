@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError, OrderResponse } from '../lib/api'
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { StatusChip } from '../components/ui/StatusChip'
+import { TestOrderChip } from '../components/ui/TestOrderChip'
 
 /**
  * The whole point of this page is to let an admin actually see an order
@@ -37,6 +38,7 @@ export function AdminOrderDetailPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
           <h1 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 26 }} className="num">Order #{order.id}</h1>
           <StatusChip status={order.status} />
+          {order.testOrder && <TestOrderChip />}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

@@ -47,15 +47,28 @@ public class OrderEmailService {
      */
     public void sendOrderPaidEmails(Order order) {
         User buyer = order.getUser();
+        // A test order (V34) was placed by an admin while payments were in
+        // test mode. The admin still gets a confirmation, because checking it
+        // arrives is part of testing checkout, but it says plainly that it is
+        // a test, so a forwarded screenshot cannot pass for a real sale.
+        boolean test = order.isTestOrder();
         emailService.send(buyer.getEmail(),
-                "Your eRestyu order " + order.getOrderNumber() + " is confirmed",
+                (test ? "[TEST] " : "") + "Your eRestyu order " + order.getOrderNumber() + " is confirmed",
                 wrap("Hi " + escape(buyer.getFirstName()) + ",",
-                        "Thank you for your order! Payment was received and the vendors "
-                                + "have been notified. We will email you again when your items ship.",
+                        test
+                                ? "This was a TEST order, paid in test mode. No money moved, the "
+                                        + "vendors were NOT notified, and it does not count as a sale."
+                                : "Thank you for your order! Payment was received and the vendors "
+                                        + "have been notified. We will email you again when your items ship.",
                         itemsTable(order.getOrderItems())
                                 + deliveryRows(order)
                                 + totalRow("Order total", order.getTotalAmount())
                                 + addressBlock(order, "Delivery address")));
+
+        // The whole point of a test order: no vendor is told "a customer paid".
+        if (test) {
+            return;
+        }
 
         for (Map.Entry<User, List<OrderItem>> entry : itemsByVendor(order).entrySet()) {
             User vendor = entry.getKey();

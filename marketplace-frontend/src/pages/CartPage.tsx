@@ -5,6 +5,7 @@ import { api, CartLine, CartResponse, ApiError, OrderResponse, PayResponse, Ship
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { ErrorSurface } from '../components/ui/ErrorSurface'
 import { CartLineImage } from '../components/cart/CartLineImage'
+import { useCheckoutOpen } from '../hooks/useCheckoutOpen'
 
 const EMPTY_SHIPPING: ShippingAddress = {
   recipientName: '', phone: '', addressLine1: '', addressLine2: '',
@@ -27,6 +28,7 @@ export function CartPage() {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [checkoutError, setCheckoutError] = useState<ApiError>()
+  const checkoutOpen = useCheckoutOpen()
 
   // Order placement and shipping collection are two separate steps now:
   // POST /orders creates the PENDING order; the address is only submitted
@@ -295,10 +297,28 @@ export function CartPage() {
                 <span className="num" style={{ fontWeight: 700, fontSize: 20 }}>R{Number(cart?.subtotal ?? 0).toFixed(2)}</span>
               </div>
               {checkoutError && <ErrorSurface error={checkoutError} onDismiss={() => setCheckoutError(undefined)} />}
-              <button disabled={placeOrder.isPending} onClick={() => placeOrder.mutate()} className="btn-primary">
-                {placeOrder.isPending ? 'Placing order…' : 'Continue to payment'}
-              </button>
-              <p className="hint">You'll complete payment on our secure payment provider</p>
+              {checkoutOpen ? (
+                <>
+                  <button disabled={placeOrder.isPending} onClick={() => placeOrder.mutate()} className="btn-primary">
+                    {placeOrder.isPending ? 'Placing order…' : 'Continue to payment'}
+                  </button>
+                  <p className="hint">You'll complete payment on our secure payment provider</p>
+                </>
+              ) : (
+                // Not an error state: nothing went wrong, the shop is just not
+                // taking payments yet. The cart stays saved server-side.
+                <div role="status" style={{
+                  padding: '14px 16px', borderRadius: 'var(--r-sm)',
+                  background: 'var(--sun-tint)', border: '1px solid var(--sun)',
+                  fontSize: 14, lineHeight: 1.6,
+                }}>
+                  <p style={{ fontWeight: 700, marginBottom: 4 }}>Checkout opens soon</p>
+                  <p style={{ color: 'var(--ink-soft)' }}>
+                    We're finishing setup with our payment provider. Your cart is saved, so you
+                    can come back and check out as soon as it opens.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 class PaymentControllerTest {
 
     private final PaymentController controller =
-            new PaymentController(null, null, null, null, null, new ObjectMapper(), "whsec_test", "stripe");
+            new PaymentController(null, null, null, null, null, new ObjectMapper(), "whsec_test", "stripe", null);
 
     // Real-shaped: trimmed to the fields extractOrderId actually reads, but
     // same nesting Stripe sends for checkout.session.completed.
@@ -71,6 +71,12 @@ class PaymentControllerTest {
     private static final UserPrincipal BUYER =
             new UserPrincipal(3L, "buyer@example.com", "x", "CUSTOMER", true);
 
+    /** Live keys: checkout open to everyone, so dispatch is what is under test. */
+    private static CheckoutPolicy openCheckout() {
+        return new CheckoutPolicy(
+                new PaymentHealth("paystack", "", "", "sk_live_x", "", "", ""), "admins-only");
+    }
+
     @Test
     void paddedMixedCaseProvider_dispatchesToPaystack_notStripe() {
         // The validator and health endpoint trim and lowercase; pay() must
@@ -79,7 +85,7 @@ class PaymentControllerTest {
         PaystackCheckoutService paystack = mock(PaystackCheckoutService.class);
         when(paystack.createCheckout(7L, 3L, ADDRESS)).thenReturn("https://checkout.paystack.com/x");
         PaymentController c = new PaymentController(
-                stripe, null, null, paystack, null, new ObjectMapper(), "", " Paystack ");
+                stripe, null, null, paystack, null, new ObjectMapper(), "", " Paystack ", openCheckout());
 
         assertThat(c.pay(7L, ADDRESS, BUYER))
                 .isEqualTo(Map.of("checkoutUrl", "https://checkout.paystack.com/x"));
@@ -90,7 +96,7 @@ class PaymentControllerTest {
     void unknownProvider_neverFallsThroughToStripe() {
         StripeCheckoutService stripe = mock(StripeCheckoutService.class);
         PaymentController c = new PaymentController(
-                stripe, null, null, null, null, new ObjectMapper(), "", "paystak");
+                stripe, null, null, null, null, new ObjectMapper(), "", "paystak", openCheckout());
 
         assertThatThrownBy(() -> c.pay(7L, ADDRESS, BUYER))
                 .isInstanceOf(IllegalStateException.class)

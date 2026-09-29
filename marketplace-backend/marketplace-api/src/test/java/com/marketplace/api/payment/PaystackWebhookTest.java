@@ -72,8 +72,21 @@ class PaystackWebhookTest {
 
     /** Stands in for the vendor shipping the order after it was paid. */
     private void markShipped(Long orderId) {
+        setStatus(orderId, "SHIPPED");
+    }
+
+    private void setStatus(Long orderId, String status) {
         new TransactionTemplate(transactionManager).executeWithoutResult(tx ->
-                jdbcTemplate.update("UPDATE orders SET status = 'SHIPPED' WHERE id = ?", orderId));
+                jdbcTemplate.update("UPDATE orders SET status = ? WHERE id = ?", status, orderId));
+    }
+
+    /**
+     * As the checkout guard flags an order placed while payments run test keys.
+     * This class runs on test keys (test application.yml), so it is test money.
+     */
+    private void markTestOrder(Long orderId) {
+        new TransactionTemplate(transactionManager).executeWithoutResult(tx ->
+                jdbcTemplate.update("UPDATE orders SET test_order = true WHERE id = ?", orderId));
     }
 
     private Long placedOrder(String tag, String price) {
@@ -329,6 +342,36 @@ class PaystackWebhookTest {
 
         assertThat(statusOf(orderId)).isEqualTo(OrderStatus.SHIPPED);
         assertThat(output.getAll()).doesNotContain("NON-PAYABLE ORDER " + orderId + " ");
+    }
+
+    @Test
+    void secondTestModePayment_onATestOrder_isNotInTheRefundQueue(CapturedOutput output) throws Exception {
+        // Two tabs, two test cards: no money moved either time.
+        Long orderId = placedOrder("TST1", "120.00");
+        markTestOrder(orderId);
+        long total = totalCents(orderId);
+        postSigned(successBody(orderId, "ERY-" + orderId + "-aaaaaaaaaaaa", total, "ZAR"), 200);
+        postSigned(successBody(orderId, "ERY-" + orderId + "-bbbbbbbbbbbb", total, "ZAR"), 200);
+
+        assertThat(statusOf(orderId)).isEqualTo(OrderStatus.PAID);
+        assertThat(output.getAll())
+                .doesNotContain("DUPLICATE PAYMENT FOR ORDER " + orderId + " ")
+                .contains("for TEST order " + orderId + " ");
+    }
+
+    @Test
+    void testModePayment_onAVoidedTestOrder_isNotInTheRefundQueue(CapturedOutput output) throws Exception {
+        // The admin voided the test order (CANCELLED), then a test charge lands.
+        Long orderId = placedOrder("TST2", "120.00");
+        markTestOrder(orderId);
+        setStatus(orderId, "CANCELLED");
+
+        postSigned(successBody(orderId), 200);
+
+        assertThat(statusOf(orderId)).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(output.getAll())
+                .doesNotContain("NON-PAYABLE ORDER " + orderId + " ")
+                .contains("for TEST order " + orderId + " ");
     }
 
     @Test

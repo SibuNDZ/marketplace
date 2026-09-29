@@ -2,6 +2,8 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { PaymentMarks } from './PaymentMarks'
 import { useSellerEntry } from '../../hooks/useSellerEntry'
+import { SOCIAL_LINKS, SocialLink, publishableSocialLinks } from '../../data/socialLinks'
+import { SocialIcon } from './SocialIcon'
 
 // Footer rule: every item is a real destination. Topics we want but haven't
 // written yet exist as pages that say "under construction" (Careers, Contact)
@@ -22,8 +24,36 @@ function Column({ title, children }: { title: string; children: React.ReactNode 
   )
 }
 
-export function Footer() {
+// Tile styling lives in tokens.css (.footer-social) so hover can change it.
+//
+// A live link is a plain <a>, since it is external. noopener stops the opened
+// page reaching back into ours through window.opener; noreferrer keeps the
+// page path out of the platform's referrer logs.
+//
+// A placeholder is deliberately NOT a link: it has nowhere to go, and a link
+// that goes nowhere is the dead end the footer rule forbids. It is a dimmed
+// image with "coming soon" in its accessible name, so a screen reader says
+// what a sighted visitor infers from the dimming.
+function SocialItem({ link }: { link: SocialLink }) {
+  if (!link.href) {
+    return (
+      <span role="img" aria-label={`${link.label}, coming soon`} title={`${link.label}: coming soon`}
+        className="footer-social footer-social--soon">
+        <SocialIcon icon={link.icon} />
+      </span>
+    )
+  }
+  return (
+    <a href={link.href} target="_blank" rel="noopener noreferrer"
+      aria-label={link.label} title={link.label} className="footer-social">
+      <SocialIcon icon={link.icon} />
+    </a>
+  )
+}
+
+export function Footer({ socialLinks = SOCIAL_LINKS }: { socialLinks?: SocialLink[] } = {}) {
   const sellerEntry = useSellerEntry()
+  const social = publishableSocialLinks(socialLinks)
   return (
     <footer className="site-footer" aria-label="Site footer" style={{ background: 'var(--footer-bg)', marginTop: 48, color: 'var(--footer-text)' }}>
       <div style={{ maxWidth: 'var(--content-max)', margin: '0 auto', padding: '48px var(--gutter) 32px' }}>
@@ -49,12 +79,28 @@ export function Footer() {
           </Column>
 
           <Column title="Sell on eRestyu">
-            <LinkItem to="/how-it-works">How to Buy / How to Sell</LinkItem>
+            <LinkItem to="/sell">Why sell on eRestyu</LinkItem>
             {/* Same role-aware destination as the mobile seller strip: this
-                used to send a signed-in seller to a signup form. */}
-            {sellerEntry && <LinkItem to={sellerEntry.to}>{sellerEntry.label}</LinkItem>}
+                used to send a signed-in seller to a signup form. Skipped when
+                it resolves to /sell, which it does for a signed-out visitor,
+                because the line above already goes there. */}
+            {sellerEntry && sellerEntry.to !== '/sell' && (
+              <LinkItem to={sellerEntry.to}>{sellerEntry.label}</LinkItem>
+            )}
+            <LinkItem to="/how-it-works">How to Buy / How to Sell</LinkItem>
             <LinkItem to="/orders">Check Order Status</LinkItem>
           </Column>
+
+          {/* Rendered only when there is at least one entry: an empty
+              "Follow us" heading is a dead end. See data/socialLinks.ts for
+              the live-link vs placeholder rules. */}
+          {social.length > 0 && (
+            <Column title="Follow us">
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {social.map(s => <SocialItem key={s.icon} link={s} />)}
+              </div>
+            </Column>
+          )}
         </div>
 
         {/* Trust row — honest equivalents, not fabricated certifications.

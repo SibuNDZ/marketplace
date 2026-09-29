@@ -1,6 +1,9 @@
 package com.marketplace.api.controller;
 
+import com.marketplace.api.discovery.PopularityJob;
 import com.marketplace.api.dto.OrderResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.marketplace.api.entity.Order;
 import com.marketplace.api.entity.OrderStatus;
 import com.marketplace.api.entity.OrderStatusHistory;
@@ -34,12 +37,17 @@ import java.util.List;
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminOrderController {
 
+    private static final Logger log = LoggerFactory.getLogger(AdminOrderController.class);
+
     private final OrderAdminService orderAdminService;
     private final OrderService orderService;
+    private final PopularityJob popularityJob;
 
-    public AdminOrderController(OrderAdminService orderAdminService, OrderService orderService) {
+    public AdminOrderController(OrderAdminService orderAdminService, OrderService orderService,
+                                PopularityJob popularityJob) {
         this.orderAdminService = orderAdminService;
         this.orderService = orderService;
+        this.popularityJob = popularityJob;
     }
 
     public record TransitionRequest(
@@ -61,7 +69,9 @@ public class AdminOrderController {
             String customerEmail,
             String status,
             BigDecimal total,
-            LocalDateTime createdAt
+            LocalDateTime createdAt,
+            /** Placed while checkout was guarded (V34): not a sale. */
+            boolean testOrder
     ) {
         static AdminOrderSummary from(Order o) {
             return new AdminOrderSummary(
@@ -70,7 +80,8 @@ public class AdminOrderController {
                     o.getUser().getEmail(),
                     o.getStatus().name(),
                     o.getTotalAmount(),
-                    o.getCreatedAt());
+                    o.getCreatedAt(),
+                    o.isTestOrder());
         }
     }
 
@@ -120,6 +131,41 @@ public class AdminOrderController {
         orderAdminService.transition(id, request.status(), admin.getId(),
                 request.note(), request.trackingNumber());
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Required reason: it is written into the order's history, which is the
+     * only record of why a paid-looking order became CANCELLED.
+     */
+    public record VoidRequest(
+            @jakarta.validation.constraints.NotBlank(message = "Say why this order is being voided")
+            @Size(max = 300) String reason
+    ) {}
+
+    /**
+     * Voids a test-mode order. Refused (409) unless payments run in test
+     * mode, unless the order is PAID, SHIPPED or DELIVERED, and if the vendor
+     * has already been paid out for it. See OrderService.voidTestOrder.
+     */
+    @PostMapping("/{id}/void")
+    public OrderService.VoidResult voidTestOrder(
+            @PathVariable Long id,
+            @Valid @RequestBody VoidRequest request,
+            @AuthenticationPrincipal UserPrincipal admin) {
+        // The void commits inside voidTestOrder; only then is the popularity
+        // read model rebuilt. Public "sold" counts come from that model, which
+        // otherwise refreshes hourly, so without this the product would keep
+        // claiming a sale that never happened for up to an hour after the
+        // admin was told it was fixed. A failed rebuild must not undo or
+        // misreport a void that already committed: the hourly run catches up.
+        OrderService.VoidResult result = orderService.voidTestOrder(id, admin.getId(), request.reason());
+        try {
+            popularityJob.rebuild();
+        } catch (RuntimeException e) {
+            log.warn("Order {} voided, but the popularity rebuild failed; sold counts correct "
+                    + "at the next hourly run", id, e);
+        }
+        return result;
     }
 
     @GetMapping("/{id}/history")

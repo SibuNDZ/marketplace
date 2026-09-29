@@ -22,7 +22,8 @@ public record OrderResponse(
         List<OrderItemResponse> items,
         List<DeliveryFeeResponse> deliveryFees, // one per vendor charging delivery; empty = free
         ShippingDtos.ShippingAddressResponse shippingAddress,
-        String trackingNumber // set at SHIPPED (when provided); manual interim, no courier API yet
+        String trackingNumber, // set at SHIPPED (when provided); manual interim, no courier API yet
+        boolean testOrder      // placed while checkout was guarded (V34); not a sale
 ) {
     public record OrderItemResponse(
             Long productId,

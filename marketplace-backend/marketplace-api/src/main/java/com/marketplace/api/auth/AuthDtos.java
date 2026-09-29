@@ -49,8 +49,29 @@ public class AuthDtos {
              * for a business name to satisfy a schema would be signup
              * friction for nothing.
              */
-            @Size(max = 200) String businessName
+            @Size(max = 200) String businessName,
+            /**
+             * VENDOR only, and deliberately NOT validated against the enum
+             * here. An unknown value is discarded by
+             * ReferralSource.parseOrNull rather than returning 400: a channel
+             * we have not heard of must not cost someone their registration.
+             * Validation that can reject a signup has to be worth the signup.
+             */
+            @Size(max = 40) String referralSource,
+            @Size(max = 120) String referralSourceDetail
     ) {
+        /**
+         * The pre-V33 arity. Kept because a registration that has nothing to
+         * say about attribution is a real case, not an omission: every buyer
+         * signup is one. It also keeps the existing auth tests, which were
+         * written about a contract with no attribution in it, saying what
+         * they meant rather than carrying two trailing nulls each.
+         */
+        public RegisterRequest(String email, String password, String firstName, String lastName,
+                               String username, String role, String businessName) {
+            this(email, password, firstName, lastName, username, role, businessName, null, null);
+        }
+
         public String roleOrDefault() {
             return role == null || role.isBlank() ? "CUSTOMER" : role;
         }

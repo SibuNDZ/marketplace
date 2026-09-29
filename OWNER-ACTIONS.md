@@ -87,7 +87,7 @@ Log lines that mean a human must act (alert on these strings):
 
 | String | Meaning |
 |---|---|
-| `MANUAL REFUND REQUIRED` | Money arrived for an order that was already cancelled, or a **second** payment arrived for an order another payment already settled (`DUPLICATE PAYMENT FOR ORDER`). Refund from the Paystack dashboard. |
+| `MANUAL REFUND REQUIRED` | Money arrived for an order that was already cancelled, a **second** payment arrived for an order another payment already settled (`DUPLICATE PAYMENT FOR ORDER`), or live money arrived for an order placed while payments ran test keys (`LIVE PAYMENT ... FOR TEST ORDER`; ask the customer to order again). Refund from the Paystack dashboard. Test-mode charges on test orders never raise this. |
 | `MANUAL REVIEW REQUIRED` | The charge amount or currency does not match the order, or the reference and metadata name different orders. The order is left PENDING. |
 | `not created by the marketplace checkout` | A charge on the account that eRestyu's checkout did not start (for example a payment page). It is not matched to any order. |
 

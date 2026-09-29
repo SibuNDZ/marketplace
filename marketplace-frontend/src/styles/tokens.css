@@ -889,6 +889,20 @@ button { cursor: pointer; font: inherit; }
   overflow-anchor: none;
 }
 
+/* Footer social icons. 40px square: comfortably clear of accidental taps on
+   a phone, where they sit in a row with 8px between them. In a class rather
+   than inline because :hover cannot override an inline colour. */
+.footer-social {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: var(--r-sm);
+  border: 1px solid var(--footer-line); color: var(--footer-text);
+  transition: color 0.15s, border-color 0.15s;
+}
+a.footer-social:hover { color: var(--footer-heading); border-color: var(--footer-text); }
+/* Placeholder: dimmed and inert. It is not a link (see Footer.tsx), so it
+   gets no hover state that would suggest it can be clicked. */
+.footer-social--soon { opacity: 0.35; cursor: default; }
+
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.45; }

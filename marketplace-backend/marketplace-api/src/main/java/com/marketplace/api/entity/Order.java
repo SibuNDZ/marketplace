@@ -83,11 +83,29 @@ public class Order {
     private String trackingNumber;
 
     /**
-     * The provider's id for the payment that moved this order to PAID (V32).
-     * Null for orders paid before V32 and for providers that do not pass one.
+     * The provider's id for the payment that moved this order to PAID (V35).
+     * Null for orders paid before V35 and for providers that do not pass one.
      */
     @Column(name = "payment_reference", length = 100)
     private String paymentReference;
+
+    /**
+     * Placed while checkout was guarded (V34, CheckoutPolicy): payments in test
+     * mode, checkout limited to admins. Such an order has no effect as a sale
+     * anywhere: no vendor email, no payout entry, no vendor dashboard entry,
+     * no sold count, no review eligibility. Set once at placeOrder, never
+     * changed.
+     */
+    @Column(name = "test_order", nullable = false)
+    private boolean testOrder = false;
+
+    public boolean isTestOrder() {
+        return testOrder;
+    }
+
+    public void setTestOrder(boolean testOrder) {
+        this.testOrder = testOrder;
+    }
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

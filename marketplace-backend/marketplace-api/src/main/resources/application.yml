@@ -134,6 +134,14 @@ app:
     # the rollback until the first real rand clears end to end on the new
     # provider (payfast-port.md).
     provider: ${PAYMENTS_PROVIDER:stripe}
+    # Who may check out while the provider runs TEST keys (CheckoutPolicy).
+    # admins-only: shoppers see "checkout opens soon"; admin orders are
+    # flagged test orders with no effect as sales (no vendor email, payout,
+    # sold count or review eligibility). Lifts itself with live keys.
+    # open: anyone may check out in test mode and orders count as real,
+    # for a local box that wants to try checkout as a customer.
+    # Unrecognised values mean admins-only (fail closed).
+    test-mode-checkout: ${PAYMENTS_TEST_MODE_CHECKOUT:admins-only}
   payouts:
     # DECIDED by the owner, 2026-08-30: 10% platform commission. Covers the
     # processor's ~3% cut plus margin (vendor-payouts.md §5; platform absorbs

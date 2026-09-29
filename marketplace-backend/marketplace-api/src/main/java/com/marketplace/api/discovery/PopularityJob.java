@@ -82,6 +82,8 @@ public class PopularityJob {
                         FROM order_items oi
                         JOIN orders o ON o.id = oi.order_id
                         WHERE o.status IN ('PAID', 'SHIPPED', 'DELIVERED')
+                          -- Test orders (V34) moved no money: not a sale.
+                          AND NOT o.test_order
                         GROUP BY oi.product_id
                     ) s ON s.product_id = p.id
                     LEFT JOIN (

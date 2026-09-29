@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { ApiError, auth as authApi, fieldErrorsFrom } from '../lib/api'
 import { GoogleSignInButton } from '../components/auth/GoogleSignInButton'
+import { REFERRAL_SOURCES } from '../data/referralSources'
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,30}$/
 
@@ -23,7 +24,7 @@ export function RegisterPage() {
   const [role, setRole] = useState<'CUSTOMER' | 'VENDOR'>(wantsVendor ? 'VENDOR' : 'CUSTOMER')
   const [form, setForm] = useState({
     email: '', password: '', confirmPassword: '', firstName: '', lastName: '', username: '',
-    businessName: '',
+    businessName: '', referralSource: '', referralSourceDetail: '',
   })
   const isVendor = role === 'VENDOR'
   const [error, setError] = useState<string>()
@@ -105,13 +106,23 @@ export function RegisterPage() {
     try {
       // confirmPassword is a client-side guard and is not part of the API
       // contract, so it is dropped rather than sent and ignored.
-      const { confirmPassword: _confirmPassword, businessName, ...payload } = form
+      const {
+        confirmPassword: _confirmPassword, businessName,
+        referralSource, referralSourceDetail, ...payload
+      } = form
       const result = await register({
         ...payload,
         role,
         // Buyers have no storefront; sending an empty string would look like
         // an intentional blank name rather than "not applicable".
         ...(role === 'VENDOR' ? { businessName } : {}),
+        // Same reasoning, and the server ignores a buyer's source anyway:
+        // the seller-recruitment count has to mean sellers.
+        ...(role === 'VENDOR' ? { referralSource } : {}),
+        // Only carries meaning for OTHER, so it is only sent for OTHER.
+        ...(role === 'VENDOR' && referralSource === 'OTHER'
+          ? { referralSourceDetail }
+          : {}),
       })
       // Never lands in the app: the account cannot sign in until confirmed.
       navigate('/check-email', {
@@ -129,10 +140,15 @@ export function RegisterPage() {
   }
 
   const card = (r: 'CUSTOMER' | 'VENDOR', icon: string, title: string, sub: string) => (
+    // color is NOT decoration here. A <button> does not inherit color: the UA
+    // sets it to `buttontext`, which is black, so the card titles rendered
+    // black on a dark card and were unreadable in dark mode. The subtitle
+    // escaped it only because it names var(--ink-soft) itself. Any bare
+    // <button> carrying text needs this.
     <button type="button" onClick={() => setRole(r)} style={{
       flex: 1, padding: '18px 16px', border: `2px solid ${role === r ? 'var(--aloe)' : 'var(--line)'}`,
       borderRadius: 'var(--r)', background: role === r ? 'var(--aloe-tint)' : 'var(--card)',
-      textAlign: 'left', cursor: 'pointer',
+      color: 'var(--ink)', textAlign: 'left', cursor: 'pointer',
     }}>
       <div style={{ fontSize: 22, marginBottom: 6 }}>{icon}</div>
       <div style={{ fontWeight: 700, fontSize: 15 }}>{title}</div>
@@ -251,6 +267,47 @@ export function RegisterPage() {
                 color: fieldErrors.businessName ? 'var(--clay)' : 'var(--ink-soft)',
               }}>
                 {fieldErrors.businessName?.[0] ?? 'Shown on your product listings'}
+              </span>
+            </label>
+          )}
+
+          {/* Asked of sellers only, and asked here rather than in a later
+              survey nobody answers. There is no referral tracking in the
+              platform, so this dropdown is the whole of our ability to tell
+              whether a seller campaign brought anyone: without it the answer
+              is a guess, and a guess cannot be compared month to month.
+
+              Required for sellers, who are already giving a surname and a
+              business name, so one dropdown is marginal friction on a form
+              they have decided to finish. Buyers are never asked: making
+              every shopper answer a marketing question at the exact moment
+              they drop off would cost more than the data is worth. */}
+          {isVendor && (
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 500 }}>
+              How did you hear about eRestyu?
+              {/* inputStyle unmodified, deliberately. Overriding the
+                  background to var(--card) put near-black UA text on a
+                  near-black box in dark mode, and made this one field look
+                  unlike every other field on the form. A select inherits the
+                  same UA text colour as an input, so it has to keep the same
+                  background as one too. */}
+              <select required value={form.referralSource}
+                onChange={e => set('referralSource', e.target.value)}
+                style={inputStyle}>
+                <option value="">Choose one</option>
+                {REFERRAL_SOURCES.map(s => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+              {form.referralSource === 'OTHER' && (
+                <input required value={form.referralSourceDetail}
+                  onChange={e => set('referralSourceDetail', e.target.value)}
+                  placeholder="Where, roughly?"
+                  maxLength={120}
+                  style={{ ...inputStyle, marginTop: 4 }} />
+              )}
+              <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--ink-soft)' }}>
+                It helps us know where to find more sellers like you.
               </span>
             </label>
           )}

@@ -39,6 +39,10 @@ app:
     cancel-url: http://localhost:4200/checkout/cancelled
   payments:
     provider: stripe
+    # Open on the test classpath: existing tests place orders as customers
+    # in test mode and assert real-sale behaviour. CheckoutGuardTest turns
+    # the guard on explicitly.
+    test-mode-checkout: open
   payouts:
     # This file REPLACES the main application.yml on the test classpath (same
     # name), so every property the context needs must be restated here — the

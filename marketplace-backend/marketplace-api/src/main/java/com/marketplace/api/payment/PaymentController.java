@@ -61,6 +61,7 @@ public class PaymentController {
     private final ObjectMapper objectMapper;
     private final String webhookSecret;
     private final String provider;
+    private final CheckoutPolicy checkoutPolicy;
 
     public PaymentController(StripeCheckoutService checkoutService,
                              PayfastCheckoutService payfastCheckoutService,
@@ -69,7 +70,8 @@ public class PaymentController {
                              PaymentEventService eventService,
                              ObjectMapper objectMapper,
                              @Value("${app.stripe.webhook-secret:}") String webhookSecret,
-                             @Value("${app.payments.provider:stripe}") String provider) {
+                             @Value("${app.payments.provider:stripe}") String provider,
+                             CheckoutPolicy checkoutPolicy) {
         this.checkoutService = checkoutService;
         this.payfastCheckoutService = payfastCheckoutService;
         this.yocoCheckoutService = yocoCheckoutService;
@@ -82,6 +84,7 @@ public class PaymentController {
         // pass the validator and report healthy, then fall through to Stripe
         // here and 502 every checkout.
         this.provider = provider == null ? "stripe" : provider.trim().toLowerCase(Locale.ROOT);
+        this.checkoutPolicy = checkoutPolicy;
     }
 
     /**
@@ -98,6 +101,9 @@ public class PaymentController {
     public Object pay(@PathVariable Long id,
                       @Valid @RequestBody ShippingAddressRequest shipping,
                       @AuthenticationPrincipal UserPrincipal me) {
+        // Guarded here as well as at placeOrder: a PENDING order placed
+        // before the guard shipped could otherwise still be paid in test mode.
+        checkoutPolicy.requireCanCheckOut(me.getRole());
         return switch (provider) {
             case "payfast" -> payfastCheckoutService.createCheckout(id, me.getId(), shipping);
             case "paystack" -> Map.of("checkoutUrl", paystackCheckoutService.createCheckout(id, me.getId(), shipping));

@@ -116,6 +116,16 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.CONFLICT, "Invalid order state", ex.getMessage());
     }
 
+    /**
+     * 409, not 403: the shopper is allowed to buy, the shop is just not open
+     * yet. The title is stable so the storefront can match on it and show a
+     * friendly state rather than an error.
+     */
+    @ExceptionHandler(com.marketplace.api.payment.CheckoutPolicy.CheckoutNotOpenException.class)
+    public ProblemDetail checkoutNotOpen(com.marketplace.api.payment.CheckoutPolicy.CheckoutNotOpenException ex) {
+        return problem(HttpStatus.CONFLICT, "Checkout not open yet", ex.getMessage());
+    }
+
     @ExceptionHandler(PayoutExceptions.PayoutBatchNotFoundException.class)
     public ProblemDetail payoutBatchNotFound(PayoutExceptions.PayoutBatchNotFoundException ex) {
         return problem(HttpStatus.NOT_FOUND, "Payout batch not found", ex.getMessage());

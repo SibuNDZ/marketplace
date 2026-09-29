@@ -18,6 +18,10 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
      * theirs contains it. Verification is a live query against order history,
      * not a stored flag; it cannot drift from the truth.
      *
+     * A test order (V34) never counts: it was paid in test mode, so the
+     * "purchase" behind the review never happened, and a review resting on it
+     * would be exactly the fake signal verification exists to prevent.
+     *
      * Paths confirmed against entities: OrderItem.order → Order,
      * Order.user → User, OrderItem.product → Product (optional=true, hard-
      * deleted products yield null and are filtered by the equality condition).
@@ -27,6 +31,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             WHERE oi.order.user.id = :userId
               AND oi.product.id    = :productId
               AND oi.order.status  = com.marketplace.api.entity.OrderStatus.DELIVERED
+              AND oi.order.testOrder = false
             """)
     boolean hasDeliveredPurchase(@Param("userId") Long userId,
                                  @Param("productId") Long productId);

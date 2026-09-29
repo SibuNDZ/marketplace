@@ -136,6 +136,21 @@ public class User {
     @Column(name = "payout_terms_accepted_at")
     private LocalDateTime payoutTermsAcceptedAt;
 
+    /**
+     * Self-reported: how this seller found eRestyu (V33). Null means no
+     * answer, which is the honest state for every customer and for every
+     * vendor who registered before the question existed. Write-once in
+     * practice: the callers set it only when it is still null, so a later
+     * visit to the upgrade form cannot overwrite the first answer.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "referral_source", length = 40)
+    private ReferralSource referralSource;
+
+    /** Free-text label, only meaningful when referralSource is OTHER. */
+    @Column(name = "referral_source_detail", length = 120)
+    private String referralSourceDetail;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -363,6 +378,44 @@ public class User {
 
     public void setPayoutTermsAcceptedAt(LocalDateTime payoutTermsAcceptedAt) {
         this.payoutTermsAcceptedAt = payoutTermsAcceptedAt;
+    }
+
+    public ReferralSource getReferralSource() {
+        return referralSource;
+    }
+
+    public void setReferralSource(ReferralSource referralSource) {
+        this.referralSource = referralSource;
+    }
+
+    public String getReferralSourceDetail() {
+        return referralSourceDetail;
+    }
+
+    public void setReferralSourceDetail(String referralSourceDetail) {
+        this.referralSourceDetail = referralSourceDetail;
+    }
+
+    /**
+     * Records the answer only if none is held, and keeps the free-text label
+     * only for OTHER (a detail attached to FACEBOOK is noise in the admin
+     * table, and letting it through would let a client label an answer it did
+     * not give).
+     *
+     * Write-once because the two callers are the two doors into a seller
+     * account and someone can pass through both: registering as a buyer and
+     * upgrading later means the upgrade form asks a question the account may
+     * already have answered. First answer wins, which is the one given
+     * closest to the moment they arrived.
+     */
+    public void recordReferralSourceIfAbsent(ReferralSource source, String detail) {
+        if (this.referralSource != null || source == null) {
+            return;
+        }
+        this.referralSource = source;
+        this.referralSourceDetail = source == ReferralSource.OTHER && detail != null && !detail.isBlank()
+                ? detail.strip()
+                : null;
     }
 
     /** Acceptance counts only at the CURRENT version — see payoutTermsVersion. */

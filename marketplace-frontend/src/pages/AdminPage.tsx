@@ -1,9 +1,11 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api, Page, AdminOrderSummary } from '../lib/api'
+import { api, Page, AdminOrderSummary, SellerSourcesResponse } from '../lib/api'
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { StatusChip } from '../components/ui/StatusChip'
+import { TestOrderChip } from '../components/ui/TestOrderChip'
+import { REFERRAL_SOURCES } from '../data/referralSources'
 
 // Legal next transitions — the UI never offers what the state machine rejects.
 const LEGAL: Record<string, string[]> = {
@@ -73,7 +75,11 @@ export function AdminPage() {
                   </td>
                   <td style={{ padding: '14px 12px', color: 'var(--ink-soft)', fontSize: 13 }}>{o.customerEmail}</td>
                   <td className="num" style={{ padding: '14px 12px' }}>R{Number(o.total).toFixed(2)}</td>
-                  <td style={{ padding: '14px 12px' }}><StatusChip status={o.status} /></td>
+                  <td style={{ padding: '14px 12px' }}>
+                    <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                      <StatusChip status={o.status} />{o.testOrder && <TestOrderChip />}
+                    </span>
+                  </td>
                   <td style={{ padding: '14px 12px', display: 'flex', gap: 8 }}>
                     {(LEGAL[o.status] ?? []).map(next => (
                       <button key={next} onClick={() => runTransition(o.id, next)}
@@ -90,7 +96,65 @@ export function AdminPage() {
             </tbody>
           </table>
         )}
+        <SellerSources />
       </main>
     </>
+  )
+}
+
+/**
+ * Where sellers say they came from. Below the orders table on purpose: it is
+ * a monthly question, not a daily one, and orders are what this page is for.
+ *
+ * Renders nothing until there is at least one seller to count, so the page
+ * does not carry an empty analytics box around.
+ */
+function SellerSources() {
+  const { data } = useQuery<SellerSourcesResponse>({
+    queryKey: ['admin-seller-sources'],
+    queryFn: () => api('/api/v1/admin/sellers/sources'),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  if (!data || data.totalVendors === 0) return null
+
+  const label = (v: string) =>
+    REFERRAL_SOURCES.find(s => s.value === v)?.label ?? v
+
+  return (
+    <section style={{ marginTop: 40, maxWidth: 420 }}>
+      <h2 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 17, marginBottom: 4 }}>
+        Where sellers came from
+      </h2>
+      {/* The unknown count is stated first and plainly. Every vendor who
+          registered before the question existed is unknown, so for a while it
+          is the biggest number here, and a reader who cannot see that would
+          read a two-vendor channel as a trend. */}
+      <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginBottom: 12 }}>
+        {data.answered} of {data.totalVendors} sellers answered
+        {data.unknown > 0 && `, ${data.unknown} signed up before we asked`}
+      </p>
+      {data.sources.length === 0 ? (
+        <p style={{ fontSize: 13, color: 'var(--ink-soft)' }}>No answers yet.</p>
+      ) : (
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <tbody>
+            {data.sources.map(s => (
+              <tr key={s.source} style={{ borderBottom: '1px solid var(--line)' }}>
+                <td style={{ padding: '8px 0', fontSize: 13.5 }}>{label(s.source)}</td>
+                <td className="num" style={{ padding: '8px 0', textAlign: 'right', fontWeight: 700 }}>
+                  {s.count}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {data.otherLabels.length > 0 && (
+        <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 10, lineHeight: 1.6 }}>
+          Written in under &ldquo;somewhere else&rdquo;: {data.otherLabels.join(', ')}
+        </p>
+      )}
+    </section>
   )
 }

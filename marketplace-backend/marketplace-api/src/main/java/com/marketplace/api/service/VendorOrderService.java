@@ -88,10 +88,22 @@ public class VendorOrderService {
                 !mixed.contains(o.getId())));
     }
 
+    /**
+     * The one rule for whether a vendor may see or act on an order, shared by
+     * the single-order view and the ship action (the list applies the same
+     * rule in OrderRepository.findVendorOrders). A test order (V34) is NOT
+     * visible: to a vendor, a paid order is an instruction to pack and send
+     * it. It answers as not-found rather than forbidden, so a guessed id
+     * reveals nothing about whether a test order exists.
+     */
+    private boolean vendorVisible(Order o) {
+        return VENDOR_VISIBLE.contains(o.getStatus()) && !o.isTestOrder();
+    }
+
     @Transactional(readOnly = true)
     public VendorOrderResponse get(Long vendorId, Long orderId) {
         Order order = orderRepository.findById(orderId)
-                .filter(o -> VENDOR_VISIBLE.contains(o.getStatus()))
+                .filter(this::vendorVisible)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
         List<OrderItem> mine = orderItemRepository
                 .findByOrderIdInAndProductVendorId(List.of(orderId), vendorId);
@@ -114,7 +126,7 @@ public class VendorOrderService {
     @Transactional
     public VendorOrderResponse markShipped(Long vendorId, Long orderId, String trackingNumber) {
         Order order = orderRepository.findByIdForUpdate(orderId)
-                .filter(o -> VENDOR_VISIBLE.contains(o.getStatus()))
+                .filter(this::vendorVisible)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
 
         List<OrderItem> mine = orderItemRepository

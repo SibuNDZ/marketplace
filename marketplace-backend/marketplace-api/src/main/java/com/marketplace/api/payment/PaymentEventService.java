@@ -64,12 +64,14 @@ public class PaymentEventService {
     private final OrderRepository orderRepository;
     private final OrderStatusRecorder recorder;
     private final CommissionLedgerService ledger;
+    private final PaymentHealth paymentHealth;
 
     public PaymentEventService(OrderRepository orderRepository, OrderStatusRecorder recorder,
-                               CommissionLedgerService ledger) {
+                               CommissionLedgerService ledger, PaymentHealth paymentHealth) {
         this.orderRepository = orderRepository;
         this.recorder = recorder;
         this.ledger = ledger;
+        this.paymentHealth = paymentHealth;
     }
 
     /**
@@ -121,9 +123,20 @@ public class PaymentEventService {
             return;
         }
 
+        // A test order paid in test mode moved no money, so a second or late
+        // charge on it is not a refund to make. Keep the refund queue for
+        // real money only.
+        boolean testMoneyOnly = order.isTestOrder() && paymentHealth.isTestMode();
+
         if (current == OrderStatus.PAID) {
             String paidBy = order.getPaymentReference();
             if (payment != null && paidBy != null && !paidBy.equals(payment.reference())) {
+                if (testMoneyOnly) {
+                    log.warn("Second test-mode payment {} via {} for TEST order {} (paid by {}) "
+                            + "- no money moved, nothing to refund", payment.reference(), provider,
+                            orderId, paidBy);
+                    return;
+                }
                 // Two different successful payments for one order: the
                 // customer opened checkout twice (two tabs, or an EFT that
                 // settled after they paid again by card) and completed both.
@@ -136,6 +149,12 @@ public class PaymentEventService {
             return;
         }
 
+        if (!OrderTransitions.isAllowed(current, OrderStatus.PAID) && testMoneyOnly) {
+            log.warn("Test-mode payment via {} for TEST order {} (status {}) - no money moved, "
+                    + "nothing to refund", provider, orderId, current);
+            return;
+        }
+
         if (!OrderTransitions.isAllowed(current, OrderStatus.PAID)) {
             // The genuinely bad case: money was taken but the order is beyond
             // PENDING — almost certainly CANCELLED by the expiry job in the
@@ -145,6 +164,17 @@ public class PaymentEventService {
             // it's the string to alert on in Sentry/monitoring.
             log.error("PAYMENT RECEIVED FOR NON-PAYABLE ORDER {} (status {}) - "
                     + "MANUAL REFUND REQUIRED", orderId, current);
+            return;
+        }
+
+        if (order.isTestOrder() && !paymentHealth.isTestMode()) {
+            // Live money for an order the system treats as a rehearsal (no
+            // payout, no vendor email). CheckoutPreparation refuses to start
+            // such a payment once checkout is open; this is the backstop, for
+            // a checkout opened just before the switch to live keys.
+            log.error("LIVE PAYMENT {} via {} FOR TEST ORDER {} - MANUAL REFUND REQUIRED, "
+                    + "order NOT transitioned; the customer must place the order again",
+                    payment == null ? "(no reference)" : payment.reference(), provider, orderId);
             return;
         }
 
@@ -169,6 +199,16 @@ public class PaymentEventService {
         // This is the ONLY setStatus(PAID) site in the codebase (admin manual
         // PAID is rejected in OrderAdminService), so this one call covers
         // every provider.
+        //
+        // Except a test order (placed while checkout was guarded, V34): its
+        // payment moved no money, so no vendor is owed anything and there is
+        // nothing to write. Skipping here, at the one PAID site, is what keeps
+        // it off the payout list the admin approves from.
+        if (order.isTestOrder()) {
+            log.info("Order {} PENDING -> PAID via {} webhook (TEST order: no payout entry)",
+                    orderId, provider);
+            return;
+        }
         ledger.recordOnPaid(order);
         log.info("Order {} PENDING -> PAID via {} webhook", orderId, provider);
     }

@@ -21,9 +21,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class CheckoutPreparation {
 
     private final OrderRepository orderRepository;
+    private final CheckoutPolicy checkoutPolicy;
 
-    public CheckoutPreparation(OrderRepository orderRepository) {
+    public CheckoutPreparation(OrderRepository orderRepository, CheckoutPolicy checkoutPolicy) {
         this.orderRepository = orderRepository;
+        this.checkoutPolicy = checkoutPolicy;
     }
 
     @Transactional
@@ -35,6 +37,16 @@ public class CheckoutPreparation {
             throw new InvalidOrderStateException(
                     "Order " + orderId + " is " + order.getStatus()
                     + "; only PENDING orders can be paid");
+        }
+
+        // A test order stays a test order for life (no payout, no vendor
+        // email, "no money moved" to the buyer). Once live keys are in and
+        // checkout is open, paying one would take real money for an order the
+        // rest of the system treats as a rehearsal, so it has to be re-placed.
+        if (order.isTestOrder() && !checkoutPolicy.isGuarded()) {
+            throw new InvalidOrderStateException(
+                    "Order " + orderId + " was placed while payments ran in test mode, so it "
+                    + "cannot be paid with live payments. Please place the order again.");
         }
 
         order.setRecipientName(shipping.recipientName());

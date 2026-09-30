@@ -96,7 +96,7 @@ class PayfastItnTest {
     }
 
     /** ITN body in a deliberately non-documented wire order, correctly signed. */
-    private String itnBody(Long orderId, String amountGross, String paymentStatus) {
+    static String itnBody(Long orderId, String amountGross, String paymentStatus) {
         String params = "pf_payment_id=1089250"
                 + "&m_payment_id=" + orderId
                 + "&payment_status=" + paymentStatus

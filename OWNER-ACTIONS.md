@@ -35,7 +35,7 @@ Shared:
 
 | Variable | Required | Notes |
 |---|---|---|
-| `PAYMENTS_PROVIDER` | yes | `stripe` \| `yoco` \| `payfast` (case-insensitive). Default in code is `stripe`. |
+| `PAYMENTS_PROVIDER` | yes | `stripe` \| `yoco` \| `payfast` \| `paystack` (case-insensitive). Default in code is `stripe`. |
 | `APP_FRONTEND_URL` | yes | Must be `https://erestyu.com` in production (success/cancel URLs derive from it). |
 | `APP_CORS_ALLOWED_ORIGINS` | yes | `https://erestyu.com` — **no** localhost in prod. |
 
@@ -66,6 +66,34 @@ Checklist:
 - [ ] Webhook URL is `https://api.erestyu.com/api/v1/payments/yoco/webhook`.
 - [ ] Webhook was registered with the **same** mode's secret key.
 - [ ] Test charges are ≥ R2.00 (Yoco rejects smaller test payments).
+
+### If `PAYMENTS_PROVIDER=paystack`
+
+| Variable | Required | Test vs live |
+|---|---|---|
+| `PAYSTACK_SECRET_KEY` | yes | Paystack dashboard, Settings, API Keys & Webhooks: **Secret Key** (`sk_test_…` or `sk_live_…`), never the Public Key (`pk_…`). Boot fails on anything else. |
+
+There is no webhook secret: Paystack signs webhooks with the secret key
+itself, so rotating the key rotates webhook verification too.
+
+Checklist:
+
+- [ ] Webhook URL on the **same** mode's tab is `https://api.erestyu.com/api/v1/payments/paystack/webhook`.
+- [ ] Callback URL on the dashboard can stay blank; the API sends `callback_url` per transaction.
+- [ ] Live keys only exist after compliance review passes ("Awaiting Review" in the dashboard header).
+- [ ] First live check: an R5 order reaches PAID, the order email arrives, and the payout lands 2 working days later.
+
+Log lines that mean a human must act (alert on these strings):
+
+| String | Meaning |
+|---|---|
+| `MANUAL REFUND REQUIRED` | Money arrived for an order that was already cancelled, a **second** payment arrived for an order another payment already settled (`DUPLICATE PAYMENT FOR ORDER`), or live money arrived for an order placed while payments ran test keys (`LIVE PAYMENT ... FOR TEST ORDER`; ask the customer to order again). Refund from the Paystack dashboard. Test-mode charges on test orders never raise this. |
+| `MANUAL REVIEW REQUIRED` | The charge amount or currency does not match the order, or the reference and metadata name different orders. The order is left PENDING. |
+| `not created by the marketplace checkout` | A charge on the account that eRestyu's checkout did not start (for example a payment page). It is not matched to any order. |
+
+"Pass fees to customer" (arranged through Paystack support in South Africa) is
+safe: the webhook settles the order on `requested_amount`, not the grossed-up
+`amount`.
 
 ### If `PAYMENTS_PROVIDER=payfast`
 

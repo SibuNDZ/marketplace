@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
@@ -13,7 +14,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * {@code @DynamicUpdate}: an UPDATE writes only the columns that changed.
+ * Checkout writes the shipping address and then waits on a slow provider
+ * call before committing; a full-row UPDATE would write back the status it
+ * read at the start, silently reverting an order the expiry job CANCELLED
+ * (and restocked) in the meantime to PENDING.
+ */
 @Entity
+@DynamicUpdate
 @Table(name = "orders")
 public class Order {
 
@@ -72,6 +81,13 @@ public class Order {
      */
     @Column(name = "tracking_number", length = 100)
     private String trackingNumber;
+
+    /**
+     * The provider's id for the payment that moved this order to PAID (V35).
+     * Null for orders paid before V35 and for providers that do not pass one.
+     */
+    @Column(name = "payment_reference", length = 100)
+    private String paymentReference;
 
     /**
      * Placed while checkout was guarded (V34, CheckoutPolicy): payments in test
@@ -234,6 +250,14 @@ public class Order {
 
     public void setTrackingNumber(String trackingNumber) {
         this.trackingNumber = trackingNumber;
+    }
+
+    public String getPaymentReference() {
+        return paymentReference;
+    }
+
+    public void setPaymentReference(String paymentReference) {
+        this.paymentReference = paymentReference;
     }
 
     public LocalDateTime getCreatedAt() {

@@ -16,22 +16,27 @@ class PaymentsConfigValidatorTest {
     private static void validate(String provider,
                                  String stripeSecret, String stripeWebhook,
                                  String yocoSecret, String yocoWebhook,
+                                 String paystackSecret,
                                  String pfId, String pfKey, String process, String validateUrl) {
         new PaymentsConfigValidator(provider, stripeSecret, stripeWebhook,
-                yocoSecret, yocoWebhook, pfId, pfKey, process, validateUrl)
+                yocoSecret, yocoWebhook, paystackSecret, pfId, pfKey, process, validateUrl)
                 .afterPropertiesSet();
     }
 
     private static void yoco(String provider, String secret, String webhook) {
-        validate(provider, "", "", secret, webhook, "", "", "", "");
+        validate(provider, "", "", secret, webhook, "", "", "", "", "");
     }
 
     private static void stripe(String provider, String secret, String webhook) {
-        validate(provider, secret, webhook, "", "", "", "", "", "");
+        validate(provider, secret, webhook, "", "", "", "", "", "", "");
     }
 
     private static void payfast(String provider, String id, String key, String process, String validateUrl) {
-        validate(provider, "", "", "", "", id, key, process, validateUrl);
+        validate(provider, "", "", "", "", "", id, key, process, validateUrl);
+    }
+
+    private static void paystack(String provider, String secret) {
+        validate(provider, "", "", "", "", secret, "", "", "", "");
     }
 
     @Test
@@ -137,5 +142,26 @@ class PaymentsConfigValidatorTest {
     void providerMatchIsCaseAndWhitespaceInsensitive() {
         assertThatThrownBy(() -> yoco(" Yoco ", "", ""))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void paystackSelected_withSecretKey_boots() {
+        assertThatCode(() -> paystack("paystack", "sk_test_x")).doesNotThrowAnyException();
+        assertThatCode(() -> paystack("PAYSTACK", "sk_live_x")).doesNotThrowAnyException();
+    }
+
+    @Test
+    void paystackSelected_missingSecretKey_failsBoot() {
+        assertThatThrownBy(() -> paystack("paystack", " "))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("PAYSTACK_SECRET_KEY");
+    }
+
+    @Test
+    void paystackSelected_publicKeyPasted_failsBoot() {
+        // The dashboard shows pk_ and sk_ side by side; pk_ is the likely slip.
+        assertThatThrownBy(() -> paystack("paystack", "pk_test_x"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Secret Key");
     }
 }

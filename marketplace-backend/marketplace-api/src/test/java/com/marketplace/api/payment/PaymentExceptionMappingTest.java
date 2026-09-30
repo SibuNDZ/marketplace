@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PaymentExceptionMappingTest {
 
     private final PaymentHealth health = new PaymentHealth(
-            "stripe", "sk_test_x", "", "", "", "");
+            "stripe", "sk_test_x", "", "", "", "", "");
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler(health);
 
     @Test

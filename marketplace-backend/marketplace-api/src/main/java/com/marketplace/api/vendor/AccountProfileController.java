@@ -40,6 +40,34 @@ public class AccountProfileController {
         return profiles.updateBio(me.getId(), request.bio());
     }
 
+    /**
+     * Per field: absent or null leaves that link unchanged, "" clears it,
+     * anything else is normalised (seller-social-links.md section 5). A field
+     * that cannot be read as a profile on its platform fails the whole
+     * request with field-keyed errors, and nothing is saved.
+     */
+    public record SocialLinksRequest(
+            @Size(max = 300) String instagram,
+            @Size(max = 300) String tiktok,
+            @Size(max = 300) String facebook,
+            @Size(max = 300) String x
+    ) {
+        java.util.Map<SocialPlatform, String> byPlatform() {
+            java.util.Map<SocialPlatform, String> m = new java.util.EnumMap<>(SocialPlatform.class);
+            m.put(SocialPlatform.INSTAGRAM, instagram);
+            m.put(SocialPlatform.TIKTOK, tiktok);
+            m.put(SocialPlatform.FACEBOOK, facebook);
+            m.put(SocialPlatform.X, x);
+            return m;
+        }
+    }
+
+    @PutMapping("/social-links")
+    public OwnProfile updateSocialLinks(@Valid @RequestBody SocialLinksRequest request,
+                                        @AuthenticationPrincipal UserPrincipal me) {
+        return profiles.updateSocialLinks(me.getId(), request.byPlatform());
+    }
+
     @PostMapping("/avatar")
     public OwnProfile uploadAvatar(@RequestParam("file") MultipartFile file,
                                    @AuthenticationPrincipal UserPrincipal me) {

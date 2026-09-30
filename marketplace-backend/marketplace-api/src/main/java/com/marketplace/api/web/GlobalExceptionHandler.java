@@ -177,6 +177,15 @@ public class GlobalExceptionHandler {
         return pd;
     }
 
+    @ExceptionHandler(com.marketplace.api.vendor.VendorProfileService.SocialLinkValidationException.class)
+    public ProblemDetail socialLinksInvalid(
+            com.marketplace.api.vendor.VendorProfileService.SocialLinkValidationException ex) {
+        ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "Validation failed",
+                "Some of those links need fixing");
+        pd.setProperty("errors", ex.getFieldErrors());
+        return pd;
+    }
+
     @ExceptionHandler(com.marketplace.api.service.ProductVariantService.DuplicateVariantLabelException.class)
     public ProblemDetail duplicateVariantLabel(
             com.marketplace.api.service.ProductVariantService.DuplicateVariantLabelException ex) {

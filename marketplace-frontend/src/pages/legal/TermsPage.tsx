@@ -53,6 +53,12 @@ export function TermsPage() {
           a vendor confirms they hold the rights to it; uploaded photos are
           served publicly and are visible to anyone browsing the catalog.
         </p>
+        <p>
+          A vendor may link their store's own Instagram, TikTok, Facebook and X
+          profiles, which are shown publicly on their shop page. Linking an
+          account that does not belong to the store is not allowed, and eRestyu
+          may remove any store's links at its discretion.
+        </p>
       </LegalSection>
     </LegalPage>
   )

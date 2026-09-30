@@ -35,6 +35,11 @@
   --flame-deep: #B84424;
   --flame-tint: #FAEAE3;
   --flame-gradient: linear-gradient(135deg, #F0793F 0%, #E2582F 55%, #C93E20 100%);
+  /* The logo gradient, exactly as the "e" tile and the brand pack use it
+     (brand/tools/build.js). Wordmarks use this rather than --flame-gradient,
+     so the site's wordmark matches the one in every marketing post.
+     --flame-gradient stays for buttons and CTAs, which are UI, not logo. */
+  --brand-gradient: linear-gradient(135deg, #FF9A3D 0%, #FF4626 60%, #E31C3D 100%);
 
   --sun: #E89B4E;           /* secondary accent — notices, highlights */
   --sun-deep: #A96A2A;
@@ -121,6 +126,9 @@
   --flame-deep: #ff8df8;
   --flame-tint: rgba(255, 0, 255, 0.10);
   --flame-gradient: linear-gradient(135deg, #00a8c8 0%, #7c22c8 55%, #d4009e 100%);
+  /* Dark theme keeps its neon wordmark: a theme treatment on the site, not
+     a second brand. Marketing uses the warm flame (brand/README.md). */
+  --brand-gradient: var(--flame-gradient);
 
   --sun: #ffd166;
   --sun-deep: #ffe19a;
@@ -503,7 +511,7 @@ body {
   font-size: 25px;
   font-weight: 800;
   letter-spacing: 0;
-  background: var(--flame-gradient);
+  background: var(--brand-gradient);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

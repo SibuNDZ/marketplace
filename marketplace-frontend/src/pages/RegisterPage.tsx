@@ -205,7 +205,7 @@ export function RegisterPage() {
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <Link to="/" aria-label="eRestyu home" style={{
             fontFamily: 'var(--display)', fontWeight: 800, fontSize: 28, letterSpacing: '-0.03em', marginBottom: 6,
-            background: 'var(--flame-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            background: 'var(--brand-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             backgroundClip: 'text', display: 'inline-block',
           }}>
             eRestyu

@@ -85,7 +85,7 @@ export function LoginPage() {
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <Link to="/" aria-label="eRestyu home" style={{
             fontFamily: 'var(--display)', fontWeight: 800, fontSize: 28, letterSpacing: '-0.03em', marginBottom: 8,
-            background: 'var(--flame-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            background: 'var(--brand-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             backgroundClip: 'text', display: 'inline-block',
           }}>
             eRestyu

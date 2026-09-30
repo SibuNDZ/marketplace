@@ -28,7 +28,7 @@ export function AuthShell({ title, children }: {
           <Link to="/" aria-label="eRestyu home" style={{
             fontFamily: 'var(--display)', fontWeight: 800, fontSize: 28,
             letterSpacing: '-0.03em', marginBottom: 6,
-            background: 'var(--flame-gradient)', WebkitBackgroundClip: 'text',
+            background: 'var(--brand-gradient)', WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent', backgroundClip: 'text',
             display: 'inline-block',
           }}>

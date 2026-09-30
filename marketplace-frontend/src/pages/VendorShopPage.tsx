@@ -1,7 +1,7 @@
 import React from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { api, Page, ProductResponse } from '../lib/api'
+import { api, Page, ProductResponse, VendorProfile } from '../lib/api'
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { ProductCard } from '../components/product/ProductCard'
 import { vendorHue } from '../lib/vendorHue'
@@ -23,9 +23,9 @@ const PAGE_SIZE = 40
  * is uglier and correct today; a slug can be added later without breaking
  * this route.
  *
- * The vendor's display name is read off their products rather than a
- * separate lookup, which keeps this to zero new endpoints. The cost is that
- * a stall with no live listings cannot be named, handled below.
+ * The store's name, picture and bio come from its public profile
+ * (GET /api/v1/vendors/{id}), so even a stall with no listings yet is named.
+ * The first product's vendorName remains a fallback while that loads.
  */
 export function VendorShopPage() {
   const { vendorId } = useParams()
@@ -36,8 +36,15 @@ export function VendorShopPage() {
     enabled: !!vendorId,
   })
 
+  const { data: store } = useQuery<VendorProfile>({
+    queryKey: ['vendors', 'profile', vendorId],
+    queryFn: () => api(`/api/v1/vendors/${vendorId}`, { auth: false }),
+    enabled: !!vendorId,
+    retry: false, // 404 means "not a store"; retrying will not change that
+  })
+
   const products = data?.content ?? []
-  const vendorName = products[0]?.vendorName
+  const vendorName = store?.name ?? products[0]?.vendorName
   const stripe = vendorHue(Number(vendorId) || 1)
   const initial = (vendorName ?? '?').trim().charAt(0).toUpperCase()
 
@@ -52,7 +59,10 @@ export function VendorShopPage() {
         </nav>
 
         <header className="shop-header" style={{ borderTopColor: stripe }}>
-          <div className="shop-header__avatar" style={{ background: stripe }} aria-hidden>{initial}</div>
+          {store?.avatarUrl
+            ? <img className="shop-header__avatar" src={store.avatarUrl} alt=""
+                style={{ objectFit: 'cover', background: 'var(--card)' }} />
+            : <div className="shop-header__avatar" style={{ background: stripe }} aria-hidden>{initial}</div>}
           <div style={{ minWidth: 0 }}>
             <h1>{vendorName ?? (isLoading ? 'Loading…' : 'This stall')}</h1>
             <p>
@@ -65,6 +75,11 @@ export function VendorShopPage() {
                       {' '}{(data?.totalElements ?? products.length) === 1 ? 'listing' : 'listings'} on eRestyu
                     </>}
             </p>
+            {store?.bio && (
+              <p style={{ marginTop: 10, maxWidth: '62ch', fontSize: 15, lineHeight: 1.6, color: 'var(--ink)' }}>
+                {store.bio}
+              </p>
+            )}
           </div>
         </header>
 

@@ -111,6 +111,11 @@ public class GlobalExceptionHandler {
         return pd;
     }
 
+    @ExceptionHandler(com.marketplace.api.vendor.VendorPublicController.VendorNotFoundException.class)
+    public ProblemDetail vendorNotFound(com.marketplace.api.vendor.VendorPublicController.VendorNotFoundException ex) {
+        return problem(HttpStatus.NOT_FOUND, "Store not found", ex.getMessage());
+    }
+
     @ExceptionHandler(InvalidOrderStateException.class)
     public ProblemDetail invalidOrderState(InvalidOrderStateException ex) {
         return problem(HttpStatus.CONFLICT, "Invalid order state", ex.getMessage());

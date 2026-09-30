@@ -37,7 +37,10 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
 
 /**
  * Integration tests for the discovery slice.
@@ -155,6 +158,29 @@ class DiscoveryTest {
         assertThat(popularitySales(a.getId())).isEqualTo(3);
         assertThat(popularitySales(b.getId())).isEqualTo(0);
         assertThat(popularitySales(c.getId())).isEqualTo(0);
+    }
+
+    @Test
+    void popularShelf_listsOnlyProductsThatEarnedIt() throws Exception {
+        // Regression: /products/popular padded Top Selling with never-sold
+        // products (live 2026-09-30, 6 of 8 cards had sold nothing).
+        Product sold   = fixtures.product("Shelf Sold",   "SKU-SH-S1", new BigDecimal("10"), 10);
+        Product unsold = fixtures.product("Shelf Unsold", "SKU-SH-U1", new BigDecimal("10"), 10);
+        User admin = fixtures.admin("shelf-admin1");
+        User buyer = fixtures.customerWithCart("shelf-buyer1", sold, 1);
+        fixtures.deliverOrder(orderService.placeOrder(buyer.getId()).id(), admin.getId());
+
+        popularityJob.rebuild();
+
+        mockMvc.perform(get("/api/v1/products/popular?by=sales&limit=24"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].id", hasItem(sold.getId().intValue())))
+                .andExpect(jsonPath("$[*].id", not(hasItem(unsold.getId().intValue()))));
+        // Nobody has reviewed either, so neither is Top Rated.
+        mockMvc.perform(get("/api/v1/products/popular?by=rating&limit=24"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].id", not(hasItem(sold.getId().intValue()))))
+                .andExpect(jsonPath("$[*].id", not(hasItem(unsold.getId().intValue()))));
     }
 
     @Test

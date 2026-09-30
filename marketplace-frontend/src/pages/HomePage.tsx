@@ -223,7 +223,7 @@ const TRUST_ITEMS = [
     // No nationality claim on the team - the platform is South African,
     // the people answering may be from anywhere (owner directive).
     title: 'Real support',
-    body: 'A real person answers at hello@erestyu.com.',
+    body: 'Contact us at hello@erestyu.com.',
   },
 ]
 
@@ -297,7 +297,7 @@ function NewsletterSection() {
           )}
         </>
       )}
-      <p className="landing-newsletter__fine">No spam. Unsubscribe any time.</p>
+      <p className="landing-newsletter__fine">Unsubscribe any time.</p>
     </section>
   )
 }

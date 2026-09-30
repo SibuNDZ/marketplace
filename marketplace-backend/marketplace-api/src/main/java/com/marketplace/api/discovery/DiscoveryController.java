@@ -80,11 +80,19 @@ public class DiscoveryController {
                 SELECT pp.product_id FROM product_popularity pp
                 JOIN products p ON p.id = pp.product_id
                 WHERE p.deleted_at IS NULL
+                  -- A shelf called Top Selling (or Top Rated, or Trending)
+                  -- lists only products that earned it. Without this floor
+                  -- the shelf was padded with never-sold products in id
+                  -- order, under a "Top Selling" heading (live 2026-09-30:
+                  -- 6 of 8 had sold nothing). All three columns are 0 when
+                  -- there is no signal (see PopularityJob), and an empty
+                  -- shelf is hidden by the frontend.
+                  AND pp.%1$s > 0
                   AND ((NOT EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = p.id)
                         AND p.stock_quantity > 0)
                        OR EXISTS (SELECT 1 FROM product_variants v
                                   WHERE v.product_id = p.id AND v.stock_quantity > 0))
-                ORDER BY pp.%s DESC, pp.product_id ASC
+                ORDER BY pp.%1$s DESC, pp.product_id ASC
                 LIMIT :n
                 """.formatted(orderColumn))
                 .setParameter("n", n)

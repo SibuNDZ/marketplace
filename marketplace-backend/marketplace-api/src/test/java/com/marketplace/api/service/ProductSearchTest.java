@@ -3,6 +3,7 @@ package com.marketplace.api.service;
 import com.marketplace.api.dto.ProductDtos.ProductResponse;
 import com.marketplace.api.entity.Category;
 import com.marketplace.api.entity.Product;
+import com.marketplace.api.entity.User;
 import com.marketplace.api.repository.CategoryRepository;
 import com.marketplace.api.repository.ProductRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -101,6 +102,26 @@ class ProductSearchTest {
         assertThat(search("shoes"))
                 .withFailMessage("A product filed under a category called Shoes must be findable by 'shoes'")
                 .anySatisfy(n -> assertThat(n).contains("Jimmy Choo Pumps"));
+    }
+
+    @Test
+    @DisplayName("a store's name finds its products, whole or partial")
+    void vendorBusinessNameFindsTheirProducts() {
+        // Reported 2026-09-30: "Morning Star" showed "No products match"
+        // although Morning Star Essentials has a listing. Search was fine (a
+        // leftover Best-Selling filter hid the unsold product); this pins the
+        // search half so the store-name match cannot quietly regress. Neither
+        // the product name nor the username contains the query, so only the
+        // business name can match.
+        User vendor = fixtures.vendor(uniq("msvendor"));
+        txTemplate.execute(status -> jdbc.update(
+                "UPDATE users SET business_name = 'Morning Star Essentials' WHERE id = ?", vendor.getId()));
+        String product = uniq("Renergie Night Cream");
+        fixtures.productForVendor(product, uniq("SKU-MS"), new BigDecimal("100"), 5, vendor);
+
+        assertThat(search("Morning Star")).contains(product);
+        assertThat(search("morning star essentials")).contains(product);
+        assertThat(search("morning")).contains(product);
     }
 
     @Test

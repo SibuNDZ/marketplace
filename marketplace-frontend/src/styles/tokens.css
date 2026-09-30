@@ -13,6 +13,9 @@
      pivot, same contract as the dark block. */
   --paper: #FAF9F7;
   --card: #FFFFFF;
+  /* Anything that floats OVER page content (flyouts, dropdown menus):
+     always fully opaque. See the note on .subcategory-panel. */
+  --surface-overlay: var(--card);
   --ink: #1F1D1B;
   --ink-soft: #6B6763;
   --line: #E4E1DB;
@@ -106,6 +109,7 @@
 [data-theme="dark"] {
   --paper: #09090b;          /* obsidian ground */
   --card: #101016;           /* raised chrome: menus, drawers, panels */
+  --surface-overlay: #0c0c12; /* the colour the overlays always meant, now opaque */
   --ink: #e7ecf5;
   --ink-soft: #8f9bb0;
   --line: rgba(0, 243, 255, 0.14);   /* holographic blueprint dividers */
@@ -620,13 +624,13 @@ body {
   padding: 7px;
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
-  background: var(--card);
+  background: var(--surface-overlay);
   box-shadow: var(--shadow-lift);
 }
+/* Opaque for the same reason as .subcategory-panel: it drops from inside
+   .site-header, so a backdrop blur here could never work. */
 [data-theme="dark"] .account-menu {
-  background: rgba(16, 16, 22, 0.92);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: var(--surface-overlay);
 }
 .account-menu > * { padding: 9px 10px; border: 0; border-radius: 4px; background: transparent; color: var(--ink); font-size: 13px; text-align: left; }
 .account-menu > span { overflow: hidden; color: var(--ink-soft); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
@@ -707,14 +711,20 @@ body {
   right: 0;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
-  background: var(--card);
+  background: var(--surface-overlay);
   box-shadow: 0 16px 30px rgba(24, 36, 32, .13);
   animation: mega-menu-in 140ms ease-out both;
 }
+/* Overlays are OPAQUE in dark mode, not frosted glass. They used to be
+   rgba(.., 0.92) with a backdrop blur, which failed twice over: these panels
+   sit inside .site-header, which has its own backdrop-filter, and a nested
+   backdrop-filter only samples inside that ancestor, so the blur never
+   reached the page behind the panel. The browser then composited the page
+   through it: search results and the cart panel ghosted through the flyout,
+   and product photos showed at full brightness under its text (live on
+   2026-09-30, verified by screenshot). A solid surface cannot do that. */
 [data-theme="dark"] .subcategory-panel {
-  background: rgba(12, 12, 18, 0.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--surface-overlay);
   box-shadow: 0 16px 40px rgba(0, 0, 0, .55);
 }
 .subcategory-panel__inner { padding-block: 22px 26px; }
@@ -1092,14 +1102,13 @@ a.footer-social:hover { color: var(--footer-heading); border-color: var(--footer
     overflow-y: auto;
     border-top: 1px solid var(--line);
     border-bottom: 1px solid var(--line);
-    background: var(--card);
+    background: var(--surface-overlay);
     box-shadow: 0 18px 38px rgba(24, 36, 32, .16);
     animation: mega-menu-in 150ms ease-out both;
   }
+  /* Opaque, as .subcategory-panel: see the note there. */
   [data-theme="dark"] .category-mega-menu {
-    background: rgba(12, 12, 18, 0.92);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: var(--surface-overlay);
     box-shadow: 0 18px 44px rgba(0, 0, 0, .55);
   }
 
@@ -1846,6 +1855,10 @@ a.footer-social:hover { color: var(--footer-heading); border-color: var(--footer
   border: 1.5px solid var(--ink);
   border-radius: var(--r-pill);
   background: transparent;
+  /* Buttons do not inherit text colour, so without this the label fell back
+     to the browser's black: unreadable in dark mode (Load more, the empty
+     results actions). */
+  color: var(--ink);
   font-weight: 600;
   font-size: 14px;
 }

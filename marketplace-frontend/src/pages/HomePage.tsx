@@ -1,7 +1,8 @@
-import React, { FormEvent, useMemo, useState } from 'react'
+import React, { FormEvent, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { api, Page, ProductResponse } from '../lib/api'
+import { api, Page, ProductResponse, VendorProfile } from '../lib/api'
+import { StoreAvatar } from '../components/ui/StoreAvatar'
 import { SiteHeader } from '../components/layout/SiteHeader'
 import { useCategoryTree } from '../hooks/useCategoryTree'
 import heroImg from '../assets/landing/hero-editorial.jpg'
@@ -123,79 +124,102 @@ function FeaturedSection() {
   )
 }
 
+const SPOTLIGHT_INTERVAL_MS = 8000
+
+/**
+ * Vendor spotlight: every real store with a photographed listing gets a turn.
+ *
+ * It used to spotlight whichever vendor had the most listings among the
+ * newest 50 products, which made it the same store on every visit. Now the
+ * server returns every eligible store (completed profiles first, see
+ * VendorCardRepository.spotlightCards), and this section starts on a random
+ * one each visit and moves on every few seconds, like the hero banner.
+ *
+ * Rotation pauses while the pointer is over the section or focus is inside
+ * it (someone reading a bio should not have it pulled away), and does not
+ * run at all under prefers-reduced-motion; the dots still work.
+ */
 function SpotlightSection() {
-  const { data } = useQuery<Page<ProductResponse>>({
-    queryKey: ['landing', 'spotlight-pool'],
-    queryFn: () => api('/api/v1/products?page=0&size=50'),
+  const { data: stores } = useQuery<VendorProfile[]>({
+    queryKey: ['vendors', 'spotlight'],
+    queryFn: () => api('/api/v1/vendors/spotlight', { auth: false }),
     staleTime: 5 * 60 * 1000,
   })
-  const spotlight = useMemo(() => {
-    const byVendor = new Map<number, ProductResponse[]>()
-    for (const p of data?.content ?? []) {
-      // Editorial pick: most listings wins. Seed/demo accounts are not
-      // real stores and never get the spotlight.
-      if (p.vendorName === 'Fixture Vendor') continue
-      if (p.vendorId == null) continue
-      const list = byVendor.get(p.vendorId) ?? []
-      list.push(p)
-      byVendor.set(p.vendorId, list)
-    }
-    let best: ProductResponse[] | undefined
-    for (const list of byVendor.values()) {
-      if (!best || list.length > best.length) best = list
-    }
-    if (!best) return undefined
-    const sold = best.reduce((n, p) => n + (p.soldCount ?? 0), 0)
-    const reviews = best.reduce((n, p) => n + p.reviewCount, 0)
-    // avgRating is a string (BigDecimal serialization, see ProductResponse)
-    const rating = reviews > 0
-      ? best.reduce((n, p) => n + Number(p.avgRating) * p.reviewCount, 0) / reviews
-      : undefined
-    const withImage = best.find(p => p.imageUrl)
-    return {
-      vendorId: best[0].vendorId,
-      name: best[0].vendorName,
-      pieces: best.length,
-      sold,
-      rating,
-      image: withImage?.imageUrl,
-      imageAlt: withImage ? `${withImage.name}, listed by ${best[0].vendorName}` : '',
-    }
-  }, [data])
+  const [index, setIndex] = useState<number>()
+  const [paused, setPaused] = useState(false)
+  const reducedMotion = useMemo(
+    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    [],
+  )
 
-  if (!spotlight) return null
+  // A random starting store per visit, chosen once the list arrives.
+  useEffect(() => {
+    if (stores?.length && index === undefined) setIndex(Math.floor(Math.random() * stores.length))
+  }, [stores, index])
+
+  const count = stores?.length ?? 0
+  useEffect(() => {
+    if (count < 2 || paused || reducedMotion) return
+    const t = window.setInterval(() => setIndex(i => ((i ?? 0) + 1) % count), SPOTLIGHT_INTERVAL_MS)
+    return () => window.clearInterval(t)
+  }, [count, paused, reducedMotion])
+
+  if (!stores?.length || index === undefined) return null
+  const store = stores[index % stores.length]
+  const rating = store.rating != null ? Number(store.rating) : undefined
+
   return (
-    <section className="landing-spotlight" aria-labelledby="spotlight-heading">
+    <section className="landing-spotlight" aria-labelledby="spotlight-heading"
+      onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
       <div className="landing-spotlight__inner">
         <div className="landing-spotlight__art">
-          {spotlight.image && <img src={spotlight.image} alt={spotlight.imageAlt} loading="lazy" />}
+          {store.sampleImageUrl && (
+            <img key={store.id} src={store.sampleImageUrl} alt={`A listing from ${store.name}`} loading="lazy" />
+          )}
           {/* No possessive: vendor names ending in s ("Cavioure Designers")
               would render as the awkward "Designers's". */}
           <p className="landing-spotlight__caption">
-            From the live listings of {spotlight.name}
+            From the live listings of {store.name}
           </p>
         </div>
-        <div className="landing-spotlight__body">
+        <div className="landing-spotlight__body" aria-live={paused ? 'polite' : 'off'}>
           <span className="landing-kicker">Vendor spotlight</span>
-          <h2 id="spotlight-heading">{spotlight.name}</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+            <StoreAvatar name={store.name} url={store.avatarUrl} size={72} />
+            <h2 id="spotlight-heading" style={{ margin: 0 }}>{store.name}</h2>
+          </div>
           <p className="landing-spotlight__blurb">
-            A store currently selling on eRestyu. Every piece is listed, priced
-            and dispatched by the vendor themselves. The figures below come
-            straight from their live listings.
+            {store.bio ?? 'A store currently selling on eRestyu. Every piece is listed, priced '
+              + 'and dispatched by the vendor themselves.'}
           </p>
           <div className="landing-spotlight__stats">
-            <div><strong className="num">{spotlight.pieces}</strong><span>Pieces</span></div>
-            <div><strong className="num">{spotlight.sold}</strong><span>Sold</span></div>
+            <div><strong className="num">{store.pieces}</strong><span>Pieces</span></div>
+            <div><strong className="num">{store.sold}</strong><span>Sold</span></div>
             <div>
-              <strong className={spotlight.rating ? 'num' : undefined}>
-                {spotlight.rating ? spotlight.rating.toFixed(1) : 'New'}
+              <strong className={rating !== undefined ? 'num' : undefined}>
+                {rating !== undefined ? rating.toFixed(1) : 'New'}
               </strong>
               <span>Rating</span>
             </div>
           </div>
-          <Link to={`/shop/${spotlight.vendorId}`} className="landing-link">
+          <Link to={`/shop/${store.id}`} className="landing-link">
             Visit their store <span aria-hidden>→</span>
           </Link>
+          {count > 1 && (
+            <div role="group" aria-label="Choose a store to spotlight"
+              style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+              {stores.map((s, i) => (
+                <button key={s.id} type="button" onClick={() => setIndex(i)}
+                  aria-label={`Show ${s.name}`} aria-current={i === index % count}
+                  style={{
+                    width: i === index % count ? 26 : 10, height: 10, borderRadius: 5, padding: 0,
+                    border: 'none', cursor: 'pointer', transition: 'width 0.2s',
+                    background: i === index % count ? 'var(--flame)' : 'rgba(255,255,255,0.35)',
+                  }} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </section>

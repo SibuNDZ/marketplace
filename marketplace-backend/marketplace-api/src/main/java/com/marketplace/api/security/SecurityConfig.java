@@ -66,6 +66,10 @@ public class SecurityConfig {
                     // Chip row and sidebar render before anyone signs in.
                     .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/reviews/**").permitAll()
+                    // Public store profiles: the home page spotlight and shop
+                    // pages are read signed out. GET only; the vendor's own
+                    // edits live under /api/v1/account/profile, which is not.
+                    .requestMatchers(HttpMethod.GET, "/api/v1/vendors/**").permitAll()
                     .requestMatchers("/api/v1/payments/health").permitAll()
                     // Public fee numbers for the How It Works page: a vendor
                     // should meet the commission rate in public copy before

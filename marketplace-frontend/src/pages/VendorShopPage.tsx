@@ -1,7 +1,9 @@
 import React from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { api, Page, ProductResponse, VendorProfile } from '../lib/api'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { api, ApiError, Page, ProductResponse, SocialKey, VendorProfile } from '../lib/api'
+import { SocialIcon } from '../components/layout/SocialIcon'
+import { useAuth } from '../context/AuthContext'
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { ProductCard } from '../components/product/ProductCard'
 import { vendorHue } from '../lib/vendorHue'
@@ -80,6 +82,9 @@ export function VendorShopPage() {
                 {store.bio}
               </p>
             )}
+            {store && store.socialLinks.length > 0 && (
+              <StoreSocialLinks storeId={store.id} storeName={store.name} links={store.socialLinks} />
+            )}
           </div>
         </header>
 
@@ -104,5 +109,67 @@ export function VendorShopPage() {
         )}
       </main>
     </>
+  )
+}
+
+const PLATFORM_LABEL: Record<SocialKey, string> = {
+  instagram: 'Instagram', tiktok: 'TikTok', facebook: 'Facebook', x: 'X',
+}
+
+/**
+ * The store's social profiles (seller-social-links.md). Every URL here was
+ * built by the server from a stored username, so it can only be a profile on
+ * that platform.
+ *
+ * rel: noopener and noreferrer so the opened page cannot reach back into this
+ * one or see which shop sent it; nofollow and ugc so search engines treat these
+ * as seller-supplied links and eRestyu's reputation is not lent to them.
+ *
+ * Admins also get a way to remove all of a store's links, for a store linking
+ * an account that is not theirs (there is no cheap way to prove ownership).
+ */
+function StoreSocialLinks({ storeId, storeName, links }: {
+  storeId: number
+  storeName: string
+  links: { platform: SocialKey; url: string }[]
+}) {
+  const { user } = useAuth()
+  const qc = useQueryClient()
+  const clear = useMutation({
+    mutationFn: (reason: string) => api(`/api/v1/admin/vendors/${storeId}/social-links/clear`, {
+      method: 'POST', body: { reason },
+    }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['vendors', 'profile', String(storeId)] }),
+    onError: e => window.alert(e instanceof ApiError ? e.detail || e.title : 'Could not remove the links'),
+  })
+
+  const askAndClear = () => {
+    const reason = window.prompt(`Remove all of ${storeName}'s social links? Say why (kept in the server log):`)
+    if (reason && reason.trim()) clear.mutate(reason.trim())
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+      {links.map(l => (
+        <a key={l.platform} href={l.url} target="_blank" rel="nofollow noopener noreferrer ugc"
+          aria-label={`${storeName} on ${PLATFORM_LABEL[l.platform]}`} title={PLATFORM_LABEL[l.platform]}
+          style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            width: 38, height: 38, borderRadius: 'var(--r-sm)',
+            border: '1px solid var(--line)', color: 'var(--ink)',
+          }}>
+          <SocialIcon icon={l.platform} size={18} />
+        </a>
+      ))}
+      {user?.role === 'ADMIN' && (
+        <button type="button" onClick={askAndClear} disabled={clear.isPending} style={{
+          marginLeft: 4, padding: '6px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+          borderRadius: 'var(--r-sm)', border: '1px solid var(--clay)', color: 'var(--clay)',
+          background: 'transparent',
+        }}>
+          {clear.isPending ? 'Removing…' : 'Remove links (admin)'}
+        </button>
+      )}
+    </div>
   )
 }

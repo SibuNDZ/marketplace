@@ -231,13 +231,20 @@ export interface VendorProfile {
   reviewCount: number
   /** A photo from the store's newest listing. */
   sampleImageUrl: string | null
+  /** Set links only, in platform order. Always empty in the spotlight. */
+  socialLinks: { platform: SocialKey; url: string }[]
 }
+
+/** The platforms a store may link (backend SocialPlatform). */
+export type SocialKey = 'instagram' | 'tiktok' | 'facebook' | 'x'
 
 /** GET/PUT /api/v1/account/profile: the vendor's own editable profile. */
 export interface OwnStoreProfile {
   name: string
   bio: string | null
   avatarUrl: string | null
+  /** Every platform, with the canonical profile link or null. */
+  socialLinks: Record<SocialKey, string | null>
 }
 
 /**

@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, ApiError, OwnStoreProfile, uploadStoreAvatar } from '../lib/api'
+import { api, ApiError, fieldErrorsFrom, OwnStoreProfile, SocialKey, uploadStoreAvatar } from '../lib/api'
+import { SocialIcon } from '../components/layout/SocialIcon'
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { StoreAvatar } from '../components/ui/StoreAvatar'
 import { useAuth } from '../context/AuthContext'
@@ -168,7 +169,141 @@ function ProfileForm() {
           </div>
         </form>
       </section>
+
+      <SocialLinksSection profile={profile} onSaved={onSaved} />
+      <ShareShopSection />
     </>
+  )
+}
+
+const PLATFORMS: { key: SocialKey; label: string; example: string }[] = [
+  { key: 'instagram', label: 'Instagram', example: 'instagram.com/yourstore or @yourstore' },
+  { key: 'tiktok', label: 'TikTok', example: 'tiktok.com/@yourstore or @yourstore' },
+  { key: 'facebook', label: 'Facebook', example: 'facebook.com/yourstore' },
+  { key: 'x', label: 'X', example: 'x.com/yourstore or @yourstore' },
+]
+
+/**
+ * The store's own social profiles, shown on its shop page
+ * (seller-social-links.md). Paste a link or a username; the server keeps only
+ * the username and builds the link itself, so what shows on the shop page is
+ * always a proper profile link on that platform. Saving is all-or-nothing and
+ * reports every field that needs fixing at once.
+ */
+function SocialLinksSection({ profile, onSaved }: {
+  profile: OwnStoreProfile
+  onSaved: (p: OwnStoreProfile) => void
+}) {
+  const initial = () => Object.fromEntries(
+    PLATFORMS.map(p => [p.key, profile.socialLinks?.[p.key] ?? ''])) as Record<SocialKey, string>
+  const [values, setValues] = useState<Record<SocialKey, string>>(initial)
+  const [errors, setErrors] = useState<Partial<Record<SocialKey, string>>>({})
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string>()
+
+  const save = useMutation({
+    mutationFn: () => api<OwnStoreProfile>('/api/v1/account/profile/social-links', {
+      method: 'PUT', body: values,
+    }),
+    onSuccess: p => {
+      onSaved(p)
+      // Show what was actually saved: the canonical link, not what was typed.
+      setValues(Object.fromEntries(
+        PLATFORMS.map(pl => [pl.key, p.socialLinks?.[pl.key] ?? ''])) as Record<SocialKey, string>)
+      setSaved(true)
+    },
+    onError: e => {
+      if (e instanceof ApiError) {
+        const fields = fieldErrorsFrom(e)
+        setErrors(Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v[0]])))
+        if (Object.keys(fields).length === 0) setError(e.detail || e.title)
+      } else {
+        setError('Could not save your links. Try again.')
+      }
+    },
+  })
+
+  return (
+    <section style={card}>
+      <h2 style={h2}>Social links</h2>
+      <p style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--ink-soft)', marginBottom: 14 }}>
+        Links to your store's own profiles, shown as icons on your shop page so buyers can see
+        you're a real, active business. These are public. Only link accounts that belong to your
+        store.
+      </p>
+      <form onSubmit={e => { e.preventDefault(); setErrors({}); setError(undefined); setSaved(false); save.mutate() }}
+        style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {PLATFORMS.map(p => (
+          <label key={p.key} style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, fontWeight: 600 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <SocialIcon icon={p.key} size={16} /> {p.label}
+            </span>
+            <input value={values[p.key]} maxLength={300} placeholder={p.example}
+              autoCapitalize="none" autoCorrect="off" spellCheck={false}
+              aria-invalid={!!errors[p.key]}
+              onChange={e => { setValues(v => ({ ...v, [p.key]: e.target.value })); setSaved(false) }}
+              style={{
+                padding: '9px 12px', borderRadius: 'var(--r-sm)', fontSize: 14,
+                border: `1.5px solid ${errors[p.key] ? 'var(--clay)' : 'var(--line)'}`,
+                background: 'var(--card)', color: 'var(--ink)', fontWeight: 400,
+              }} />
+            {errors[p.key] && (
+              <span style={{ fontSize: 12.5, fontWeight: 400, color: 'var(--clay)' }}>{errors[p.key]}</span>
+            )}
+          </label>
+        ))}
+        {error && <p role="alert" style={errorStyle}>{error}</p>}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12 }}>
+          {saved && <span role="status" style={{ fontSize: 13, color: 'var(--aloe)' }}>Saved</span>}
+          <button type="submit" disabled={save.isPending} style={primary}>
+            {save.isPending ? 'Saving…' : 'Save links'}
+          </button>
+        </div>
+      </form>
+    </section>
+  )
+}
+
+/**
+ * The other half of social links: getting followers to eRestyu. A seller who
+ * puts this link in their Instagram or TikTok bio sends their own audience to
+ * their shop here, which is the effect the feature is really for.
+ */
+function ShareShopSection() {
+  const { user } = useAuth()
+  const [copied, setCopied] = useState(false)
+  if (!user) return null
+  const shopUrl = `${window.location.origin}/shop/${user.userId}`
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(shopUrl)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2500)
+    } catch {
+      // Clipboard blocked (older browser, or not a secure context): the link
+      // is shown in full beside the button, so it can still be copied by hand.
+      setCopied(false)
+    }
+  }
+
+  return (
+    <section style={card}>
+      <h2 style={h2}>Your shop link</h2>
+      <p style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--ink-soft)', marginBottom: 12 }}>
+        Put this in your Instagram and TikTok bio, and share it in your stories and WhatsApp
+        status, so your followers can buy from your eRestyu shop.
+      </p>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <code style={{
+          padding: '9px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--line)',
+          fontSize: 13.5, wordBreak: 'break-all', flex: '1 1 220px', color: 'var(--ink)',
+        }}>
+          {shopUrl}
+        </code>
+        <button type="button" onClick={copy} style={primary}>{copied ? 'Copied' : 'Copy your shop link'}</button>
+      </div>
+    </section>
   )
 }
 

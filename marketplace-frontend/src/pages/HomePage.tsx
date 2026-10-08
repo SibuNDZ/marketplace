@@ -6,6 +6,11 @@ import { StoreAvatar } from '../components/ui/StoreAvatar'
 import { SiteHeader } from '../components/layout/SiteHeader'
 import { useCategoryTree } from '../hooks/useCategoryTree'
 import '../styles/landing.css'
+import deptPantry from '../assets/landing/dept-pantry.jpg'
+import deptFashion from '../assets/landing/dept-fashion.jpg'
+import deptHomeLiving from '../assets/landing/dept-home-living.jpg'
+import deptJewellery from '../assets/landing/dept-jewellery.jpg'
+import deptBeauty from '../assets/landing/dept-beauty.jpg'
 
 /**
  * The editorial landing at "/" — the Avant-Garde Boutique composition.
@@ -22,13 +27,20 @@ import '../styles/landing.css'
 /**
  * Department slugs with photography; the rest get type tiles.
  *
- * Empty on purpose (2026-10-09). The photos here were stock and AI images,
- * one of them showing a real skincare brand's packaging, presented as if
- * they were sellers' goods. A payment provider's risk review reads that as
- * the site not being genuine. A department gets a photo again only when it
- * is a real seller's photo of a real listing, used with their permission.
+ * Kept by owner decision (2026-10-09) after a text-only trial: the type
+ * tiles read as unfinished. These are mood photos for the department, not
+ * listings. The Beauty photo shows Africology packaging, a real brand that
+ * sells nothing here; replace it first when a seller's own photo exists.
  */
-const DEPT_IMAGES: Record<string, string> = {}
+const DEPT_IMAGES: Record<string, string> = {
+  pantry: deptPantry,
+  fashion: deptFashion,
+  'home-and-living': deptHomeLiving,
+  // The Jewellery DEPARTMENT's root slug is jewellery-collections;
+  // plain "jewellery" is a subcategory under Fashion.
+  'jewellery-collections': deptJewellery,
+  'beauty-and-personal-care': deptBeauty,
+}
 
 function DepartmentsSection() {
   const { data: tree } = useCategoryTree(false)

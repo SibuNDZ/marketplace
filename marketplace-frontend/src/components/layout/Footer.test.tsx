@@ -1,7 +1,14 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Footer } from './Footer'
+import { COMPANY, MARKETPLACE_SUMMARY } from '../../data/company'
+
+// The footer asks the API whether checkout is open to the public; these
+// tests set the answer directly.
+let checkoutLive = false
+vi.mock('../../hooks/useCheckoutOpen', () => ({ useCheckoutLive: () => checkoutLive }))
+beforeEach(() => { checkoutLive = false })
 import { SOCIAL_LINKS, SocialLink, publishableSocialLinks } from '../../data/socialLinks'
 
 const renderFooter = (socialLinks: SocialLink[] = SOCIAL_LINKS) =>
@@ -89,5 +96,34 @@ describe('publishableSocialLinks', () => {
       { label: 'Empty href', icon: 'tiktok', href: '' },
       { label: '   ', icon: 'tiktok', href: 'https://www.tiktok.com/@erestyu' },
     ])).toEqual([])
+  })
+})
+
+describe('Footer trust details', () => {
+  it('names the operator and says what kind of business it is, on every page', () => {
+    renderFooter()
+    expect(screen.getByText(MARKETPLACE_SUMMARY)).toBeTruthy()
+    // The footer renders on the homepage, which carries no vetting language.
+    expect(document.body.textContent ?? '').not.toMatch(/vet|authenticat/i)
+    expect(screen.getAllByText((_, el) => el?.tagName === 'P' && (el.textContent ?? '').includes(`operated by ${COMPANY.legalName}`)).length).toBe(1)
+    for (const link of screen.getAllByRole('link', { name: 'Returns & Refunds' })) expect(link.getAttribute('href')).toBe('/returns')
+  })
+
+  it('shows no payment marks while checkout is not open to the public', () => {
+    renderFooter()
+    expect(screen.queryByText('We Accept')).toBeNull()
+    expect(screen.queryByText(/Secure encrypted checkout/)).toBeNull()
+    expect(screen.queryByLabelText('Visa')).toBeNull()
+  })
+
+  it('shows only the methods actually accepted once checkout is live', () => {
+    checkoutLive = true
+    renderFooter()
+    expect(screen.getByText('We Accept')).toBeTruthy()
+    expect(screen.getByLabelText('Visa')).toBeTruthy()
+    expect(screen.getByLabelText('Mastercard')).toBeTruthy()
+    for (const notOffered of ['PayPal', 'Apple Pay', 'Google Pay', 'Ozow', 'Payflex']) {
+      expect(screen.queryByLabelText(notOffered)).toBeNull()
+    }
   })
 })

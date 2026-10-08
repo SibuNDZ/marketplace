@@ -328,6 +328,13 @@ export function ProductDetailPage() {
               </div>
               <span aria-hidden className="sold-by__chevron">›</span>
             </Link>
+            {/* The seller is responsible for the goods, said where the buyer
+                decides, in the same words as the Terms and the footer. */}
+            <p className="pdp-disclosure" style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--ink-soft)', marginTop: 10 }}>
+              Sold by {product.vendorName ?? 'an independent seller'}. You pay eRestyu, and we pay
+              the seller after delivery. eRestyu does not vet this listing or authenticate the
+              brand. <Link to="/terms" style={{ color: 'inherit', textDecoration: 'underline' }}>Terms</Link>
+            </p>
           </div>
         </div>
 

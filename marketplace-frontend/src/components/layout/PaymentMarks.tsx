@@ -108,19 +108,21 @@ function Eft() {
   )
 }
 
-/** Order follows rough usage frequency: cards, wallets, then local rails. */
+/**
+ * Only methods the live payment provider actually takes. Card payments are
+ * the one thing every provider eRestyu has used or applied to (Yoco,
+ * Paystack) accepts. The other marks above stay defined so a method can be
+ * added back the day it is confirmed on the live account, never before:
+ * showing a mark that is not accepted is a misrepresentation a payment
+ * provider's reviewer checks for. PayPal is not offered at all.
+ */
+const ACCEPTED = [Visa, Mastercard]
+void [ApplePay, GooglePay, PayPal, Ozow, Payflex, CapitecPay, Eft]
+
 export function PaymentMarks() {
   return (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-      <Visa />
-      <Mastercard />
-      <ApplePay />
-      <GooglePay />
-      <PayPal />
-      <Ozow />
-      <Payflex />
-      <CapitecPay />
-      <Eft />
+      {ACCEPTED.map((Mark, i) => <Mark key={i} />)}
     </div>
   )
 }

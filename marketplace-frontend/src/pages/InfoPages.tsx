@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { FAQ_ENTRIES } from '../data/faqContent'
+import { COMPANY, MARKETPLACE_DISCLOSURE } from '../data/company'
 
 /**
  * The footer's content pages, in one file: each is a short prose page on the
@@ -55,10 +56,12 @@ export function AboutPage() {
   return (
     <InfoPage title="About eRestyu">
       <Section heading="What eRestyu is">
+        <p>{MARKETPLACE_DISCLOSURE}</p>
         <p>
-          eRestyu is a South African multi-vendor marketplace: independent local
-          vendors list their products in one catalog, and shoppers buy from
-          several of them in a single checkout, paying in rand.
+          Sellers list their products in one catalogue, and shoppers can buy
+          from several of them in a single checkout, paying in rand.
+          {' '}{COMPANY.tradingName} is operated by {COMPANY.legalName}
+          {COMPANY.registrationNumber && <>, registration number {COMPANY.registrationNumber}</>}.
         </p>
       </Section>
       <Section heading="How it works today">
@@ -105,6 +108,11 @@ export function ContactPage() {
           same inbox.
         </p>
       </Section>
+      {COMPANY.address && (
+        <Section heading="Address">
+          <p>{COMPANY.legalName}, {COMPANY.address}</p>
+        </Section>
+      )}
       <Section heading="Response times">
         <p>
           eRestyu is a small team, so there is no formal response-time
@@ -117,7 +125,7 @@ export function ContactPage() {
 
 export function ReturnsPage() {
   return (
-    <InfoPage title="Returns & cancellations">
+    <InfoPage title="Returns & refunds">
       <Section heading="Before you pay">
         <p>
           An unpaid order can be cancelled any time from your{' '}
@@ -126,17 +134,40 @@ export function ReturnsPage() {
           30 minutes.
         </p>
       </Section>
-      <Section heading="After you pay">
+      <Section heading="Who handles a return">
         <p>
-          Once an order is paid, cancellations and refunds are handled case by
-          case while we build out self-service refunds. Reply to your order
-          confirmation email or write to{' '}
-          <a href="mailto:hello@erestyu.com">hello@erestyu.com</a> and we will
-          sort it out with the vendor.
+          Each product is sold by the seller named on it, and the seller is
+          responsible for it. You do not have to chase the seller yourself:
+          reply to your order confirmation email or write to{' '}
+          <a href="mailto:hello@erestyu.com">hello@erestyu.com</a>, and we take
+          it up with the seller. Because eRestyu takes the payment, any refund
+          is paid back by eRestyu to the card or account you paid with.
         </p>
       </Section>
-      <Section heading="Returns policy">
-        <UnderConstruction note="The full returns policy is being written. Until it is published, the Consumer Protection Act's default rights apply." />
+      <Section heading="Changing your mind: 7 days">
+        <p>
+          For goods bought online, the Electronic Communications and
+          Transactions Act lets you cancel within 7 days of receiving them,
+          without giving a reason. Return the goods in the condition you
+          received them; the only cost to you is the direct cost of sending
+          them back. Some items are excluded, such as perishable goods, items
+          made to your own specification, and audio, video or software you
+          have unsealed.
+        </p>
+      </Section>
+      <Section heading="Faulty goods: 6 months">
+        <p>
+          Under the Consumer Protection Act, if goods are defective or not fit
+          for their purpose, you may return them within 6 months of delivery
+          and choose a repair, a replacement or a refund.
+        </p>
+      </Section>
+      <Section heading="Refund timing">
+        <p>
+          If you cancel within the 7 days, your refund is paid to the card or
+          account you paid with within 30 days of your cancellation, as the
+          law requires, and usually much sooner.
+        </p>
       </Section>
     </InfoPage>
   )

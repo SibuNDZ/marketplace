@@ -2,6 +2,8 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { PaymentMarks } from './PaymentMarks'
 import { useSellerEntry } from '../../hooks/useSellerEntry'
+import { useCheckoutLive } from '../../hooks/useCheckoutOpen'
+import { COMPANY, MARKETPLACE_SUMMARY } from '../../data/company'
 import { SOCIAL_LINKS, SocialLink, publishableSocialLinks } from '../../data/socialLinks'
 import { SocialIcon } from './SocialIcon'
 
@@ -53,6 +55,7 @@ function SocialItem({ link }: { link: SocialLink }) {
 
 export function Footer({ socialLinks = SOCIAL_LINKS }: { socialLinks?: SocialLink[] } = {}) {
   const sellerEntry = useSellerEntry()
+  const checkoutLive = useCheckoutLive()
   const social = publishableSocialLinks(socialLinks)
   return (
     <footer className="site-footer" aria-label="Site footer" style={{ background: 'var(--footer-bg)', marginTop: 48, color: 'var(--footer-text)' }}>
@@ -74,7 +77,7 @@ export function Footer({ socialLinks = SOCIAL_LINKS }: { socialLinks?: SocialLin
 
           <Column title="Customer Service">
             <LinkItem to="/shipping">Shipping & Delivery</LinkItem>
-            <LinkItem to="/returns">Returns & Cancellations</LinkItem>
+            <LinkItem to="/returns">Returns & Refunds</LinkItem>
             <LinkItem to="/help">Help Center & FAQ</LinkItem>
           </Column>
 
@@ -114,20 +117,38 @@ export function Footer({ socialLinks = SOCIAL_LINKS }: { socialLinks?: SocialLin
               Trust & Security
             </p>
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-              {['🔒 Secure encrypted checkout', '🔐 Encrypted in transit', '📄 Your data under POPIA', '⚖️ Your rights under the CPA'].map(t => (
+              {[...(checkoutLive ? ['🔒 Secure encrypted checkout'] : []), '🔐 Encrypted in transit', '📄 Your data under POPIA', '⚖️ Your rights under the CPA'].map(t => (
                 <span key={t} style={{ fontSize: 12, color: 'var(--footer-text)' }}>{t}</span>
               ))}
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, padding: '24px 0', borderBottom: '1px solid var(--footer-line)' }}>
-          <div>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--footer-heading)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
-              We Accept
-            </p>
-            <PaymentMarks />
+        {/* Card marks only once the public can actually pay. Showing a
+            scheme's mark where it is not accepted is a misrepresentation a
+            payment provider's reviewer checks for. PayPal is not offered at
+            all, so it is not shown even then (see PaymentMarks). */}
+        {checkoutLive && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, padding: '24px 0', borderBottom: '1px solid var(--footer-line)' }}>
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--footer-heading)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+                We Accept
+              </p>
+              <PaymentMarks />
+            </div>
           </div>
+        )}
+
+        {/* Who operates the site and what kind of business it is, on every
+            page, in plain text (CPA, ECTA s43, and every payment review). */}
+        <div style={{ padding: '22px 0', borderBottom: '1px solid var(--footer-line)', fontSize: 12, lineHeight: 1.6, color: 'var(--footer-text)', maxWidth: 820 }}>
+          <p>{MARKETPLACE_SUMMARY}</p>
+          <p style={{ marginTop: 6 }}>
+            {COMPANY.tradingName} is operated by {COMPANY.legalName}
+            {COMPANY.registrationNumber && <>, registration number {COMPANY.registrationNumber}</>}
+            {COMPANY.address && <>, {COMPANY.address}</>}
+            . Contact: <a href={`mailto:${COMPANY.email}`} style={{ color: 'var(--footer-text)' }}>{COMPANY.email}</a>.
+          </p>
         </div>
 
         {/* SA localization row */}
@@ -152,7 +173,8 @@ export function Footer({ socialLinks = SOCIAL_LINKS }: { socialLinks?: SocialLin
           borderTop: '1px solid var(--footer-line)', paddingTop: 20, marginTop: 4,
           display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 16, textAlign: 'center',
         }}>
-          <span style={{ fontSize: 12, color: 'var(--footer-text-dim)' }}>© 2026 eRestyu. All rights reserved.</span>
+          <span style={{ fontSize: 12, color: 'var(--footer-text-dim)' }}>© 2026 {COMPANY.legalName}. All rights reserved.</span>
+          <Link to="/returns" style={{ fontSize: 12, color: 'var(--footer-text)' }}>Returns &amp; Refunds</Link>
           <Link to="/terms" style={{ fontSize: 12, color: 'var(--footer-text)' }}>Terms of Service</Link>
           <Link to="/privacy" style={{ fontSize: 12, color: 'var(--footer-text)' }}>Privacy Policy</Link>
         </div>

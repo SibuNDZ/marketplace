@@ -21,6 +21,21 @@ interface PaymentsHealth {
  * as normal and the server's 409 is the backstop. A broken status call must
  * never be what stops a real shopper paying once live payments are on.
  */
+/**
+ * Whether checkout is open to the PUBLIC, for marketing claims such as
+ * "Secure checkout" or the accepted-cards row. Unlike useCheckoutOpen this
+ * fails CLOSED and ignores the viewer's role: a claim appears only once the
+ * server confirms live payments, and an admin's view must not show it early.
+ */
+export function useCheckoutLive(): boolean {
+  const { data } = useQuery<PaymentsHealth>({
+    queryKey: ['payments-health'],
+    queryFn: () => api('/api/v1/payments/health', { auth: false }),
+    staleTime: 60_000,
+  })
+  return data?.checkoutOpenTo === 'everyone'
+}
+
 export function useCheckoutOpen(): boolean {
   const { user } = useAuth()
   const { data } = useQuery<PaymentsHealth>({

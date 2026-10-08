@@ -5,12 +5,6 @@ import { api, Page, ProductResponse, VendorProfile } from '../lib/api'
 import { StoreAvatar } from '../components/ui/StoreAvatar'
 import { SiteHeader } from '../components/layout/SiteHeader'
 import { useCategoryTree } from '../hooks/useCategoryTree'
-import heroImg from '../assets/landing/hero-editorial.jpg'
-import deptPantry from '../assets/landing/dept-pantry.jpg'
-import deptFashion from '../assets/landing/dept-fashion.jpg'
-import deptHomeLiving from '../assets/landing/dept-home-living.jpg'
-import deptJewellery from '../assets/landing/dept-jewellery.jpg'
-import deptBeauty from '../assets/landing/dept-beauty.jpg'
 import '../styles/landing.css'
 
 /**
@@ -28,21 +22,13 @@ import '../styles/landing.css'
 /**
  * Department slugs with photography; the rest get type tiles.
  *
- * Curation rule (owner directive, 2026-08-30): tile imagery must SUPPORT
- * the locally-curated positioning — South African subjects only (the
- * veldskoen, the custom-made SA oak table). International brand
- * photography is the same dishonesty as a fake badge; departments without
- * a local photo keep their typographic tile until one exists.
+ * Empty on purpose (2026-10-09). The photos here were stock and AI images,
+ * one of them showing a real skincare brand's packaging, presented as if
+ * they were sellers' goods. A payment provider's risk review reads that as
+ * the site not being genuine. A department gets a photo again only when it
+ * is a real seller's photo of a real listing, used with their permission.
  */
-const DEPT_IMAGES: Record<string, string> = {
-  pantry: deptPantry,
-  fashion: deptFashion,
-  'home-and-living': deptHomeLiving,
-  // The Jewellery DEPARTMENT's root slug is jewellery-collections;
-  // plain "jewellery" is a subcategory under Fashion.
-  'jewellery-collections': deptJewellery,
-  'beauty-and-personal-care': deptBeauty,
-}
+const DEPT_IMAGES: Record<string, string> = {}
 
 function DepartmentsSection() {
   const { data: tree } = useCategoryTree(false)
@@ -226,18 +212,20 @@ function SpotlightSection() {
   )
 }
 
-/* Every claim below is traced to a real behavior: Yoco-hosted encrypted
-   checkout; per-vendor delivery with the fee itemised before payment
+/* Every claim below is traced to a real behavior: the seller is named on
+   every listing; per-vendor delivery with the fee itemised before payment
    (OrderService delivery lines); free cancellation on unpaid orders
-   (terms page, OrderService.cancelOrder); hello@erestyu.com is live. */
+   (terms page, OrderService.cancelOrder); hello@erestyu.com is live.
+   No "Secure checkout" item: checkout is not open to the public yet
+   (CheckoutPolicy), and the header shows that claim once it is. */
 const TRUST_ITEMS = [
   {
-    title: 'Secure checkout',
-    body: 'Payments run on an encrypted, hosted checkout. Your card details never touch our servers.',
+    title: 'Who you buy from',
+    body: 'Every product is sold by the independent seller named on it. eRestyu runs the marketplace and takes payment.',
   },
   {
-    title: 'Delivery across South Africa',
-    body: 'Vendors dispatch nationwide. Any delivery fee is itemised before you pay, never after.',
+    title: 'Delivery set by each seller',
+    body: 'Each seller sets their own delivery fee, and it is itemised before you pay, never after.',
   },
   {
     title: 'Cancel unpaid orders free',
@@ -292,7 +280,7 @@ function NewsletterSection() {
       <h2 className="landing-heading" id="newsletter-heading">Join the inner circle</h2>
       <hr className="landing-rule" />
       <p>
-        Occasional news from South Africa&rsquo;s makers: new arrivals, vendor
+        Occasional news from eRestyu&rsquo;s sellers: new arrivals, seller
         stories, and early access when something special lands.
       </p>
       {state === 'done' ? (
@@ -331,22 +319,22 @@ export function HomePage() {
     <>
       <SiteHeader />
       <main className="landing">
-        <section className="landing-hero" aria-label="eRestyu, South Africa's marketplace">
+        <section className="landing-hero" aria-label="eRestyu, a marketplace for independent sellers">
           <div className="landing-hero__copy">
-            <span className="landing-kicker">Curated excellence</span>
+            <span className="landing-kicker">Marketplace</span>
             <h1>The Local <em>Loom.</em></h1>
             <p className="landing-hero__sub">
-              A marketplace celebrating South Africa&rsquo;s makers and
-              independent brands, from the Karoo to the Coast.
+              Independent sellers list their own goods here.
             </p>
             <Link to="/?shop=all" className="landing-cta">
               Shop collections <span aria-hidden>→</span>
             </Link>
           </div>
-          <div className="landing-hero__art">
-            <img src={heroImg} alt="South African artisan fashion editorial" />
-          </div>
         </section>
+        {/* Text-only hero on purpose: no stock, AI or illustrated scene that
+            could be read as goods sellers actually have. A real seller's
+            photo, used with permission, can go here later. */}
+        <div className="landing-hero__band" aria-hidden />
 
         <DepartmentsSection />
         <FeaturedSection />

@@ -6,6 +6,7 @@ import { StoreAvatar } from '../components/ui/StoreAvatar'
 import { SiteHeader } from '../components/layout/SiteHeader'
 import { useCategoryTree } from '../hooks/useCategoryTree'
 import '../styles/landing.css'
+import heroImg from '../assets/landing/hero-editorial.jpg'
 import deptPantry from '../assets/landing/dept-pantry.jpg'
 import deptFashion from '../assets/landing/dept-fashion.jpg'
 import deptHomeLiving from '../assets/landing/dept-home-living.jpg'
@@ -342,11 +343,12 @@ export function HomePage() {
               Shop collections <span aria-hidden>→</span>
             </Link>
           </div>
+          {/* Kept by owner decision (2026-10-09): an editorial mood photo,
+              not a listing. Swap for a real seller's photo when one exists. */}
+          <div className="landing-hero__art">
+            <img src={heroImg} alt="A woman in a linen wrap dress in a sunlit room" />
+          </div>
         </section>
-        {/* Text-only hero on purpose: no stock, AI or illustrated scene that
-            could be read as goods sellers actually have. A real seller's
-            photo, used with permission, can go here later. */}
-        <div className="landing-hero__band" aria-hidden />
 
         <DepartmentsSection />
         <FeaturedSection />

@@ -130,6 +130,30 @@ class ProductLifecycleTest {
         assertThat(productRepository.findByIdAndDeletedAtIsNull(second.getId())).isPresent();
     }
 
+    @Test
+    void adminCanRemoveAnotherStoresListing() {
+        // The admin Listings page removes listings the Terms do not allow
+        // (counterfeits, test stock) without signing in as the seller.
+        Product product = fixtures.product("Moderated Widget", "SKU-MOD-1", new BigDecimal("30.00"), 4);
+        User admin = fixtures.admin("mod-admin1");
+
+        productService.delete(product.getId(), principalFor(admin));
+
+        assertThat(productService.list(PageRequest.of(0, 100)).getContent())
+                .noneMatch(p -> p.id().equals(product.getId()));
+        assertThat(productRepository.findById(product.getId()).orElseThrow().getDeletedAt()).isNotNull();
+    }
+
+    @Test
+    void anotherSellerCannotRemoveAListing() {
+        Product product = fixtures.product("Guarded Widget", "SKU-MOD-2", new BigDecimal("30.00"), 4);
+        User rival = fixtures.vendor("mod-rival1");
+
+        assertThatThrownBy(() -> productService.delete(product.getId(), principalFor(rival)))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThat(productRepository.findByIdAndDeletedAtIsNull(product.getId())).isPresent();
+    }
+
     // ── stock-delta tests ────────────────────────────────────────────────
 
     @Test

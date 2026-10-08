@@ -50,6 +50,8 @@ import java.util.stream.Collectors;
 @Service
 public class ProductService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ProductService.class);
+
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final ProductViewRecorder viewRecorder;
@@ -579,6 +581,14 @@ public class ProductService {
                 .orElseThrow(() -> new ProductNotFoundException(id));
         assertOwnerOrAdmin(product, me);
         product.setDeletedAt(java.time.LocalDateTime.now());
+        // A removal by an admin rather than the seller is a moderation act
+        // (the Terms reserve the right to remove listings): record who
+        // removed what from whom, so it can be answered for later.
+        boolean bySeller = product.getVendor() != null && product.getVendor().getId().equals(me.getId());
+        if (!bySeller) {
+            log.info("Admin {} removed product {} ('{}') listed by vendor {}", me.getId(), product.getId(),
+                    product.getName(), product.getVendor() == null ? null : product.getVendor().getId());
+        }
     }
 
     /** Pre-check for the clean 409; the saveAndFlush catch is the race backstop. */

@@ -82,6 +82,9 @@ public class SecurityConfig {
                     // Yoco webhook: same trust model again — authenticity is
                     // the svix HMAC over id.timestamp.body (see YocoSignature).
                     .requestMatchers("/api/v1/payments/yoco/webhook").permitAll()
+                    // Paystack webhook: HMAC-SHA512 of the body keyed with the
+                    // secret key (see PaystackSignature).
+                    .requestMatchers("/api/v1/payments/paystack/webhook").permitAll()
                     .requestMatchers("/actuator/health/**").permitAll()  // probe-reachable without JWT
                     .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                     .anyRequest().authenticated())

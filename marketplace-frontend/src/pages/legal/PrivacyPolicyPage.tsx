@@ -3,8 +3,9 @@ import { LegalPage, LegalSection } from './LegalPage'
 
 // Every statement here is backed by code that actually behaves that way:
 // the 90-day view retention is PopularityJob.sweepOldViews (nightly 03:15),
-// the Stripe claim is StripeCheckoutService (hosted checkout — card data
-// never reaches this backend), refresh-token handling is RefreshTokenService,
+// the payment claim is the provider checkout services (Stripe, Yoco, PayFast,
+// Paystack: all hosted pages, so card data never reaches this backend; the
+// email line is PaystackCheckoutService and PayfastCheckoutService), refresh-token handling is RefreshTokenService,
 // and the shipping address line is OrderService.shippingFor — collected via
 // PaymentController.pay, shared with the admin (today's single fulfiller,
 // per AdminOrderController's new detail endpoint) only once an order is
@@ -17,7 +18,7 @@ import { LegalPage, LegalSection } from './LegalPage'
 // is a statement about code rather than a policy promise.
 export function PrivacyPolicyPage() {
   return (
-    <LegalPage title="Privacy Policy" lastUpdated="2026-08-30">
+    <LegalPage title="Privacy Policy" lastUpdated="2026-09-24">
       <LegalSection heading="What we collect">
         <p>
           <strong>Account details</strong>: your email address, name, and a hash
@@ -88,9 +89,11 @@ export function PrivacyPolicyPage() {
 
       <LegalSection heading="Payment details">
         <p>
-          Card details never touch this system. Payment happens on Stripe's hosted
-          checkout page; we receive confirmation that payment succeeded, the order
-          reference, and nothing about your card.
+          Card details never touch this system. Payment happens on our payment
+          provider's hosted checkout page. To start a payment we send the provider
+          the order total, the order reference and, where the provider requires
+          it, your account email address. We receive confirmation that payment
+          succeeded, the payment reference, and nothing about your card.
         </p>
       </LegalSection>
 

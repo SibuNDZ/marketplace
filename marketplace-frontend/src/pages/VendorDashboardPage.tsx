@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, Page, ProductResponse, VendorSettings } from '../lib/api'
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { PayoutSetupCard } from '../components/vendor/PayoutSetupCard'
+import { useAuth } from '../context/AuthContext'
 
 /**
  * Inline editor for the vendor's flat delivery fee (Task 2.3). Charged once
@@ -70,6 +71,7 @@ function DeliveryFeeEditor() {
 }
 
 export function VendorDashboardPage() {
+  const { user } = useAuth()
   const qc = useQueryClient()
   const [activeTab, setActiveTab] = useState<'live' | 'archived'>('live')
   // No global toast system — ProductFormPage passes a one-shot notice
@@ -113,6 +115,14 @@ export function VendorDashboardPage() {
             }}>
               Give feedback on eRestyu
             </Link>
+            {user && (
+              <Link to={`/shop/${user.userId}`} style={{
+                padding: '9px 18px', border: '1px solid var(--line)', color: 'var(--ink)',
+                borderRadius: 'var(--r-sm)', fontWeight: 700, display: 'inline-block',
+              }}>
+                View your stall
+              </Link>
+            )}
             <Link to="/vendor/orders" style={{
               padding: '9px 18px', border: '1px solid var(--line)', color: 'var(--ink)',
               borderRadius: 'var(--r-sm)', fontWeight: 700, display: 'inline-block',
@@ -169,7 +179,13 @@ export function VendorDashboardPage() {
             <tbody>
               {products.map(p => (
                 <tr key={p.id} style={{ borderBottom: '1px solid var(--line)', opacity: p.deletedAt ? 0.5 : 1 }}>
-                  <td style={{ padding: '12px 12px', fontWeight: 600 }}>{p.name}</td>
+                  <td style={{ padding: '12px 12px', fontWeight: 600 }}>
+                    {/* Live listings open their public page; an archived one
+                        has none to open. */}
+                    {p.deletedAt ? p.name : (
+                      <Link to={`/products/${p.id}`} style={{ color: 'var(--ink)' }}>{p.name}</Link>
+                    )}
+                  </td>
                   <td className="num" style={{ padding: '12px 12px', fontSize: 13, color: 'var(--ink-soft)' }}>{p.sku ?? '-'}</td>
                   <td style={{ padding: '12px 12px', fontSize: 13, color: 'var(--ink-soft)' }}>
                     {/* The response carries the resolved name, so the
@@ -200,6 +216,9 @@ export function VendorDashboardPage() {
                   <td style={{ padding: '12px 12px' }}>
                     {!p.deletedAt && (
                       <div style={{ display: 'flex', gap: 12 }}>
+                        <Link to={`/products/${p.id}`} style={{ fontSize: 12, color: 'var(--trust-blue)' }}>
+                          View
+                        </Link>
                         <Link to={`/vendor/products/${p.id}/edit`} style={{ fontSize: 12, color: 'var(--trust-blue)' }}>
                           Edit
                         </Link>

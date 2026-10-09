@@ -111,6 +111,11 @@ public class GlobalExceptionHandler {
         return pd;
     }
 
+    @ExceptionHandler(com.marketplace.api.vendor.VendorPublicController.VendorNotFoundException.class)
+    public ProblemDetail vendorNotFound(com.marketplace.api.vendor.VendorPublicController.VendorNotFoundException ex) {
+        return problem(HttpStatus.NOT_FOUND, "Store not found", ex.getMessage());
+    }
+
     @ExceptionHandler(InvalidOrderStateException.class)
     public ProblemDetail invalidOrderState(InvalidOrderStateException ex) {
         return problem(HttpStatus.CONFLICT, "Invalid order state", ex.getMessage());
@@ -168,6 +173,15 @@ public class GlobalExceptionHandler {
             com.marketplace.api.auth.AuthService.VendorDetailsRequiredException ex) {
         ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "Validation failed",
                 "Seller accounts need a few more details");
+        pd.setProperty("errors", ex.getFieldErrors());
+        return pd;
+    }
+
+    @ExceptionHandler(com.marketplace.api.vendor.VendorProfileService.SocialLinkValidationException.class)
+    public ProblemDetail socialLinksInvalid(
+            com.marketplace.api.vendor.VendorProfileService.SocialLinkValidationException ex) {
+        ProblemDetail pd = problem(HttpStatus.BAD_REQUEST, "Validation failed",
+                "Some of those links need fixing");
         pd.setProperty("errors", ex.getFieldErrors());
         return pd;
     }

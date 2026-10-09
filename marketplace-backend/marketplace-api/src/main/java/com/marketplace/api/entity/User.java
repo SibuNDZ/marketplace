@@ -137,6 +137,36 @@ public class User {
     private LocalDateTime payoutTermsAcceptedAt;
 
     /**
+     * Public store profile (V35): a few sentences about the store, shown in
+     * the vendor spotlight and on the shop page. Vendors only; optional.
+     */
+    @Column(name = "bio", length = 500)
+    private String bio;
+
+    /**
+     * Object key of the store's profile picture (V35), in the product-image
+     * bucket. The public URL is derived from it, never stored. Optional.
+     */
+    @Column(name = "avatar_key", length = 255)
+    private String avatarKey;
+
+    public String getBio() {
+        return bio;
+    }
+
+    public void setBio(String bio) {
+        this.bio = bio;
+    }
+
+    public String getAvatarKey() {
+        return avatarKey;
+    }
+
+    public void setAvatarKey(String avatarKey) {
+        this.avatarKey = avatarKey;
+    }
+
+    /**
      * Self-reported: how this seller found eRestyu (V33). Null means no
      * answer, which is the honest state for every customer and for every
      * vendor who registered before the question existed. Write-once in

@@ -26,6 +26,10 @@ import '@fontsource/spline-sans-mono/latin-400.css'
 import '@fontsource/spline-sans-mono/latin-500.css'
 import '@fontsource/spline-sans-mono/latin-600.css'
 import './styles/tokens.css'
+import { installStaleBuildReload } from './lib/staleBuildReload'
+
+// Before the first render, so it is in place before any lazy page loads.
+installStaleBuildReload()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

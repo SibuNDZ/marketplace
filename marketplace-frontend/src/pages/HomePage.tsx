@@ -1,16 +1,17 @@
-import React, { FormEvent, useMemo, useState } from 'react'
+import React, { FormEvent, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { api, Page, ProductResponse } from '../lib/api'
+import { api, Page, ProductResponse, VendorProfile } from '../lib/api'
+import { StoreAvatar } from '../components/ui/StoreAvatar'
 import { SiteHeader } from '../components/layout/SiteHeader'
 import { useCategoryTree } from '../hooks/useCategoryTree'
+import '../styles/landing.css'
 import heroImg from '../assets/landing/hero-editorial.jpg'
 import deptPantry from '../assets/landing/dept-pantry.jpg'
 import deptFashion from '../assets/landing/dept-fashion.jpg'
 import deptHomeLiving from '../assets/landing/dept-home-living.jpg'
 import deptJewellery from '../assets/landing/dept-jewellery.jpg'
 import deptBeauty from '../assets/landing/dept-beauty.jpg'
-import '../styles/landing.css'
 
 /**
  * The editorial landing at "/" — the Avant-Garde Boutique composition.
@@ -27,11 +28,10 @@ import '../styles/landing.css'
 /**
  * Department slugs with photography; the rest get type tiles.
  *
- * Curation rule (owner directive, 2026-08-30): tile imagery must SUPPORT
- * the locally-curated positioning — South African subjects only (the
- * veldskoen, the custom-made SA oak table). International brand
- * photography is the same dishonesty as a fake badge; departments without
- * a local photo keep their typographic tile until one exists.
+ * Kept by owner decision (2026-10-09) after a text-only trial: the type
+ * tiles read as unfinished. These are mood photos for the department, not
+ * listings. The Beauty photo shows Africology packaging, a real brand that
+ * sells nothing here; replace it first when a seller's own photo exists.
  */
 const DEPT_IMAGES: Record<string, string> = {
   pantry: deptPantry,
@@ -123,97 +123,122 @@ function FeaturedSection() {
   )
 }
 
+const SPOTLIGHT_INTERVAL_MS = 8000
+
+/**
+ * Vendor spotlight: every real store with a photographed listing gets a turn.
+ *
+ * It used to spotlight whichever vendor had the most listings among the
+ * newest 50 products, which made it the same store on every visit. Now the
+ * server returns every eligible store (completed profiles first, see
+ * VendorCardRepository.spotlightCards), and this section starts on a random
+ * one each visit and moves on every few seconds, like the hero banner.
+ *
+ * Rotation pauses while the pointer is over the section or focus is inside
+ * it (someone reading a bio should not have it pulled away), and does not
+ * run at all under prefers-reduced-motion; the dots still work.
+ */
 function SpotlightSection() {
-  const { data } = useQuery<Page<ProductResponse>>({
-    queryKey: ['landing', 'spotlight-pool'],
-    queryFn: () => api('/api/v1/products?page=0&size=50'),
+  const { data: stores } = useQuery<VendorProfile[]>({
+    queryKey: ['vendors', 'spotlight'],
+    queryFn: () => api('/api/v1/vendors/spotlight', { auth: false }),
     staleTime: 5 * 60 * 1000,
   })
-  const spotlight = useMemo(() => {
-    const byVendor = new Map<number, ProductResponse[]>()
-    for (const p of data?.content ?? []) {
-      // Editorial pick: most listings wins. Seed/demo accounts are not
-      // real stores and never get the spotlight.
-      if (p.vendorName === 'Fixture Vendor') continue
-      if (p.vendorId == null) continue
-      const list = byVendor.get(p.vendorId) ?? []
-      list.push(p)
-      byVendor.set(p.vendorId, list)
-    }
-    let best: ProductResponse[] | undefined
-    for (const list of byVendor.values()) {
-      if (!best || list.length > best.length) best = list
-    }
-    if (!best) return undefined
-    const sold = best.reduce((n, p) => n + (p.soldCount ?? 0), 0)
-    const reviews = best.reduce((n, p) => n + p.reviewCount, 0)
-    // avgRating is a string (BigDecimal serialization, see ProductResponse)
-    const rating = reviews > 0
-      ? best.reduce((n, p) => n + Number(p.avgRating) * p.reviewCount, 0) / reviews
-      : undefined
-    const withImage = best.find(p => p.imageUrl)
-    return {
-      vendorId: best[0].vendorId,
-      name: best[0].vendorName,
-      pieces: best.length,
-      sold,
-      rating,
-      image: withImage?.imageUrl,
-      imageAlt: withImage ? `${withImage.name}, listed by ${best[0].vendorName}` : '',
-    }
-  }, [data])
+  const [index, setIndex] = useState<number>()
+  const [paused, setPaused] = useState(false)
+  const reducedMotion = useMemo(
+    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    [],
+  )
 
-  if (!spotlight) return null
+  // A random starting store per visit, chosen once the list arrives.
+  useEffect(() => {
+    if (stores?.length && index === undefined) setIndex(Math.floor(Math.random() * stores.length))
+  }, [stores, index])
+
+  const count = stores?.length ?? 0
+  useEffect(() => {
+    if (count < 2 || paused || reducedMotion) return
+    const t = window.setInterval(() => setIndex(i => ((i ?? 0) + 1) % count), SPOTLIGHT_INTERVAL_MS)
+    return () => window.clearInterval(t)
+  }, [count, paused, reducedMotion])
+
+  if (!stores?.length || index === undefined) return null
+  const store = stores[index % stores.length]
+  const rating = store.rating != null ? Number(store.rating) : undefined
+
   return (
-    <section className="landing-spotlight" aria-labelledby="spotlight-heading">
+    <section className="landing-spotlight" aria-labelledby="spotlight-heading"
+      onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
       <div className="landing-spotlight__inner">
         <div className="landing-spotlight__art">
-          {spotlight.image && <img src={spotlight.image} alt={spotlight.imageAlt} loading="lazy" />}
+          {store.sampleImageUrl && (
+            <img key={store.id} src={store.sampleImageUrl} alt={`A listing from ${store.name}`} loading="lazy" />
+          )}
           {/* No possessive: vendor names ending in s ("Cavioure Designers")
               would render as the awkward "Designers's". */}
           <p className="landing-spotlight__caption">
-            From the live listings of {spotlight.name}
+            From the live listings of {store.name}
           </p>
         </div>
-        <div className="landing-spotlight__body">
+        <div className="landing-spotlight__body" aria-live={paused ? 'polite' : 'off'}>
           <span className="landing-kicker">Vendor spotlight</span>
-          <h2 id="spotlight-heading">{spotlight.name}</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+            <StoreAvatar name={store.name} url={store.avatarUrl} size={72} />
+            <h2 id="spotlight-heading" style={{ margin: 0 }}>{store.name}</h2>
+          </div>
           <p className="landing-spotlight__blurb">
-            A store currently selling on eRestyu. Every piece is listed, priced
-            and dispatched by the vendor themselves. The figures below come
-            straight from their live listings.
+            {store.bio ?? 'A store currently selling on eRestyu. Every piece is listed, priced '
+              + 'and dispatched by the vendor themselves.'}
           </p>
           <div className="landing-spotlight__stats">
-            <div><strong className="num">{spotlight.pieces}</strong><span>Pieces</span></div>
-            <div><strong className="num">{spotlight.sold}</strong><span>Sold</span></div>
+            <div><strong className="num">{store.pieces}</strong><span>Pieces</span></div>
+            <div><strong className="num">{store.sold}</strong><span>Sold</span></div>
             <div>
-              <strong className={spotlight.rating ? 'num' : undefined}>
-                {spotlight.rating ? spotlight.rating.toFixed(1) : 'New'}
+              <strong className={rating !== undefined ? 'num' : undefined}>
+                {rating !== undefined ? rating.toFixed(1) : 'New'}
               </strong>
               <span>Rating</span>
             </div>
           </div>
-          <Link to={`/shop/${spotlight.vendorId}`} className="landing-link">
+          <Link to={`/shop/${store.id}`} className="landing-link">
             Visit their store <span aria-hidden>→</span>
           </Link>
+          {count > 1 && (
+            <div role="group" aria-label="Choose a store to spotlight"
+              style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+              {stores.map((s, i) => (
+                <button key={s.id} type="button" onClick={() => setIndex(i)}
+                  aria-label={`Show ${s.name}`} aria-current={i === index % count}
+                  style={{
+                    width: i === index % count ? 26 : 10, height: 10, borderRadius: 5, padding: 0,
+                    border: 'none', cursor: 'pointer', transition: 'width 0.2s',
+                    background: i === index % count ? 'var(--flame)' : 'rgba(255,255,255,0.35)',
+                  }} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </section>
   )
 }
 
-/* Every claim below is traced to a real behavior: Yoco-hosted encrypted
-   checkout; per-vendor delivery with the fee itemised before payment
+/* Every claim below is traced to a real behavior: the seller is named on
+   every listing; per-vendor delivery with the fee itemised before payment
    (OrderService delivery lines); free cancellation on unpaid orders
-   (terms page, OrderService.cancelOrder); hello@erestyu.com is live. */
+   (terms page, OrderService.cancelOrder); hello@erestyu.com is live.
+   No "Secure checkout" item: checkout is not open to the public yet
+   (CheckoutPolicy), and the header shows that claim once it is. */
 const TRUST_ITEMS = [
   {
-    title: 'Secure checkout',
-    body: 'Payments run on an encrypted, hosted checkout. Your card details never touch our servers.',
+    title: 'Who you buy from',
+    body: 'Every product is sold by the independent seller named on it. eRestyu runs the marketplace and takes payment.',
   },
   {
-    title: 'Delivery across South Africa',
-    body: 'Vendors dispatch nationwide. Any delivery fee is itemised before you pay, never after.',
+    title: 'Delivery set by each seller',
+    body: 'Each seller sets their own delivery fee, and it is itemised before you pay, never after.',
   },
   {
     title: 'Cancel unpaid orders free',
@@ -223,7 +248,7 @@ const TRUST_ITEMS = [
     // No nationality claim on the team - the platform is South African,
     // the people answering may be from anywhere (owner directive).
     title: 'Real support',
-    body: 'A real person answers at hello@erestyu.com.',
+    body: 'Contact us at hello@erestyu.com.',
   },
 ]
 
@@ -268,7 +293,7 @@ function NewsletterSection() {
       <h2 className="landing-heading" id="newsletter-heading">Join the inner circle</h2>
       <hr className="landing-rule" />
       <p>
-        Occasional news from South Africa&rsquo;s makers: new arrivals, vendor
+        Occasional news from eRestyu&rsquo;s sellers: new arrivals, seller
         stories, and early access when something special lands.
       </p>
       {state === 'done' ? (
@@ -297,7 +322,7 @@ function NewsletterSection() {
           )}
         </>
       )}
-      <p className="landing-newsletter__fine">No spam. Unsubscribe any time.</p>
+      <p className="landing-newsletter__fine">Unsubscribe any time.</p>
     </section>
   )
 }
@@ -307,20 +332,21 @@ export function HomePage() {
     <>
       <SiteHeader />
       <main className="landing">
-        <section className="landing-hero" aria-label="eRestyu, South Africa's marketplace">
+        <section className="landing-hero" aria-label="eRestyu, a marketplace for independent sellers">
           <div className="landing-hero__copy">
-            <span className="landing-kicker">Curated excellence</span>
+            <span className="landing-kicker">Marketplace</span>
             <h1>The Local <em>Loom.</em></h1>
             <p className="landing-hero__sub">
-              A marketplace celebrating South Africa&rsquo;s makers and
-              independent brands, from the Karoo to the Coast.
+              Independent sellers list their own goods here.
             </p>
             <Link to="/?shop=all" className="landing-cta">
               Shop collections <span aria-hidden>→</span>
             </Link>
           </div>
+          {/* Kept by owner decision (2026-10-09): an editorial mood photo,
+              not a listing. Swap for a real seller's photo when one exists. */}
           <div className="landing-hero__art">
-            <img src={heroImg} alt="South African artisan fashion editorial" />
+            <img src={heroImg} alt="A woman in a linen wrap dress in a sunlit room" />
           </div>
         </section>
 

@@ -83,8 +83,8 @@ public class Order {
     private String trackingNumber;
 
     /**
-     * The provider's id for the payment that moved this order to PAID (V35).
-     * Null for orders paid before V35 and for providers that do not pass one.
+     * The provider's id for the payment that moved this order to PAID (V37).
+     * Null for orders paid before V37 and for providers that do not pass one.
      */
     @Column(name = "payment_reference", length = 100)
     private String paymentReference;

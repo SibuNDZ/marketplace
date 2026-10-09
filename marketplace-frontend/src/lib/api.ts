@@ -196,6 +196,58 @@ export async function uploadProductImage(productId: number, file: File, _retried
 }
 
 /**
+ * The signed-in vendor's store picture. Same multipart path and the same
+ * 401 -> refresh -> retry as uploadProductImage, for the same reason.
+ */
+export async function uploadStoreAvatar(file: File, _retried = false): Promise<OwnStoreProfile> {
+  const headers: Record<string, string> = {}
+  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+
+  const body = new FormData()
+  body.append('file', file)
+
+  const res = await fetch(`${BASE}/api/v1/account/profile/avatar`, { method: 'POST', headers, body })
+
+  if (res.status === 401 && !_retried) {
+    if (await refreshSession()) return uploadStoreAvatar(file, true)
+    clearSession()
+    window.dispatchEvent(new Event('mk:logout'))
+    throw await toApiError(res)
+  }
+  if (!res.ok) throw await toApiError(res)
+  return res.json()
+}
+
+/** GET /api/v1/vendors/{id} and each entry of /api/v1/vendors/spotlight. Public. */
+export interface VendorProfile {
+  id: number
+  name: string
+  bio: string | null
+  avatarUrl: string | null
+  pieces: number
+  sold: number
+  /** BigDecimal as a string; null until the store has a review. */
+  rating: string | null
+  reviewCount: number
+  /** A photo from the store's newest listing. */
+  sampleImageUrl: string | null
+  /** Set links only, in platform order. Always empty in the spotlight. */
+  socialLinks: { platform: SocialKey; url: string }[]
+}
+
+/** The platforms a store may link (backend SocialPlatform). */
+export type SocialKey = 'instagram' | 'tiktok' | 'facebook' | 'x'
+
+/** GET/PUT /api/v1/account/profile: the vendor's own editable profile. */
+export interface OwnStoreProfile {
+  name: string
+  bio: string | null
+  avatarUrl: string | null
+  /** Every platform, with the canonical profile link or null. */
+  socialLinks: Record<SocialKey, string | null>
+}
+
+/**
  * AI listing draft from a product photo.
  *
  * Deliberately NOT routed through api() for the same reason as

@@ -7,6 +7,7 @@ import { api, CartResponse } from '../../lib/api'
 import { useCategoryTree } from '../../hooks/useCategoryTree'
 import { useRightPanel } from '../../context/RightPanelContext'
 import { useSellerEntry } from '../../hooks/useSellerEntry'
+import { useCheckoutLive } from '../../hooks/useCheckoutOpen'
 import { ALL_SLUG } from '../../data/categories'
 import { RetailCategoryNav } from './RetailCategoryNav'
 import { LogoMark } from './LogoMark'
@@ -37,6 +38,8 @@ export function SiteHeader() {
   const location = useLocation()
   const { openDrawer, setCollapsed } = useRightPanel()
   const sellerEntry = useSellerEntry()
+  // "Secure checkout" is a claim, so it appears only once the public can pay.
+  const checkoutLive = useCheckoutLive()
   const [accountOpen, setAccountOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [expandedRoot, setExpandedRoot] = useState<string | null>(null)
@@ -182,7 +185,7 @@ export function SiteHeader() {
         <div className="utility-bar">
           <div className="utility-bar__inner">
             <div className="utility-bar__claims">
-              <span>Secure checkout</span><span aria-hidden>·</span><span>Supporting local artisans</span><span aria-hidden>·</span><span>Unpaid orders cancel free</span>
+              {checkoutLive && <><span>Secure checkout</span><span aria-hidden>·</span></>}<span>Sellers list their own goods</span><span aria-hidden>·</span><span>Unpaid orders cancel free</span>
             </div>
             {/* The desktop seller door. Mobile has two (the drawer link and
                 the seller strip under the hero); desktop had only the footer,
@@ -232,6 +235,7 @@ export function SiteHeader() {
                         <Link to="/orders" onClick={() => setAccountOpen(false)}>Orders</Link>
                         <Link to="/wishlist" onClick={() => setAccountOpen(false)}>Wishlist</Link>
                         {user.role !== 'CUSTOMER' && <Link to={roleDestination} onClick={() => setAccountOpen(false)}>{roleLabel}</Link>}
+                        {user?.role === 'VENDOR' && <Link to="/account/profile" onClick={() => setAccountOpen(false)}>Profile</Link>}
                         <Link to="/account" onClick={() => setAccountOpen(false)}>Account settings</Link>
                         <Link to="/feedback" onClick={() => setAccountOpen(false)}>Give feedback</Link>
                         <button onClick={handleLogout}>Sign out</button>
@@ -287,6 +291,7 @@ export function SiteHeader() {
                 <span>{user.email}</span>
                 <Link to="/orders" onClick={() => setAccountOpen(false)}>Orders</Link>
                 {user.role !== 'CUSTOMER' && <Link to={roleDestination} onClick={() => setAccountOpen(false)}>{roleLabel}</Link>}
+                {user?.role === 'VENDOR' && <Link to="/account/profile" onClick={() => setAccountOpen(false)}>Profile</Link>}
                 <Link to="/account" onClick={() => setAccountOpen(false)}>Account settings</Link>
                 <Link to="/feedback" onClick={() => setAccountOpen(false)}>Give feedback</Link>
                 <button onClick={handleLogout}>Sign out</button>
@@ -341,6 +346,7 @@ export function SiteHeader() {
                   <Link to="/orders" onClick={() => setDrawerOpen(false)}>Orders</Link>
                   <Link to="/wishlist" onClick={() => setDrawerOpen(false)}>Wishlist</Link>
                   {user.role !== 'CUSTOMER' && <Link to={roleDestination} onClick={() => setDrawerOpen(false)}>{roleLabel}</Link>}
+                  {user?.role === 'VENDOR' && <Link to="/account/profile" onClick={() => setDrawerOpen(false)}>Profile</Link>}
                   <Link to="/account" onClick={() => setDrawerOpen(false)}>Account settings</Link>
                   <Link to="/feedback" onClick={() => setDrawerOpen(false)}>Give feedback</Link>
                   <button onClick={handleLogout}>Sign out</button>
@@ -352,7 +358,7 @@ export function SiteHeader() {
                 </>
               )}
             </nav>
-            <div className="mobile-drawer__trust"><span>Secure checkout</span><span>Unpaid orders cancel free</span></div>
+            <div className="mobile-drawer__trust">{checkoutLive && <span>Secure checkout</span>}<span>Sellers list their own goods</span><span>Unpaid orders cancel free</span></div>
           </div>
         </div>
       )}

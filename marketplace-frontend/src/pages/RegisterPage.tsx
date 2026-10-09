@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { ApiError, auth as authApi, fieldErrorsFrom } from '../lib/api'
 import { GoogleSignInButton } from '../components/auth/GoogleSignInButton'
+import { BackToShop } from '../components/auth/BackToShop'
 import { REFERRAL_SOURCES } from '../data/referralSources'
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,30}$/
@@ -200,14 +201,15 @@ export function RegisterPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--paper)', padding: 24 }}>
       <div style={{ background: 'var(--card)', borderRadius: 'var(--r)', padding: '40px 36px', width: '100%', maxWidth: 440, boxShadow: 'var(--shadow)' }}>
+        <BackToShop />
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{
+          <Link to="/" aria-label="eRestyu home" style={{
             fontFamily: 'var(--display)', fontWeight: 800, fontSize: 28, letterSpacing: '-0.03em', marginBottom: 6,
-            background: 'var(--flame-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            background: 'var(--brand-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             backgroundClip: 'text', display: 'inline-block',
           }}>
             eRestyu
-          </div>
+          </Link>
           <p style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 18, color: 'var(--ink)' }}>Create an account</p>
         </div>
 

@@ -1,0 +1,11 @@
+{
+  "name": "erestyu-brand-tools",
+  "private": true,
+  "description": "Generates the eRestyu brand pack and the site icons from one geometry. Run: npm install && node build.js",
+  "scripts": { "build": "node build.js" },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "opentype.js": "^1.3.4",
+    "png-to-ico": "^3.0.2"
+  }
+}

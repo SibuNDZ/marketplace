@@ -145,9 +145,18 @@ export function SellPage() {
             account, for payouts.
           </p>
           <p>
-            There is no application and no waiting. You are not vetted, and we
-            do not pretend to vet you: you create the account and the stall is
-            there.
+            There is no application and no waiting: you create the account and
+            your stall is there. eRestyu does not vet sellers or authenticate
+            brands, so you are responsible for what you list.
+          </p>
+        </Block>
+
+        <Block heading="What you may not sell">
+          <p>
+            Counterfeit or replica goods, trademarked brands you are not
+            authorised to sell, stolen goods, or anything illegal to sell in
+            South Africa. eRestyu may remove any listing, and close any stall,
+            that breaks these rules.
           </p>
         </Block>
 

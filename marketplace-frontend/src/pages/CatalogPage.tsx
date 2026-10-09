@@ -24,6 +24,56 @@ function SectionDivider({ icon, label }: { icon: string; label: string }) {
   )
 }
 
+/**
+ * The empty grid, saying WHY it is empty.
+ *
+ * It used to say only "No products match right now". Quick filters persist in
+ * the URL across searches, so a shopper who had tapped Best-Selling earlier
+ * and then searched "Morning Star" got that message, although the store has a
+ * listing and search matches store names: the filter, not the search, was
+ * hiding it (reported 2026-09-30, reproduced on the live site). So the message
+ * names what is narrowing the results, and each narrowing gets a one-tap undo.
+ */
+function EmptyResults({ name, categoryLabel, activeFilterLabels, onClearFilters, onAllCategories }: {
+  name: string
+  categoryLabel?: string
+  activeFilterLabels: string[]
+  onClearFilters: () => void
+  onAllCategories: () => void
+}) {
+  // Filter labels carry an emoji for the chips; the sentence reads better without.
+  const filters = activeFilterLabels.map(l => l.replace(/^\S+\s+/, ''))
+  const what = name ? `No results for “${name}”` : 'No products'
+  const narrowers = [
+    ...(categoryLabel ? [`in ${categoryLabel}`] : []),
+    ...(filters.length ? [`with ${filters.join(' and ')} on`] : []),
+  ]
+  const narrowed = narrowers.length > 0
+
+  return (
+    <div className="muted-copy" role="status" style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
+      <p>
+        {what}{narrowed ? ` ${narrowers.join(' ')}` : ''}.
+        {!narrowed && ' Try a different word, or browse the categories.'}
+      </p>
+      {narrowed && (
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {filters.length > 0 && (
+            <button type="button" className="btn-outline" onClick={onClearFilters}>
+              {filters.length === 1 ? `Turn off ${filters[0]}` : 'Turn off filters'}
+            </button>
+          )}
+          {categoryLabel && (
+            <button type="button" className="btn-outline" onClick={onAllCategories}>
+              {name ? 'Search all categories' : 'Show all categories'}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function CatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const category = searchParams.get('category') ?? ALL_SLUG
@@ -195,7 +245,17 @@ export function CatalogPage() {
 
                 <SectionDivider icon="🛍️" label={name ? `Results for “${name}”` : categoryLabel} />
                 {mainList.length === 0 ? (
-                  <p className="muted-copy">No products match right now. Try a different category or filter.</p>
+                  <EmptyResults
+                    name={name}
+                    categoryLabel={category === ALL_SLUG ? undefined : categoryLabel}
+                    activeFilterLabels={QUICK_FILTERS.filter(f => activeFilters.has(f.key)).map(f => f.label)}
+                    onClearFilters={() => {
+                      const next = new URLSearchParams(searchParams)
+                      next.delete('filters')
+                      setSearchParams(next)
+                    }}
+                    onAllCategories={() => selectCategory(ALL_SLUG)}
+                  />
                 ) : (
                   <div className="product-grid">
                     {mainList.map(p => <ProductCard key={p.id} product={p} />)}

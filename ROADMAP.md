@@ -41,6 +41,27 @@ lying (e.g. "I hold the rights to this image"). It is **not** acceptable where
 the vendor gains commercially from the assertion and no other party in the
 flow can catch a false one.
 
+### Composed claims: a default that renders as a promise (added 2026-10-03)
+
+The cases above were each one untrue string that someone wrote. This shape is
+different: **two individually true things compose into an untrue claim**, and
+no review of either file on its own catches it.
+
+The case that surfaced it: `users.delivery_fee` is `NOT NULL DEFAULT 0`, the
+vendor dashboard pre-fills the field with `0.00`, and the shipping page says
+vendors who offer free delivery add no fee line. Together they tell every
+shopper that every vendor delivers free, when no vendor ever chose that. The
+column cannot even tell "chose R0" apart from "never touched it". The same
+class: the cart panel's tick boxes changed its subtotal while checkout always
+ordered the whole cart, and an "R200 Min. to checkout" pill stated a rule the
+backend never enforced (both removed 2026-10-03).
+
+**Before shipping copy or a default, ask:** if this value is the untouched
+default, what does the shopper-facing copy say about it, and did anyone
+actually decide that? A default that shopper copy reads as a commitment must
+either be an explicit recorded choice (nullable until chosen, or a
+chosen-at timestamp) or render as "not set", never as the promise.
+
 ---
 
 ## Rejected — permanent, not pending a trigger
@@ -95,6 +116,27 @@ until the stated trigger has actually fired** — check, do not assume.
 |---|---|
 | **Visual search** (search by uploading a photo) | 1,000+ product images |
 | **Conversational search** (natural-language query understanding) | 500+ products with failed search queries |
+| **Minimum order value** (server-enforced at placeOrder) | Any vendor's delivery fee above R0, **or** any product listed below R18 |
+
+**Minimum order value: the number is computed, not trusted.** Breakeven per
+card transaction is **goods ≥ 0.5 × total delivery + R17.25**: the 10%
+commission is earned on goods only, but the card fee is charged on goods plus
+delivery. With no delivery fees that reduces to goods ≥ R17.25. The minimum
+belongs on the **goods** subtotal across the whole cart; a minimum on the full
+charge does not protect anything (R50 goods + R150 delivery passes R200 and
+still loses money).
+
+Computed 2026-10-03 on these assumptions, and **recomputed, not reused, if any
+of them change**: 10% commission; Paystack local card pricing of 2.9% + R1
+excl. VAT, with the R1 waived under R10 (Capitec Pay and Ozow at 2% with no
+flat fee never lose money); 15% VAT on that fee treated as a cost because
+ERESTYU is not VAT-registered; one delivery fee per vendor per order. Paystack
+is not yet on `main` (`feat/paystack-provider`), so if a different provider
+goes live, its pricing replaces these numbers.
+
+When it ships, the UI shows the minimum **only alongside** the server check.
+The earlier "R200 Min. to checkout" pill was removed for stating a rule that
+nothing enforced.
 
 **Static FAQ widget (shipped)** occupies the conversational assistant's future
 UI slot honestly. When the real trigger fires, this becomes the fallback /
@@ -150,6 +192,32 @@ sentence only once the gate is live — a placeholder is not published as if it
 were a decision (house rule above).
 
 ---
+
+## Payment structure, DECIDED 2026-10-17: Paystack subaccounts
+
+Vendor funds settle through Paystack subaccounts with a dynamic flat split per
+transaction; eRestyu receives only its commission and never holds vendor
+money. Collect-then-pay (the ledger plus Nedbank bulk export above) stays
+built as the fallback and is deleted only when Paystack confirms in writing
+that it is not needed. Spec: `paystack-subaccounts.md`. The same rollout
+turns the selling gate ON, bumps the payout terms to v4, and introduces vendor
+verification (bank account plus identity document checked through Paystack's
+`/bank/validate`; the document number is never stored, only its type, last
+four characters and the result).
+
+Two findings from the 2026-10-17 audit of what vendors actually accept, kept
+here so they are not rediscovered:
+
+- The v3 payout sentence promises payment "following delivery confirmation",
+  but `PayoutAdminService.approve()` checks only entry status, never whether
+  the order is DELIVERED. The rule held because the owner looked before
+  approving. Under subaccounts the sentence is replaced; if collect-then-pay
+  ever becomes the live path, enforce DELIVERED in `approve()` first.
+- The ledger can void and claw back a vendor's share on refund
+  (`CommissionLedgerService.reverseOnRefund`), but nothing the vendor accepted
+  authorised it. v4 of the seller terms grants set-off explicitly. A contract
+  must authorise what the code can do, in the same way copy must describe
+  what the code does.
 
 ## Fault isolation for external providers
 

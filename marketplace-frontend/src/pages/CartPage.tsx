@@ -292,10 +292,15 @@ export function CartPage() {
             </div>
 
             <div className="cart-summary">
+              {/* Goods only. Delivery is one fee per vendor, added when the
+                  order is placed, so this used to say "Total" for a figure
+                  that left delivery out. The real total, delivery included,
+                  is on the order summary shown before payment. */}
               <div className="cart-summary__total">
-                <span style={{ fontWeight: 600 }}>Total</span>
+                <span style={{ fontWeight: 600 }}>Subtotal (excl. delivery)</span>
                 <span className="num" style={{ fontWeight: 700, fontSize: 20 }}>R{Number(cart?.subtotal ?? 0).toFixed(2)}</span>
               </div>
+              <p className="hint">Any delivery fees are shown on the next step, before you pay.</p>
               {checkoutError && <ErrorSurface error={checkoutError} onDismiss={() => setCheckoutError(undefined)} />}
               {checkoutOpen ? (
                 <>

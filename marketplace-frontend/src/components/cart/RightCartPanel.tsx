@@ -11,13 +11,6 @@ import { RatingLine } from '../product/RatingLine'
 import { QUICK_FILTERS, QuickFilterKey } from '../../data/quickFilters'
 import { CartLineImage } from './CartLineImage'
 
-/**
- * Minimum-order indicator only — the backend enforces no minimum, so this
- * must never DISABLE checkout. It shows progress toward the amount where an
- * order stops being mostly delivery overhead for a stall vendor.
- */
-export const CHECKOUT_MIN_RAND = 200
-
 const QTY_CAP = 10
 
 /** Same line identity as /cart: a product can appear twice under different options. */
@@ -45,7 +38,6 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
   const qc = useQueryClient()
   const {
     collapsed, setCollapsed, drawerOpen, closeDrawer,
-    deselected, toggleItem, selectAll, deselectAll,
   } = useRightPanel()
 
   const panelRef = useRef<HTMLElement>(null)
@@ -61,10 +53,12 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
 
   const items = cart?.items ?? []
   const itemCount = items.reduce((n, l) => n + l.quantity, 0)
-  const selected = items.filter(l => !deselected.has(cartLineKey(l.productId, l.variantId)))
-  const subtotal = selected.reduce((sum, l) => sum + Number(l.lineTotal), 0)
-  const allSelected = items.length > 0 && selected.length === items.length
-  const progress = Math.min(subtotal / CHECKOUT_MIN_RAND, 1)
+  // The server's subtotal for the WHOLE cart: the same number /cart shows and
+  // the same lines an order is placed from (OrderService takes every cart
+  // line). This panel used to sum only ticked lines, but checkout never knew
+  // about the ticks, so unticking a line lowered this figure without lowering
+  // what the order would charge.
+  const subtotal = Number(cart?.subtotal ?? 0)
 
   const updateQty = useMutation({
     mutationFn: ({ productId, variantId, quantity }: { productId: number; variantId?: number | null; quantity: number }) =>
@@ -192,27 +186,16 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
           <div className="right-cart-panel__body">
             {/* -- cart summary -- */}
             <div className="rc-subtotal">
-              <span>Subtotal</span>
+              <span>Subtotal (excl. delivery)</span>
               <span className="num">R{subtotal.toFixed(2)}</span>
             </div>
-
-            <div className="rc-signals">
-              {/* Derived free-shipping badge belongs here once delivery
-                  fees on the selected lines actually sum to zero. ROADMAP.md
-                  forbids an unconditional "✓ Free shipping" chip — it is a
-                  commercial promise with no system behind it. */}
-              <span className="rc-min-pill num">R{CHECKOUT_MIN_RAND} Min. to checkout</span>
-            </div>
-            <div
-              className="rc-progress"
-              role="progressbar"
-              aria-label={`Progress toward R${CHECKOUT_MIN_RAND} minimum`}
-              aria-valuemin={0}
-              aria-valuemax={CHECKOUT_MIN_RAND}
-              aria-valuenow={Math.round(Math.min(subtotal, CHECKOUT_MIN_RAND))}
-            >
-              <span style={{ width: `${progress * 100}%` }} />
-            </div>
+            {/* No minimum-order pill: "R200 Min. to checkout" stated a rule
+                nothing enforces (the backend has no minimum and checkout was
+                never blocked). It comes back only together with a server-side
+                check. A derived free-shipping badge belongs here once delivery
+                fees on the cart actually sum to zero. ROADMAP.md forbids an
+                unconditional "✓ Free shipping" chip — it is a commercial
+                promise with no system behind it. */}
 
             <Link to="/cart" className="rc-go-to-cart" onClick={closeDrawer}>
               Go to cart <span aria-hidden>→</span>
@@ -227,24 +210,9 @@ export function RightCartPanel({ activeFilters, onHighlight }: Props) {
               <p className="rc-empty">Your cart is empty</p>
             ) : (
               <>
-                <label className="rc-select-all">
-                  <input
-                    type="checkbox"
-                    aria-label="Select all"
-                    checked={allSelected}
-                    onChange={() => allSelected ? deselectAll(items.map(l => cartLineKey(l.productId, l.variantId))) : selectAll()}
-                  />
-                  Select all (<span className="num">{items.length}</span>)
-                </label>
                 <div className="rc-items">
                   {items.map(line => (
                     <div key={cartLineKey(line.productId, line.variantId)} className="rc-item">
-                      <input
-                        type="checkbox"
-                        checked={!deselected.has(cartLineKey(line.productId, line.variantId))}
-                        aria-label={`Select ${line.productName}${line.variantLabel ? ` · ${line.variantLabel}` : ''}`}
-                        onChange={() => toggleItem(cartLineKey(line.productId, line.variantId))}
-                      />
                       <Link to={`/products/${line.productId}`} className="rc-item__main" onClick={closeDrawer}>
                         {/* The vendor's real photo. This used to be a picsum
                             stock image keyed on product id, so a shopper

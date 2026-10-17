@@ -72,4 +72,12 @@ describe('CartPage variant lines', () => {
       )
     })
   })
+
+  it('labels the goods-only figure as a subtotal, not a total', async () => {
+    renderWithApp(<CartPage />)
+
+    expect(await screen.findByText('Subtotal (excl. delivery)')).toBeInTheDocument()
+    expect(screen.getByText('R150.00')).toBeInTheDocument()
+    expect(screen.queryByText(/^Total$/)).not.toBeInTheDocument()
+  })
 })

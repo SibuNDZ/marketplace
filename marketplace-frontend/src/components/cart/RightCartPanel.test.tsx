@@ -68,18 +68,16 @@ describe('RightCartPanel', () => {
     })
   })
 
-  it('select-all and quantity change the cart line', async () => {
+  it('has no line tick boxes, and quantity changes the cart line', async () => {
     const user = userEvent.setup()
     renderWithApp(
       <RightCartPanel activeFilters={new Set()} onHighlight={() => {}} />,
     )
 
-    const selectAll = await screen.findByRole('checkbox', { name: /select all/i })
-    expect(selectAll).toBeChecked()
-    await user.click(selectAll)
-    expect(selectAll).not.toBeChecked()
-    await user.click(selectAll)
-    expect(selectAll).toBeChecked()
+    await screen.findByLabelText('Quantity for Honey')
+    // An order is placed from the whole cart, so the panel offers no
+    // selection that checkout would ignore.
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
 
     await user.selectOptions(screen.getByLabelText('Quantity for Honey'), '3')
     await waitFor(() => {
@@ -105,11 +103,6 @@ describe('RightCartPanel', () => {
     await screen.findByText('Small', { exact: false })
     expect(screen.getByText('Large', { exact: false })).toBeInTheDocument()
 
-    await user.click(screen.getByLabelText('Select Tee · Small'))
-    const selectAll = screen.getByRole('checkbox', { name: /select all/i })
-    expect(selectAll).not.toBeChecked()
-    expect(screen.getByLabelText('Select Tee · Large')).toBeChecked()
-
     await user.selectOptions(screen.getByLabelText('Quantity for Tee · Small'), '3')
     await waitFor(() => {
       expect(api).toHaveBeenCalledWith(
@@ -117,5 +110,23 @@ describe('RightCartPanel', () => {
         expect.objectContaining({ method: 'PUT', body: { quantity: 3 } }),
       )
     })
+  })
+
+  it('shows the server subtotal for the whole cart and no minimum-order rule', async () => {
+    api.mockImplementation((path: string) => {
+      if (path === '/api/v1/cart') {
+        return Promise.resolve({ items: [small, large], subtotal: '150.00' })
+      }
+      return Promise.resolve({})
+    })
+    renderWithApp(
+      <RightCartPanel activeFilters={new Set()} onHighlight={() => {}} />,
+    )
+
+    expect(await screen.findByText('R150.00')).toBeInTheDocument()
+    expect(screen.getByText('Subtotal (excl. delivery)')).toBeInTheDocument()
+    // Nothing enforces a minimum, so nothing may claim one.
+    expect(screen.queryByText(/min\. to checkout/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
 })

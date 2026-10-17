@@ -130,7 +130,7 @@ app:
     success-url: ${APP_FRONTEND_URL:http://localhost:5173}/checkout/success
     cancel-url: ${APP_FRONTEND_URL:http://localhost:5173}/checkout/cancelled
   payments:
-    # Cutover switch: stripe | payfast | yoco. Stripe remains the default and
+    # Cutover switch: stripe | payfast | yoco | paystack. Stripe remains the default and
     # the rollback until the first real rand clears end to end on the new
     # provider (payfast-port.md).
     provider: ${PAYMENTS_PROVIDER:stripe}
@@ -192,6 +192,16 @@ app:
     failure-url: ${APP_FRONTEND_URL:http://localhost:5173}/checkout/cancelled
     # Yoco's docs recommend "up to 3 minutes" for replay defence.
     webhook-tolerance-seconds: ${YOCO_WEBHOOK_TOLERANCE_SECONDS:180}
+  paystack:
+    # Blank default, same fail-fast as the others. ONE key: Paystack signs
+    # webhooks with the secret key itself, so there is no webhook secret.
+    # Test and live keys come from Settings -> API Keys & Webhooks.
+    secret-key: ${PAYSTACK_SECRET_KEY:}
+    initialize-url: ${PAYSTACK_INITIALIZE_URL:https://api.paystack.co/transaction/initialize}
+    # One callback URL (Paystack appends trxref and reference to it); the
+    # cancelled page is reached via metadata.cancel_action instead.
+    success-url: ${APP_FRONTEND_URL:http://localhost:5173}/checkout/success
+    cancel-url: ${APP_FRONTEND_URL:http://localhost:5173}/checkout/cancelled
   payfast:
     # Blank merchant id/key, same fail-fast as Yoco/Stripe: the public
     # sandbox demo pair must not ship in defaults. PaymentsConfigValidator

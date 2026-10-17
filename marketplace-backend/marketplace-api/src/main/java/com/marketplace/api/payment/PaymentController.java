@@ -16,6 +16,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -55,6 +56,7 @@ public class PaymentController {
     private final StripeCheckoutService checkoutService;
     private final PayfastCheckoutService payfastCheckoutService;
     private final YocoCheckoutService yocoCheckoutService;
+    private final PaystackCheckoutService paystackCheckoutService;
     private final PaymentEventService eventService;
     private final ObjectMapper objectMapper;
     private final String webhookSecret;
@@ -64,6 +66,7 @@ public class PaymentController {
     public PaymentController(StripeCheckoutService checkoutService,
                              PayfastCheckoutService payfastCheckoutService,
                              YocoCheckoutService yocoCheckoutService,
+                             PaystackCheckoutService paystackCheckoutService,
                              PaymentEventService eventService,
                              ObjectMapper objectMapper,
                              @Value("${app.stripe.webhook-secret:}") String webhookSecret,
@@ -72,18 +75,24 @@ public class PaymentController {
         this.checkoutService = checkoutService;
         this.payfastCheckoutService = payfastCheckoutService;
         this.yocoCheckoutService = yocoCheckoutService;
+        this.paystackCheckoutService = paystackCheckoutService;
         this.eventService = eventService;
         this.objectMapper = objectMapper;
         this.webhookSecret = webhookSecret;
-        this.provider = provider;
+        // Normalised the same way PaymentsConfigValidator and PaymentHealth
+        // do. A raw "paystack " (trailing space pasted into Railway) used to
+        // pass the validator and report healthy, then fall through to Stripe
+        // here and 502 every checkout.
+        this.provider = provider == null ? "stripe" : provider.trim().toLowerCase(Locale.ROOT);
         this.checkoutPolicy = checkoutPolicy;
     }
 
     /**
-     * Provider cutover switch (app.payments.provider): stripe | payfast | yoco.
-     * Response SHAPE tells the frontend what to do: {checkoutUrl} means
-     * redirect (Stripe AND Yoco — both are hosted-page redirects, which is why
-     * the Yoco slice needed no frontend change), {processUrl, fields} means
+     * Provider cutover switch (app.payments.provider): stripe | payfast | yoco
+     * | paystack. Response SHAPE tells the frontend what to do: {checkoutUrl}
+     * means redirect (Stripe, Yoco AND Paystack — all hosted-page redirects,
+     * which is why neither the Yoco nor the Paystack slice needed a frontend
+     * change), {processUrl, fields} means
      * render and auto-submit a form (PayFast). Stripe stays selectable as the
      * rollback until the first real rand clears end to end on the new
      * provider — see payfast-port.md for the decommission plan.
@@ -95,13 +104,15 @@ public class PaymentController {
         // Guarded here as well as at placeOrder: a PENDING order placed
         // before the guard shipped could otherwise still be paid in test mode.
         checkoutPolicy.requireCanCheckOut(me.getRole());
-        if ("payfast".equalsIgnoreCase(provider)) {
-            return payfastCheckoutService.createCheckout(id, me.getId(), shipping);
-        }
-        if ("yoco".equalsIgnoreCase(provider)) {
-            return Map.of("checkoutUrl", yocoCheckoutService.createCheckout(id, me.getId(), shipping));
-        }
-        return Map.of("checkoutUrl", checkoutService.createCheckoutSession(id, me.getId(), shipping));
+        return switch (provider) {
+            case "payfast" -> payfastCheckoutService.createCheckout(id, me.getId(), shipping);
+            case "paystack" -> Map.of("checkoutUrl", paystackCheckoutService.createCheckout(id, me.getId(), shipping));
+            case "yoco" -> Map.of("checkoutUrl", yocoCheckoutService.createCheckout(id, me.getId(), shipping));
+            case "stripe" -> Map.of("checkoutUrl", checkoutService.createCheckoutSession(id, me.getId(), shipping));
+            // Unreachable after PaymentsConfigValidator, which refuses to boot
+            // on an unknown provider; never fall through to a default provider.
+            default -> throw new IllegalStateException("Unknown payment provider '" + provider + "'");
+        };
     }
 
     @PostMapping("/api/v1/payments/stripe/webhook")

@@ -12,8 +12,15 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * The selling gate: a vendor who has not accepted the current payout terms
- * or has incomplete banking details cannot be CHECKED OUT from.
+ * The selling gate: a vendor who has not accepted the current payout terms,
+ * has incomplete banking details, or has not been approved by an admin
+ * (vendor_approved_at, V38) cannot be CHECKED OUT from.
+ *
+ * Approval is cleared whenever the banking details change
+ * (VendorPayoutSettingsService), so the predicate is always about the
+ * account on file now, not one that was approved once. The Paystack
+ * subaccount code is NOT part of the predicate yet; it joins when the
+ * split settlement lands (paystack-subaccounts.md §4.4).
  *
  * Enforced at placeOrder, server-side, deliberately NOT at add-to-cart: a
  * vendor can become ungated while their products already sit in carts (terms
@@ -51,7 +58,8 @@ public class SellingGate {
             return true;
         }
         return vendor.hasAcceptedPayoutTerms(terms.version())
-                && vendor.hasCompleteBankingDetails();
+                && vendor.hasCompleteBankingDetails()
+                && vendor.getVendorApprovedAt() != null;
     }
 
     /**

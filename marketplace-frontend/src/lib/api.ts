@@ -662,6 +662,10 @@ export interface PayoutSettingsStatus {
   banking: MaskedBanking
   gateEnabled: boolean
   sellable: boolean
+  /** An admin approved the banking on file (vendor_approved_at set). */
+  approved: boolean
+  /** Latest verification row's outcome; NONE when banking was never saved. */
+  verificationState: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED'
 }
 
 /** GET /api/v1/fees — public numbers for the How It Works Fees section. */

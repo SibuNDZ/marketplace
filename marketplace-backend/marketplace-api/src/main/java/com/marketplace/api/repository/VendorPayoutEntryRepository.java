@@ -22,6 +22,9 @@ public interface VendorPayoutEntryRepository extends JpaRepository<VendorPayoutE
 
     List<VendorPayoutEntry> findByOrderId(Long orderId);
 
+    /** One vendor's entries across a page of orders (the vendor orders view). */
+    List<VendorPayoutEntry> findByOrderIdInAndVendorId(Collection<Long> orderIds, Long vendorId);
+
     /**
      * The payable work list: everything awaiting approval, vendor-fetched (the
      * admin view renders vendor names) and ordered so grouping is stable.

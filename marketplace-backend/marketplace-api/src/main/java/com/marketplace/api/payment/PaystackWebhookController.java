@@ -3,6 +3,7 @@ package com.marketplace.api.payment;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marketplace.api.payment.PaymentEventService.ProviderPayment;
+import com.marketplace.api.payment.PaymentEventService.SplitShare;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +12,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * POST /api/v1/payments/paystack/webhook — UNAUTHENTICATED by design, like
@@ -114,8 +118,42 @@ public class PaystackWebhookController {
         }
 
         eventService.handleCheckoutCompleted(orderId, "Paystack",
-                new ProviderPayment(reference, settles, data.path("currency").asText("")));
+                new ProviderPayment(reference, settles, data.path("currency").asText(""),
+                        splitShares(data), integrationShare(data)));
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * data.split.subaccounts[] as Paystack reports it on a split charge:
+     * each element's "subaccount" is an object carrying subaccount_code (or,
+     * defensively, a bare code string) and "share" is the cents it received.
+     * Null when the event carries no split at all, which is what every
+     * unsplit charge looks like and what PaymentEventService distinguishes
+     * from a split we sent and Paystack did not report.
+     */
+    static List<SplitShare> splitShares(JsonNode data) {
+        JsonNode split = data.path("split");
+        if (split.isMissingNode() || split.isNull() || !split.isObject()) {
+            return null;
+        }
+        List<SplitShare> shares = new ArrayList<>();
+        for (JsonNode entry : split.path("subaccounts")) {
+            JsonNode sub = entry.path("subaccount");
+            String code = sub.isObject() ? sub.path("subaccount_code").asText(null)
+                    : sub.isTextual() ? sub.asText() : null;
+            Long share = cents(entry.path("share"));
+            if (code != null && share != null) {
+                shares.add(new SplitShare(code, share));
+            }
+        }
+        return shares;
+    }
+
+    /** The integration's own share where Paystack reports one; null otherwise. Recorded, not relied on. */
+    static Long integrationShare(JsonNode data) {
+        JsonNode split = data.path("split");
+        Long direct = cents(split.path("integration_share"));
+        return direct != null ? direct : cents(split.path("shares").path("integration"));
     }
 
     /**

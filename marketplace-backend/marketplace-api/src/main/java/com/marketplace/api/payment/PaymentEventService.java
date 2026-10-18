@@ -13,6 +13,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 /**
  * The webhook's business core, separated from HTTP + signature verification
  * so it can be integration-tested without forging Stripe signatures. The
@@ -56,7 +58,16 @@ public class PaymentEventService {
      * @param amountCents the amount that settles the order, in cents
      * @param currency    ISO 4217 code as the provider reports it
      */
-    public record ProviderPayment(String reference, long amountCents, String currency) {}
+    public record ProviderPayment(String reference, long amountCents, String currency,
+                                  List<SplitShare> split, Long integrationShareCents) {
+        /** Providers (and tests) that carry no split. */
+        public ProviderPayment(String reference, long amountCents, String currency) {
+            this(reference, amountCents, currency, null, null);
+        }
+    }
+
+    /** One line of data.split on a Paystack charge.success: what Paystack says a subaccount received. */
+    public record SplitShare(String subaccountCode, long shareCents) {}
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -210,6 +221,18 @@ public class PaymentEventService {
             return;
         }
         ledger.recordOnPaid(order);
+        // Split settlement (paystack-subaccounts.md §6.2), same transaction:
+        // entries of vendors Paystack paid at the charge are PAID / SPLIT
+        // now, the rest stay PENDING / EFT for the payout run. A split we
+        // SENT (orders.split_request) that the webhook does not report is
+        // the one condition to alert on; nothing is marked in that case.
+        if (payment != null && payment.split() != null && !payment.split().isEmpty()) {
+            ledger.settleBySplit(order, payment.split(), payment.reference());
+        } else if (order.getSplitRequest() != null) {
+            log.error("SPLIT MISSING ON CHARGE.SUCCESS order {} (payment {} via {}): a split was sent "
+                    + "but the webhook carries none; entries left PENDING - MANUAL REVIEW REQUIRED",
+                    orderId, payment == null ? "(no reference)" : payment.reference(), provider);
+        }
         log.info("Order {} PENDING -> PAID via {} webhook", orderId, provider);
     }
 

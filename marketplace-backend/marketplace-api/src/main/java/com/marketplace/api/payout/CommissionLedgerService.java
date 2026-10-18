@@ -5,6 +5,7 @@ import com.marketplace.api.entity.OrderDeliveryFee;
 import com.marketplace.api.entity.OrderItem;
 import com.marketplace.api.entity.PayoutEntryKind;
 import com.marketplace.api.entity.PayoutEntryStatus;
+import com.marketplace.api.entity.SettlementMode;
 import com.marketplace.api.entity.Product;
 import com.marketplace.api.entity.User;
 import com.marketplace.api.entity.VendorPayoutEntry;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -86,6 +88,53 @@ public class CommissionLedgerService {
             log.info("Payout entry: order {} vendor {} subtotal {} fee {} rate {} commission {} net {}",
                     order.getId(), e.getVendor().getId(), e.getItemSubtotal(), e.getDeliveryFee(),
                     e.getCommissionRate(), e.getCommissionAmount(), e.getNetPayable());
+        }
+    }
+
+    /**
+     * Marks the PRIMARY entries that Paystack settled at the charge
+     * (paystack-subaccounts.md §6.2): PAID, settlement_mode SPLIT, the
+     * Paystack reference, paid now, "Settled by Paystack split". Called in
+     * the same transaction as {@link #recordOnPaid}. Entries whose vendor is
+     * not in the split are untouched and settle by EFT. A reported share
+     * more than one cent from the entry's net is still marked (the money
+     * did move) and logged at ERROR for a human to reconcile.
+     *
+     * "PAID" here means Paystack owes the vendor and settles on its own
+     * schedule, not that money has reached the vendor's bank.
+     */
+    @Transactional
+    public void settleBySplit(Order order, List<com.marketplace.api.payment.PaymentEventService.SplitShare> split,
+                              String paystackReference) {
+        Map<String, Long> reported = new LinkedHashMap<>();
+        for (var s : split) {
+            if (s.subaccountCode() != null) {
+                reported.merge(s.subaccountCode(), s.shareCents(), Long::sum);
+            }
+        }
+        LocalDateTime now = LocalDateTime.now();
+        for (VendorPayoutEntry e : entryRepository.findByOrderId(order.getId())) {
+            if (e.getKind() != PayoutEntryKind.PRIMARY || e.getStatus() != PayoutEntryStatus.PENDING) {
+                continue;
+            }
+            String code = e.getVendor().getPaystackSubaccountCode();
+            if (code == null || !reported.containsKey(code)) {
+                continue;
+            }
+            long expected = e.getNetPayable().movePointRight(2).longValueExact();
+            long got = reported.get(code);
+            if (Math.abs(expected - got) > 1) {
+                log.error("SPLIT SHARE MISMATCH order {} vendor {} expected {} got {} (cents) - "
+                        + "entry marked SPLIT, reconcile against the Paystack dashboard",
+                        order.getId(), e.getVendor().getId(), expected, got);
+            }
+            e.setStatus(PayoutEntryStatus.PAID);
+            e.setSettlementMode(SettlementMode.SPLIT);
+            e.setPaymentReference(paystackReference);
+            e.setPaidAt(now);
+            e.setNote("Settled by Paystack split");
+            log.info("Payout entry {} (order {} vendor {}) settled by Paystack split, reference {}",
+                    e.getId(), order.getId(), e.getVendor().getId(), paystackReference);
         }
     }
 

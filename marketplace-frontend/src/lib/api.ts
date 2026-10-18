@@ -579,6 +579,8 @@ export interface VendorOrderResponse {
   shipTo?: ShippingAddress | null
   // Waybill reference captured at ship time; null until provided.
   trackingNumber?: string | null
+  // How this vendor's share settles, from their ledger entry; null when none exists.
+  settlement?: { mode: 'EFT' | 'SPLIT'; status: string; reference: string | null; paidAt: string | null } | null
 }
 
 /** Vendor self-service settings (GET/PUT /api/v1/vendor/settings). */

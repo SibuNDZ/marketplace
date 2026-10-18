@@ -3,6 +3,10 @@ package com.marketplace.api.service;
 import com.marketplace.api.dto.ShippingDtos;
 import com.marketplace.api.dto.VendorOrderDtos.VendorLineItem;
 import com.marketplace.api.dto.VendorOrderDtos.VendorOrderResponse;
+import com.marketplace.api.dto.VendorOrderDtos.VendorSettlement;
+import com.marketplace.api.entity.PayoutEntryKind;
+import com.marketplace.api.entity.VendorPayoutEntry;
+import com.marketplace.api.repository.VendorPayoutEntryRepository;
 import com.marketplace.api.entity.Order;
 import com.marketplace.api.entity.OrderDeliveryFee;
 import com.marketplace.api.entity.OrderItem;
@@ -51,15 +55,18 @@ public class VendorOrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final OrderDeliveryFeeRepository deliveryFeeRepository;
+    private final VendorPayoutEntryRepository entryRepository;
     private final OrderStatusRecorder recorder;
 
     public VendorOrderService(OrderRepository orderRepository,
                               OrderItemRepository orderItemRepository,
                               OrderDeliveryFeeRepository deliveryFeeRepository,
+                              VendorPayoutEntryRepository entryRepository,
                               OrderStatusRecorder recorder) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.deliveryFeeRepository = deliveryFeeRepository;
+        this.entryRepository = entryRepository;
         this.recorder = recorder;
     }
 
@@ -81,11 +88,24 @@ public class VendorOrderService {
                 .findByOrderIdInAndVendorId(ids, vendorId).stream()
                 .collect(Collectors.toMap(f -> f.getOrder().getId(),
                         OrderDeliveryFee::getFeeAtPurchase));
+        Map<Long, VendorPayoutEntry> primaryByOrder = new java.util.HashMap<>();
+        for (VendorPayoutEntry e : entryRepository.findByOrderIdInAndVendorId(ids, vendorId)) {
+            if (e.getKind() == PayoutEntryKind.PRIMARY) {
+                primaryByOrder.putIfAbsent(e.getOrder().getId(), e);
+            }
+        }
 
         return orders.map(o -> toResponse(o,
                 mineByOrder.getOrDefault(o.getId(), List.of()),
                 feeByOrder.get(o.getId()),
-                !mixed.contains(o.getId())));
+                !mixed.contains(o.getId()),
+                primaryByOrder.get(o.getId())));
+    }
+
+    private VendorPayoutEntry myPrimaryEntry(Long orderId, Long vendorId) {
+        return entryRepository.findByOrderIdInAndVendorId(List.of(orderId), vendorId).stream()
+                .filter(e -> e.getKind() == PayoutEntryKind.PRIMARY)
+                .findFirst().orElse(null);
     }
 
     /**
@@ -111,7 +131,7 @@ public class VendorOrderService {
             throw new OrderNotFoundException(orderId);
         }
         boolean singleVendor = orderRepository.idsWithForeignItems(List.of(orderId), vendorId).isEmpty();
-        return toResponse(order, mine, myFee(orderId, vendorId), singleVendor);
+        return toResponse(order, mine, myFee(orderId, vendorId), singleVendor, myPrimaryEntry(orderId, vendorId));
     }
 
     /**
@@ -154,7 +174,7 @@ public class VendorOrderService {
                 tracking == null ? "Shipped by vendor"
                                  : "Shipped by vendor (tracking " + tracking + ")");
         log.info("Order {} PAID -> SHIPPED by vendor {}", orderId, vendorId);
-        return toResponse(order, mine, myFee(orderId, vendorId), true);
+        return toResponse(order, mine, myFee(orderId, vendorId), true, myPrimaryEntry(orderId, vendorId));
     }
 
     private BigDecimal myFee(Long orderId, Long vendorId) {
@@ -163,7 +183,8 @@ public class VendorOrderService {
     }
 
     private VendorOrderResponse toResponse(Order order, List<OrderItem> myItems,
-                                           BigDecimal myDeliveryFee, boolean singleVendor) {
+                                           BigDecimal myDeliveryFee, boolean singleVendor,
+                                           VendorPayoutEntry myEntry) {
         List<VendorLineItem> lines = myItems.stream()
                 .map(i -> new VendorLineItem(
                         i.getProductNameAtPurchase(),
@@ -184,7 +205,12 @@ public class VendorOrderService {
                 myDeliveryFee,
                 singleVendor && order.getStatus() == OrderStatus.PAID,
                 shipTo(order),
-                order.getTrackingNumber());
+                order.getTrackingNumber(),
+                myEntry == null ? null : new VendorSettlement(
+                        myEntry.getSettlementMode().name(),
+                        myEntry.getStatus().name(),
+                        myEntry.getPaymentReference(),
+                        myEntry.getPaidAt()));
     }
 
     /**

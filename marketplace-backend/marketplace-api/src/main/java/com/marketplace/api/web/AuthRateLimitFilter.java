@@ -6,6 +6,8 @@ import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletRequestWrapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -16,9 +18,12 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.UrlPathHelper;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.Enumeration;
 
 /**
  * Per-IP token bucket on the auth endpoints — the brute-force / enumeration
@@ -41,10 +46,15 @@ import java.time.Duration;
  * Railway's proxy getRemoteAddr() is the proxy's address for every request,
  * which put THE ENTIRE PLATFORM in one bucket — the 11th auth request
  * globally returned 429, and the frontend showed it as a generic failure.
- * forward-headers-strategy=framework does NOT fix that: ForwardedHeaderFilter
- * rewrites scheme/host/port for URL building and never touches the remote
- * address (only the container-level `native` strategy does). So this filter
- * resolves the client itself from X-Forwarded-For.
+ * forward-headers-strategy=framework (application-prod.yml) does not fix
+ * that, and used to break the fix: in spring-web 6.2 its ForwardedHeaderFilter
+ * runs first, hides X-Forwarded-For from every later filter, and answers
+ * getRemoteAddr() with the LEFTMOST entry, the one a client writes. So this
+ * filter resolves the client itself, from the request as Tomcat received it.
+ *
+ * Scope is matched on the path Spring routes, for the same reason: the raw
+ * URI is whatever the caller typed, and under ForwardedHeaderFilter it also
+ * carries any X-Forwarded-Prefix they sent.
  *
  * Runs AFTER CorrelationIdFilter (Order.HIGHEST_PRECEDENCE+1) so 429s carry
  * a requestId, and BEFORE Spring Security so rejected requests never burn
@@ -99,9 +109,14 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         // Newsletter signup shares the bucket: an unauthenticated write is
         // the same abuse class as login guessing, and a legitimate visitor
         // subscribes once, nowhere near the per-IP budget.
-        String uri = request.getRequestURI();
-        return !uri.startsWith("/api/v1/auth/")
-                && !uri.startsWith("/api/v1/newsletter/");
+        //
+        // Decoded and with the context path stripped, as security matching
+        // and routing see it. On getRequestURI() a login posted to
+        // /api/v1/%61uth/login, or sent with X-Forwarded-Prefix: /x in prod,
+        // skipped the bucket and still reached the controller.
+        String path = UrlPathHelper.defaultInstance.getPathWithinApplication(request);
+        return !path.startsWith("/api/v1/auth/")
+                && !path.startsWith("/api/v1/newsletter/");
     }
 
     @Override
@@ -165,14 +180,30 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
      * is ever put in front, the rightmost entry becomes that proxy's edge
      * address and its ranges must be handled here — degraded per-edge
      * buckets, not a platform-wide one.
+     *
+     * Read from the request beneath any wrapper. In prod ForwardedHeaderFilter
+     * wraps it first, and through that wrapper X-Forwarded-For reads as absent
+     * and getRemoteAddr() is the leftmost entry: exactly the forgeable key
+     * described above, reached by the fallback path.
+     *
+     * Every X-Forwarded-For line counts, not only the first: a proxy may add
+     * its own line rather than extend the client's, and getHeader() would
+     * then return the client's line, forged entries and all.
      */
     static String clientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded == null || forwarded.isBlank()) {
-            return request.getRemoteAddr();
-        }
+        HttpServletRequest original = original(request);
+        Enumeration<String> lines = original.getHeaders("X-Forwarded-For");
+        String forwarded = lines == null ? "" : String.join(",", Collections.list(lines));
         int lastComma = forwarded.lastIndexOf(',');
         String rightmost = (lastComma < 0 ? forwarded : forwarded.substring(lastComma + 1)).trim();
-        return rightmost.isEmpty() ? request.getRemoteAddr() : rightmost;
+        return rightmost.isEmpty() ? original.getRemoteAddr() : rightmost;
+    }
+
+    private static HttpServletRequest original(HttpServletRequest request) {
+        ServletRequest current = request;
+        while (current instanceof ServletRequestWrapper wrapper) {
+            current = wrapper.getRequest();
+        }
+        return current instanceof HttpServletRequest http ? http : request;
     }
 }

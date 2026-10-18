@@ -64,7 +64,8 @@ public class VendorSettingsController {
                                               @AuthenticationPrincipal UserPrincipal me) {
         return payoutSettings.updateBanking(me.getId(),
                 request.accountHolderName(), request.bankName(),
-                request.accountNumber(), request.branchCode(), request.accountType());
+                request.accountNumber(), request.branchCode(), request.bankCode(),
+                request.accountType(), request.identity());
     }
 
     @PostMapping("/payouts/accept-terms")

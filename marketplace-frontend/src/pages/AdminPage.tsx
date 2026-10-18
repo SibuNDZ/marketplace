@@ -8,9 +8,12 @@ import { TestOrderChip } from '../components/ui/TestOrderChip'
 import { REFERRAL_SOURCES } from '../data/referralSources'
 
 // Legal next transitions — the UI never offers what the state machine rejects.
+// Mirrors OrderTransitions.ALLOWED on the server (minus CANCELLED, which has
+// its own endpoint). REFUNDED is offered from every paid state so a paid
+// order that was never shipped, or was lost in transit, has an honest end.
 const LEGAL: Record<string, string[]> = {
-  PAID:      ['SHIPPED'],
-  SHIPPED:   ['DELIVERED'],
+  PAID:      ['SHIPPED', 'REFUNDED'],
+  SHIPPED:   ['DELIVERED', 'REFUNDED'],
   DELIVERED: ['REFUNDED'],
 }
 
@@ -57,6 +60,7 @@ export function AdminPage() {
             <Link to="/admin/feedback" style={{ padding: '6px 14px', fontSize: 13, fontWeight: 600, color: 'var(--ink-soft)' }}>Feedback</Link>
             <Link to="/admin/payouts" style={{ padding: '6px 14px', fontSize: 13, fontWeight: 600, color: 'var(--ink-soft)' }}>Payouts</Link>
             <Link to="/admin/listings" style={{ padding: '6px 14px', fontSize: 13, fontWeight: 600, color: 'var(--ink-soft)' }}>Listings</Link>
+            <Link to="/admin/vendors" style={{ padding: '6px 14px', fontSize: 13, fontWeight: 600, color: 'var(--ink-soft)' }}>Vendors</Link>
           </nav>
         </div>
         {isLoading ? <p>Loading…</p> : (

@@ -81,6 +81,15 @@ public class VendorPayoutEntry {
     @Column(name = "paid_at")
     private LocalDateTime paidAt;
 
+    /**
+     * Which rail settles this entry (V38). EFT for everything the payout run
+     * handles; SPLIT once Paystack pays the vendor's share at the
+     * transaction, at which point the run must leave the row alone.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "settlement_mode", nullable = false, length = 8)
+    private SettlementMode settlementMode = SettlementMode.EFT;
+
     /** Why a non-obvious row exists: adjustment reasons, void causes. */
     @Column(name = "note", length = 500)
     private String note;
@@ -191,6 +200,14 @@ public class VendorPayoutEntry {
 
     public void setPaidAt(LocalDateTime paidAt) {
         this.paidAt = paidAt;
+    }
+
+    public SettlementMode getSettlementMode() {
+        return settlementMode;
+    }
+
+    public void setSettlementMode(SettlementMode settlementMode) {
+        this.settlementMode = settlementMode;
     }
 
     public String getNote() {

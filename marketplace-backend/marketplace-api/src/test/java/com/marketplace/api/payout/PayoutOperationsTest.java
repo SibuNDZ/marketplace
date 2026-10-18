@@ -82,6 +82,7 @@ class PayoutOperationsTest {
         vendor.setBankName("Nedbank");
         vendor.setAccountNumber("1122336789");
         vendor.setBranchCode("198765");
+        vendor.setBankCode("198765");
         vendor.setAccountType(BankAccountType.CHEQUE);
         return userRepository.save(vendor);
     }

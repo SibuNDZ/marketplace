@@ -176,6 +176,7 @@ export function Footer({ socialLinks = SOCIAL_LINKS }: { socialLinks?: SocialLin
           <span style={{ fontSize: 12, color: 'var(--footer-text-dim)' }}>© 2026 {COMPANY.legalName}. All rights reserved.</span>
           <Link to="/returns" style={{ fontSize: 12, color: 'var(--footer-text)' }}>Returns &amp; Refunds</Link>
           <Link to="/terms" style={{ fontSize: 12, color: 'var(--footer-text)' }}>Terms of Service</Link>
+          <Link to="/seller-terms" style={{ fontSize: 12, color: 'var(--footer-text)' }}>Seller terms</Link>
           <Link to="/privacy" style={{ fontSize: 12, color: 'var(--footer-text)' }}>Privacy Policy</Link>
         </div>
       </div>

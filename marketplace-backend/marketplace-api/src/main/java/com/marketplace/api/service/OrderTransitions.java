@@ -6,11 +6,23 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The order state machine, v2 — PAID inserted between PENDING and SHIPPED.
+ * The order state machine, v3 — REFUNDED reachable from every paid state.
  *
- *   PENDING ──▶ PAID ──▶ SHIPPED ──▶ DELIVERED ──▶ REFUNDED
+ *   PENDING ──▶ PAID ──▶ SHIPPED ──▶ DELIVERED
+ *      │         │          │            │
+ *      │         └──────────┴────────────┴──▶ REFUNDED
  *      │
  *      └──▶ CANCELLED        (customer cancel, or payment-window expiry)
+ *
+ * Changes from v2 and why:
+ * - PAID -> REFUNDED and SHIPPED -> REFUNDED are ADDED
+ *   (paystack-subaccounts.md §7 item 1). A paid order the vendor never
+ *   ships, or ships and loses, needs an honest end state; before this the
+ *   admin had to mark it DELIVERED first, which was a lie in the history.
+ *   The ledger reversal in OrderAdminService fires on any transition to
+ *   REFUNDED, so the three sources behave alike. Stock is NOT restored on
+ *   refund from any state: the goods may be in transit or with the buyer,
+ *   and restocking stays a vendor action.
  *
  * Changes from v1 and why:
  * - PENDING -> SHIPPED is REMOVED. With payments live, shipping an unpaid
@@ -29,8 +41,8 @@ public final class OrderTransitions {
 
     private static final Map<OrderStatus, Set<OrderStatus>> ALLOWED = Map.of(
             OrderStatus.PENDING,   Set.of(OrderStatus.PAID, OrderStatus.CANCELLED),
-            OrderStatus.PAID,      Set.of(OrderStatus.SHIPPED),
-            OrderStatus.SHIPPED,   Set.of(OrderStatus.DELIVERED),
+            OrderStatus.PAID,      Set.of(OrderStatus.SHIPPED, OrderStatus.REFUNDED),
+            OrderStatus.SHIPPED,   Set.of(OrderStatus.DELIVERED, OrderStatus.REFUNDED),
             OrderStatus.DELIVERED, Set.of(OrderStatus.REFUNDED),
             OrderStatus.CANCELLED, Set.of(),
             OrderStatus.REFUNDED,  Set.of()

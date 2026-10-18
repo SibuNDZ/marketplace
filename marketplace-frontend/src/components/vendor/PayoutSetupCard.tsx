@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError, PayoutSettingsStatus } from '../../lib/api'
 
@@ -20,7 +21,7 @@ export function PayoutSetupCard() {
   const [editing, setEditing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({
-    accountHolderName: '', bankName: '', accountNumber: '', branchCode: '',
+    accountHolderName: '', bankName: '', accountNumber: '', branchCode: '', bankCode: '',
     accountType: 'CHEQUE' as 'CHEQUE' | 'SAVINGS',
   })
 
@@ -36,6 +37,12 @@ export function PayoutSetupCard() {
   const fail = (e: unknown) =>
     setError(e instanceof ApiError ? e.detail || e.title : 'Something went wrong')
 
+  // No identity document field yet, although the PUT accepts an optional
+  // `identity` (IdentityDocumentRequest). Nothing verifies anything until the
+  // provider validate call exists, so a number collected now would be data
+  // held for no purpose, and the sentence that would sit under the field
+  // ("Used once to verify your bank account") would be untrue. The field
+  // arrives in the slice that gives it a job.
   const saveBanking = useMutation({
     mutationFn: () => api('/api/v1/vendor/settings/payouts/banking', { method: 'PUT', body: form }),
     onSuccess: () => { setEditing(false); done() },
@@ -82,8 +89,9 @@ export function PayoutSetupCard() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 13, fontWeight: 600 }}>Bank account</span>
           <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
-            {status.banking.complete
+            {status.banking.accountNumberLast4
               ? `${status.banking.bankName} ${status.banking.accountNumberLast4}`
+                + (status.banking.complete ? '' : ' (bank code missing: re-enter your details)')
               : 'Not captured yet'}
           </span>
           {!editing && (
@@ -108,6 +116,9 @@ export function PayoutSetupCard() {
               style={{ ...input, flex: '1 1 140px' }} value={form.accountNumber} onChange={set('accountNumber')} />
             <input required pattern="\d{6}" inputMode="numeric" placeholder="Branch code" aria-label="Branch code"
               style={{ ...input, width: 110 }} value={form.branchCode} onChange={set('branchCode')} />
+            <input required pattern="\d{3,16}" inputMode="numeric" placeholder="Bank code" aria-label="Bank code"
+              title="Your bank's universal branch code, as your payment provider lists it"
+              style={{ ...input, width: 110 }} value={form.bankCode} onChange={set('bankCode')} />
             <select aria-label="Account type" style={input} value={form.accountType} onChange={set('accountType')}>
               <option value="CHEQUE">Cheque / current</option>
               <option value="SAVINGS">Savings</option>
@@ -131,6 +142,7 @@ export function PayoutSetupCard() {
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
           <span style={{ fontSize: 13, fontWeight: 600 }}>Payout terms</span>
+          <Link to="/seller-terms" style={{ fontSize: 12, color: 'var(--trust-blue)' }}>Read the seller terms</Link>
           {status.termsCurrent ? (
             <span style={{ fontSize: 12, color: 'var(--aloe)' }}>
               Accepted{status.acceptedAt ? ` on ${new Date(status.acceptedAt).toLocaleDateString()}` : ''}

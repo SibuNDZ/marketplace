@@ -3,10 +3,14 @@ package com.marketplace.api.payout;
 import com.marketplace.api.entity.BankAccountType;
 import com.marketplace.api.entity.Product;
 import com.marketplace.api.entity.User;
+import com.marketplace.api.entity.VendorVerification;
+import com.marketplace.api.entity.VerificationOutcome;
+import com.marketplace.api.entity.VerificationProviderResult;
 import com.marketplace.api.payout.PayoutExceptions.StaleTermsVersionException;
 import com.marketplace.api.payout.PayoutExceptions.VendorNotSellableException;
 import com.marketplace.api.payout.VendorPayoutSettingsService.PayoutSettingsStatus;
 import com.marketplace.api.repository.UserRepository;
+import com.marketplace.api.repository.VendorVerificationRepository;
 import com.marketplace.api.security.JwtService;
 import com.marketplace.api.service.OrderService;
 import com.marketplace.api.service.TestFixtures;
@@ -23,6 +27,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,6 +66,7 @@ class PayoutTermsGateTest {
     @Autowired OrderService                orderService;
     @Autowired VendorPayoutSettingsService settingsService;
     @Autowired UserRepository              userRepository;
+    @Autowired VendorVerificationRepository verifications;
     @Autowired TestFixtures                fixtures;
     @Autowired MockMvc                     mockMvc;
     @Autowired JwtService                  jwtService;
@@ -68,12 +75,25 @@ class PayoutTermsGateTest {
         return base + "-" + UUID.randomUUID().toString().substring(0, 8);
     }
 
-    /** Completes the vendor's onboarding: banking + current terms. */
-    private void onboard(User vendor) {
+    /** The vendor's half of onboarding: banking + current terms. Not yet approved. */
+    private void submit(User vendor) {
         settingsService.updateBanking(vendor.getId(),
-                "Holder " + vendor.getUsername(), "Nedbank", "1122336789", "198765",
+                "Holder " + vendor.getUsername(), "Nedbank", "1122336789", "198765", "198765",
                 BankAccountType.CHEQUE);
         settingsService.acceptTerms(vendor.getId(), 1);
+    }
+
+    /** The admin's half: approval of the banking on file (vendor_approved_at). */
+    private void approve(User vendor) {
+        User v = userRepository.findById(vendor.getId()).orElseThrow();
+        v.setVendorApprovedAt(LocalDateTime.now());
+        userRepository.save(v);
+    }
+
+    /** Completes the vendor's onboarding: banking + terms + admin approval. */
+    private void onboard(User vendor) {
+        submit(vendor);
+        approve(vendor);
     }
 
     // ── the gate at checkout ─────────────────────────────────────────────
@@ -114,7 +134,7 @@ class PayoutTermsGateTest {
 
         User bankOnly = fixtures.vendor(uniq("bank-only"));
         settingsService.updateBanking(bankOnly.getId(),
-                "Holder", "Nedbank", "9988776655", "112233", BankAccountType.SAVINGS);
+                "Holder", "Nedbank", "9988776655", "112233", "112233", BankAccountType.SAVINGS);
         Product pb = fixtures.productForVendor(uniq("Bank Only Item"), uniq("SKU-GB"),
                 new BigDecimal("50.00"), 5, bankOnly);
         User buyerB = fixtures.customerWithCartOf(uniq("gate-buyer-b"), pb);
@@ -123,7 +143,82 @@ class PayoutTermsGateTest {
     }
 
     @Test
-    @DisplayName("a fully onboarded vendor sells normally")
+    @DisplayName("terms and complete banking without admin approval is still blocked, with the 409-with-items shape")
+    void unapprovedVendorBlocked() throws Exception {
+        User vendor = fixtures.vendor(uniq("unapproved-vendor"));
+        submit(vendor); // banking + terms, vendor_approved_at still null
+        assertThat(userRepository.findById(vendor.getId()).orElseThrow().getVendorApprovedAt()).isNull();
+
+        Product p = fixtures.productForVendor(uniq("Unapproved Item"), uniq("SKU-GU"),
+                new BigDecimal("100.00"), 5, vendor);
+        User buyer = fixtures.customerWithCartOf(uniq("unapproved-buyer"), p);
+        String buyerToken = jwtService.generateToken(buyer.getId(), buyer.getRole().name());
+
+        assertThatThrownBy(() -> orderService.placeOrder(buyer.getId()))
+                .isInstanceOf(VendorNotSellableException.class)
+                .hasMessageContaining("Unapproved Item");
+        mockMvc.perform(post("/api/v1/orders")
+                        .header("Authorization", "Bearer " + buyerToken))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.title").value("Items temporarily unavailable"))
+                .andExpect(jsonPath("$.blockedItems[0].productName").value(
+                        org.hamcrest.Matchers.containsString("Unapproved Item")));
+
+        PayoutSettingsStatus status = settingsService.status(vendor.getId());
+        assertThat(status.approved()).isFalse();
+        assertThat(status.verificationState()).isEqualTo("PENDING");
+        assertThat(status.sellable()).isFalse();
+    }
+
+    @Test
+    @DisplayName("changing the account number clears approval and opens a PENDING row; an identical resubmit writes nothing")
+    void bankingChangeReopensVerification() {
+        User vendor = fixtures.vendor(uniq("rebank-vendor"));
+        onboard(vendor);
+        assertThat(settingsService.status(vendor.getId()).approved()).isTrue();
+        List<VendorVerification> afterFirst = verifications.findAll().stream()
+                .filter(v -> v.getVendor().getId().equals(vendor.getId())).toList();
+        assertThat(afterFirst).hasSize(1); // the first save opened the first row
+
+        // Same values again: no new row, approval untouched.
+        settingsService.updateBanking(vendor.getId(),
+                "Holder " + vendor.getUsername(), "Nedbank", "1122336789", "198765", "198765",
+                BankAccountType.CHEQUE);
+        assertThat(verifications.findAll().stream()
+                .filter(v -> v.getVendor().getId().equals(vendor.getId())).count()).isEqualTo(1);
+        assertThat(userRepository.findById(vendor.getId()).orElseThrow().getVendorApprovedAt()).isNotNull();
+
+        // A different account number: approval cleared, a new PENDING row.
+        PayoutSettingsStatus status = settingsService.updateBanking(vendor.getId(),
+                "Holder " + vendor.getUsername(), "Nedbank", "9988776655", "198765", "198765",
+                BankAccountType.CHEQUE);
+        assertThat(status.approved()).isFalse();
+        assertThat(status.verificationState()).isEqualTo("PENDING");
+        assertThat(userRepository.findById(vendor.getId()).orElseThrow().getVendorApprovedAt()).isNull();
+
+        VendorVerification latest = verifications
+                .findFirstByVendorIdOrderByCreatedAtDescIdDesc(vendor.getId()).orElseThrow();
+        assertThat(latest.getOutcome()).isEqualTo(VerificationOutcome.PENDING);
+        assertThat(latest.getProviderResult()).isEqualTo(VerificationProviderResult.NOT_RUN);
+        assertThat(latest.getAccountLast4()).isEqualTo("6655");
+        assertThat(latest.getBankCode()).isEqualTo("198765");
+        assertThat(latest.getAccountHolderName()).isEqualTo("Holder " + vendor.getUsername());
+        assertThat(latest.getDocumentType()).isNull();
+        assertThat(verifications.findAll().stream()
+                .filter(v -> v.getVendor().getId().equals(vendor.getId())).count()).isEqualTo(2);
+
+        // And the vendor is blocked again until re-approved.
+        Product p = fixtures.productForVendor(uniq("Rebank Item"), uniq("SKU-GR"),
+                new BigDecimal("100.00"), 5, vendor);
+        User buyer = fixtures.customerWithCartOf(uniq("rebank-buyer"), p);
+        assertThatThrownBy(() -> orderService.placeOrder(buyer.getId()))
+                .isInstanceOf(VendorNotSellableException.class);
+        approve(vendor);
+        assertThat(orderService.placeOrder(buyer.getId()).id()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("a fully onboarded (and approved) vendor sells normally")
     void onboardedVendorSells() {
         User vendor = fixtures.vendor(uniq("onboarded-vendor"));
         onboard(vendor);
@@ -163,6 +258,8 @@ class PayoutTermsGateTest {
         PayoutSettingsStatus before = settingsService.status(vendor.getId());
         assertThat(before.termsCurrent()).isFalse();
         assertThat(before.termsText()).contains("12.5% commission").contains("7 days");
+
+        assertThat(before.verificationState()).isEqualTo("NONE");
 
         PayoutSettingsStatus after = settingsService.acceptTerms(vendor.getId(), 1);
         assertThat(after.termsCurrent()).isTrue();
@@ -215,7 +312,7 @@ class PayoutTermsGateTest {
     void ownStatusIsMasked() {
         User vendor = fixtures.vendor(uniq("mask-own-vendor"));
         PayoutSettingsStatus status = settingsService.updateBanking(vendor.getId(),
-                "Holder", "Nedbank", "1122336789", "198765", BankAccountType.CHEQUE);
+                "Holder", "Nedbank", "1122336789", "198765", "198765", BankAccountType.CHEQUE);
 
         assertThat(status.banking().accountNumberLast4()).isEqualTo("···6789");
         assertThat(status.banking().complete()).isTrue();

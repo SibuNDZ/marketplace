@@ -145,6 +145,18 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.CONFLICT, "Payout not possible", ex.getMessage());
     }
 
+    @ExceptionHandler(PayoutExceptions.VerificationNotFoundException.class)
+    public ProblemDetail verificationNotFound(PayoutExceptions.VerificationNotFoundException ex) {
+        return problem(HttpStatus.NOT_FOUND, "No verification on file", ex.getMessage());
+    }
+
+    // 409: the row exists but its provider result forbids approval. The
+    // title is stable so the admin page can show it as the reason.
+    @ExceptionHandler(PayoutExceptions.VerificationNotApprovableException.class)
+    public ProblemDetail verificationNotApprovable(PayoutExceptions.VerificationNotApprovableException ex) {
+        return problem(HttpStatus.CONFLICT, "Verification cannot be approved", ex.getMessage());
+    }
+
     // The selling gate, shopper-side: 409 with the blocked items enumerated,
     // the InsufficientStock shape — checkout renders which lines to remove.
     @ExceptionHandler(PayoutExceptions.VendorNotSellableException.class)

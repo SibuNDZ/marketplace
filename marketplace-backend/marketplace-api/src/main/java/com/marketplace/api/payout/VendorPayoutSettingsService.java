@@ -3,14 +3,19 @@ package com.marketplace.api.payout;
 import com.marketplace.api.dto.PayoutDtos.MaskedBanking;
 import com.marketplace.api.entity.BankAccountType;
 import com.marketplace.api.entity.User;
+import com.marketplace.api.entity.VendorVerification;
+import com.marketplace.api.entity.VerificationOutcome;
+import com.marketplace.api.entity.VerificationProviderResult;
 import com.marketplace.api.payout.PayoutExceptions.StaleTermsVersionException;
 import com.marketplace.api.repository.UserRepository;
+import com.marketplace.api.repository.VendorVerificationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 /**
  * Vendor self-service payout onboarding: read status, capture banking,
@@ -20,6 +25,14 @@ import java.time.LocalDateTime;
  * carries the masked form (BankingMask, the one masking method). Nothing in
  * this class logs a banking value — log lines carry the vendor id and facts
  * ABOUT the change, never the change itself.
+ *
+ * A banking CHANGE (any of holder name, account number, bank code, branch
+ * code, account type) clears the admin's approval and opens a new PENDING
+ * verification row in the same transaction (paystack-subaccounts.md §4.4):
+ * the account an admin approved is no longer the account on file.
+ * Resubmitting identical values writes nothing. The row's provider_result
+ * is NOT_RUN in this slice: the validate call does not exist yet, and the
+ * row must not claim otherwise.
  */
 @Service
 public class VendorPayoutSettingsService {
@@ -36,17 +49,24 @@ public class VendorPayoutSettingsService {
             MaskedBanking banking,
             boolean gateEnabled,
             /** False only when the gate is on and onboarding is incomplete. */
-            boolean sellable
+            boolean sellable,
+            /** vendor_approved_at is set: an admin approved the banking on file. */
+            boolean approved,
+            /** The latest verification row's outcome, or NONE when there is no row. */
+            String verificationState
     ) {}
 
     private final UserRepository userRepository;
+    private final VendorVerificationRepository verifications;
     private final PayoutTerms terms;
     private final SellingGate gate;
 
     public VendorPayoutSettingsService(UserRepository userRepository,
+                                       VendorVerificationRepository verifications,
                                        PayoutTerms terms,
                                        SellingGate gate) {
         this.userRepository = userRepository;
+        this.verifications = verifications;
         this.terms = terms;
         this.gate = gate;
     }
@@ -59,16 +79,66 @@ public class VendorPayoutSettingsService {
     @Transactional
     public PayoutSettingsStatus updateBanking(Long vendorId, String accountHolderName,
                                               String bankName, String accountNumber,
-                                              String branchCode, BankAccountType accountType) {
+                                              String branchCode, String bankCode,
+                                              BankAccountType accountType) {
+        return updateBanking(vendorId, accountHolderName, bankName, accountNumber,
+                branchCode, bankCode, accountType, null);
+    }
+
+    /**
+     * With an optional identity document. The document number is used for
+     * exactly one thing here: its last four characters go on the new
+     * verification row. The number itself is not stored, not logged and,
+     * in this slice, not sent anywhere (the provider validate call is not
+     * built yet). A document that differs from the one on the latest row
+     * counts as a change: the account must be re-verified against it.
+     */
+    @Transactional
+    public PayoutSettingsStatus updateBanking(Long vendorId, String accountHolderName,
+                                              String bankName, String accountNumber,
+                                              String branchCode, String bankCode,
+                                              BankAccountType accountType,
+                                              IdentityDocumentRequest identity) {
         User vendor = userRepository.findById(vendorId).orElseThrow();
-        vendor.setAccountHolderName(accountHolderName.strip());
+        String holder = accountHolderName.strip();
+        String number = accountNumber.strip();
+        String branch = branchCode.strip();
+        String bank = bankCode.strip();
+        // bankName is the display label and is not part of what the provider
+        // verifies, so changing it alone does not reopen verification.
+        boolean changed = !Objects.equals(holder, vendor.getAccountHolderName())
+                || !Objects.equals(number, vendor.getAccountNumber())
+                || !Objects.equals(bank, vendor.getBankCode())
+                || !Objects.equals(branch, vendor.getBranchCode())
+                || accountType != vendor.getAccountType()
+                || (identity != null && !identityOnLatestRow(vendorId, identity));
+
+        vendor.setAccountHolderName(holder);
         vendor.setBankName(bankName.strip());
-        vendor.setAccountNumber(accountNumber.strip());
-        vendor.setBranchCode(branchCode.strip());
+        vendor.setAccountNumber(number);
+        vendor.setBranchCode(branch);
+        vendor.setBankCode(bank);
         vendor.setAccountType(accountType);
+
+        if (changed) {
+            vendor.setVendorApprovedAt(null);
+            VendorVerification row = new VendorVerification();
+            row.setVendor(vendor);
+            row.setAccountHolderName(holder);
+            row.setBankCode(bank);
+            row.setAccountType(accountType);
+            row.setAccountLast4(number.substring(number.length() - 4));
+            if (identity != null) {
+                row.setDocumentType(identity.type());
+                row.setDocumentLast4(identity.last4()); // the number ends here
+            }
+            row.setProviderResult(VerificationProviderResult.NOT_RUN);
+            row.setOutcome(VerificationOutcome.PENDING);
+            verifications.save(row);
+        }
         // Deliberately no banking VALUES in this line — id and outcome only.
-        log.info("Vendor {} updated banking details (complete={})",
-                vendorId, vendor.hasCompleteBankingDetails());
+        log.info("Vendor {} updated banking details (complete={}, changed={})",
+                vendorId, vendor.hasCompleteBankingDetails(), changed);
         return toStatus(vendor);
     }
 
@@ -90,6 +160,14 @@ public class VendorPayoutSettingsService {
         return toStatus(vendor);
     }
 
+    /** True when the latest row already records this document's type and last four. */
+    private boolean identityOnLatestRow(Long vendorId, IdentityDocumentRequest identity) {
+        return verifications.findFirstByVendorIdOrderByCreatedAtDescIdDesc(vendorId)
+                .map(v -> v.getDocumentType() == identity.type()
+                        && Objects.equals(v.getDocumentLast4(), identity.last4()))
+                .orElse(false);
+    }
+
     private PayoutSettingsStatus toStatus(User vendor) {
         return new PayoutSettingsStatus(
                 terms.text(),
@@ -99,6 +177,10 @@ public class VendorPayoutSettingsService {
                 vendor.hasAcceptedPayoutTerms(terms.version()),
                 BankingMask.of(vendor),
                 gate.isEnabled(),
-                gate.sellable(vendor));
+                gate.sellable(vendor),
+                vendor.getVendorApprovedAt() != null,
+                verifications.findFirstByVendorIdOrderByCreatedAtDescIdDesc(vendor.getId())
+                        .map(v -> v.getOutcome().name())
+                        .orElse("NONE"));
     }
 }

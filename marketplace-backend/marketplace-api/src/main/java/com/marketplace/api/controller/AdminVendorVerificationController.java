@@ -1,9 +1,11 @@
 package com.marketplace.api.controller;
 
 import com.marketplace.api.dto.VendorVerificationDtos.ApproveRequest;
+import com.marketplace.api.dto.VendorVerificationDtos.ApprovedVendor;
 import com.marketplace.api.dto.VendorVerificationDtos.DecisionResponse;
 import com.marketplace.api.dto.VendorVerificationDtos.PendingVendor;
 import com.marketplace.api.dto.VendorVerificationDtos.RejectRequest;
+import com.marketplace.api.dto.VendorVerificationDtos.SubaccountStatus;
 import com.marketplace.api.payout.VendorVerificationAdminService;
 import com.marketplace.api.security.UserPrincipal;
 import jakarta.validation.Valid;
@@ -39,6 +41,18 @@ public class AdminVendorVerificationController {
     @GetMapping("/pending")
     public List<PendingVendor> pending() {
         return service.pending();
+    }
+
+    /** Vendors with an approval on file, with their subaccount code if any. */
+    @GetMapping("/approved")
+    public List<ApprovedVendor> approved() {
+        return service.approved();
+    }
+
+    /** Subaccount status from Paystack, on demand. Reports "split not enabled" when the switch is off. */
+    @GetMapping("/{vendorId}/subaccount")
+    public SubaccountStatus subaccount(@PathVariable Long vendorId) {
+        return service.subaccountStatus(vendorId);
     }
 
     /** Note optional; a body may be omitted entirely. 409 on MISMATCH or UNAVAILABLE. */

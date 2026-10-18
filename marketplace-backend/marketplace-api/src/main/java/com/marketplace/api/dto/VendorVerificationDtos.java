@@ -62,6 +62,26 @@ public class VendorVerificationDtos {
             Long verifiedBy,
             LocalDateTime verifiedAt,
             String note,
-            LocalDateTime vendorApprovedAt
+            LocalDateTime vendorApprovedAt,
+            /** Set on approve while the split switch is on; null otherwise. */
+            String subaccountCode
+    ) {}
+
+    /** A vendor with an approval on file, for the subaccount status view. */
+    public record ApprovedVendor(
+            Long vendorId,
+            String businessName,
+            String email,
+            LocalDateTime approvedAt,
+            String subaccountCode
+    ) {}
+
+    /** GET /{id}/subaccount, read on demand. */
+    public record SubaccountStatus(
+            boolean splitEnabled,
+            String code,
+            Boolean isVerified,
+            String settlementSchedule,
+            String message
     ) {}
 }

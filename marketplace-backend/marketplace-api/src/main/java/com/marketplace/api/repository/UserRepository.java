@@ -12,6 +12,9 @@ import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
+    /** Vendors with an approval on file (V38), newest approval first. */
+    java.util.List<User> findByVendorApprovedAtIsNotNullOrderByVendorApprovedAtDesc();
+
     Optional<User> findByEmail(String email);
 
     // Google sign-in join key (V30): lookup is sub-first because emails can

@@ -701,6 +701,24 @@ export interface PendingVendor {
   listings: PendingVendorListing[]
 }
 
+/** GET /api/v1/admin/vendors/approved */
+export interface ApprovedVendor {
+  vendorId: number
+  businessName: string | null
+  email: string
+  approvedAt: string
+  subaccountCode: string | null
+}
+
+/** GET /api/v1/admin/vendors/{id}/subaccount, read on demand */
+export interface SubaccountStatus {
+  splitEnabled: boolean
+  code: string | null
+  isVerified: boolean | null
+  settlementSchedule: string | null
+  message: string
+}
+
 /** POST /api/v1/admin/vendors/{id}/approve | reject */
 export interface VerificationDecision {
   vendorId: number
@@ -711,6 +729,7 @@ export interface VerificationDecision {
   verifiedAt: string | null
   note: string | null
   vendorApprovedAt: string | null
+  subaccountCode: string | null
 }
 
 /** GET /api/v1/vendor/settings/payouts/banks — the bank picker's options. */

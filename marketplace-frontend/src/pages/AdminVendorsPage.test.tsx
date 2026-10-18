@@ -34,6 +34,11 @@ const cavioure = {
   accountNumber: FULL_ACCOUNT_NUMBER,
 }
 
+const approvedStore = {
+  vendorId: 41, businessName: 'Approved Store', email: 'approved@test.local',
+  approvedAt: '2026-10-17T09:00:00', subaccountCode: 'ACCT_41',
+}
+
 const mismatched = {
   ...cavioure, vendorId: 30, businessName: 'Mismatch Store', email: 'mismatch@test.local',
   accountHolderName: 'M Mabaso', bankCode: '470010', bankName: 'Capitec', accountLast4: '···0001',
@@ -46,9 +51,25 @@ describe('AdminVendorsPage', () => {
   beforeEach(() => {
     role = 'ADMIN'
     api.mockReset()
-    api.mockImplementation((path: string) => path === '/api/v1/admin/vendors/pending'
-      ? Promise.resolve([cavioure, mismatched])
-      : Promise.resolve({ outcome: 'APPROVED' }))
+    api.mockImplementation((path: string) => {
+      if (path === '/api/v1/admin/vendors/pending') return Promise.resolve([cavioure, mismatched])
+      if (path === '/api/v1/admin/vendors/approved') return Promise.resolve([approvedStore])
+      if (path === '/api/v1/admin/vendors/41/subaccount') {
+        return Promise.resolve({ splitEnabled: true, code: 'ACCT_41', isVerified: false, settlementSchedule: 'AUTO',
+          message: 'Awaiting your verification in the Paystack dashboard (Subaccounts)' })
+      }
+      return Promise.resolve({ outcome: 'APPROVED' })
+    })
+  })
+
+  it('reads subaccount status only when asked', async () => {
+    const user = userEvent.setup()
+    renderWithApp(<AdminVendorsPage />)
+    expect(await screen.findByText('ACCT_41')).toBeTruthy()
+    expect(api).not.toHaveBeenCalledWith('/api/v1/admin/vendors/41/subaccount')
+    await user.click(screen.getByRole('button', { name: 'Check subaccount for Approved Store' }))
+    expect(await screen.findByText(/Awaiting your verification in the Paystack dashboard/)).toBeTruthy()
+    expect(api).toHaveBeenCalledWith('/api/v1/admin/vendors/41/subaccount')
   })
 
   it('shows masked banking and identity, links the listings, and never renders a full account number', async () => {

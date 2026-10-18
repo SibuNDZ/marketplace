@@ -60,17 +60,20 @@ public class VendorPayoutSettingsService {
     private final UserRepository userRepository;
     private final VendorVerificationRepository verifications;
     private final AccountValidationService validation;
+    private final SubaccountService subaccounts;
     private final PayoutTerms terms;
     private final SellingGate gate;
 
     public VendorPayoutSettingsService(UserRepository userRepository,
                                        VendorVerificationRepository verifications,
                                        AccountValidationService validation,
+                                       SubaccountService subaccounts,
                                        PayoutTerms terms,
                                        SellingGate gate) {
         this.userRepository = userRepository;
         this.verifications = verifications;
         this.validation = validation;
+        this.subaccounts = subaccounts;
         this.terms = terms;
         this.gate = gate;
     }
@@ -148,6 +151,16 @@ public class VendorPayoutSettingsService {
                     row.setProviderResult(VerificationProviderResult.UNAVAILABLE);
                     row.setVerificationMessage("Provider refused the check: " + refused.getMessage());
                 }
+            }
+            // A vendor who already has a subaccount keeps it: Paystack is
+            // told the new details and holds payouts until the owner
+            // re-verifies in the dashboard. If that call fails, the banking
+            // still saves and the row says so; the next approve re-attempts
+            // the update (SubaccountService.ensureForApproved), never a
+            // second create.
+            String updateFailure = subaccounts.updateIfPresent(vendor);
+            if (updateFailure != null) {
+                row.setNote("Subaccount update failed: " + updateFailure);
             }
             verifications.save(row);
         }

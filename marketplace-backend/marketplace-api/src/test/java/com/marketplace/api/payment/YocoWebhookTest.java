@@ -73,7 +73,7 @@ class YocoWebhookTest {
         return orderService.placeOrder(buyer.getId()).id();
     }
 
-    private static String successBody(Long orderId) {
+    static String successBody(Long orderId) {
         return "{\"id\":\"evt_" + orderId + "\",\"type\":\"payment.succeeded\","
                 + "\"createdDate\":\"2026-08-03T09:00:00.000Z\",\"payload\":{"
                 + "\"id\":\"p_" + orderId + "\",\"type\":\"payment\",\"status\":\"succeeded\","
@@ -234,7 +234,7 @@ class YocoWebhookTest {
     }
 
     /** Local HMAC, written from Yoco's doc — not YocoSignature's code. */
-    private static String sign(String id, String timestamp, String body) {
+    static String sign(String id, String timestamp, String body) {
         try {
             byte[] key = Base64.getDecoder().decode(SECRET.substring("whsec_".length()));
             Mac mac = Mac.getInstance("HmacSHA256");

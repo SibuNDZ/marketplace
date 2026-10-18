@@ -73,6 +73,9 @@ class CommissionLedgerTest {
     @Autowired VendorPayoutEntryRepository entryRepository;
     @Autowired UserRepository              userRepository;
     @Autowired ProductRepository           productRepository;
+    @Autowired VendorShareCalculator       calculator;
+    @Autowired com.marketplace.api.repository.OrderRepository orderRepository;
+    @Autowired org.springframework.transaction.support.TransactionTemplate tx;
     @Autowired TestFixtures                fixtures;
 
     private static String uniq(String base) {
@@ -191,6 +194,41 @@ class CommissionLedgerTest {
         orderService.cancelExpired(order.id());
 
         assertThat(entryRepository.findByOrderId(order.id())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("the calculator's shares and the ledger's entries are the same numbers for a two-vendor order with one override")
+    void calculatorMatchesLedger() {
+        User a = fixtures.vendor(uniq("calc-a"));
+        a.setDeliveryFee(new BigDecimal("15.00"));
+        userRepository.save(a);
+        User b = fixtures.vendor(uniq("calc-b"));
+        b.setCommissionRate(new BigDecimal("0.2000"));
+        userRepository.save(b);
+        Product pa = fixtures.productForVendor(uniq("Calc A"), uniq("SKU-CA"), new BigDecimal("33.33"), 5, a);
+        Product pb = fixtures.productForVendor(uniq("Calc B"), uniq("SKU-CB"), new BigDecimal("77.77"), 5, b);
+        Long orderId = paidOrder(pa, pb);
+
+        List<VendorPayoutEntry> entries = entryRepository.findByOrderId(orderId);
+        // Inside a transaction: the calculator walks lazy collections.
+        List<VendorShareCalculator.VendorShare> shares = tx.execute(status ->
+                calculator.sharesFor(orderRepository.findWithItemsById(orderId).orElseThrow()));
+        assertThat(shares).hasSize(2);
+        assertThat(entries).hasSize(2);
+        for (VendorShareCalculator.VendorShare s : shares) {
+            VendorPayoutEntry e = entries.stream()
+                    .filter(x -> x.getVendor().getId().equals(s.vendorId())).findFirst().orElseThrow();
+            assertThat(e.getItemSubtotal()).isEqualByComparingTo(s.itemSubtotal());
+            assertThat(e.getDeliveryFee()).isEqualByComparingTo(s.deliveryFee());
+            assertThat(e.getCommissionRate()).isEqualByComparingTo(s.rate());
+            assertThat(e.getCommissionAmount()).isEqualByComparingTo(s.commission());
+            assertThat(e.getNetPayable()).isEqualByComparingTo(s.netPayable());
+        }
+        // Hand-computed at 12.5% / 20%: A 33.33 - 4.16 + 15 = 44.17; B 77.77 - 15.55 = 62.22.
+        assertThat(shares.stream().filter(s -> s.vendorId().equals(a.getId())).findFirst().orElseThrow()
+                .netPayable()).isEqualByComparingTo("44.17");
+        assertThat(shares.stream().filter(s -> s.vendorId().equals(b.getId())).findFirst().orElseThrow()
+                .netPayable()).isEqualByComparingTo("62.22");
     }
 
     // ── rate resolution ──────────────────────────────────────────────────

@@ -58,18 +58,14 @@ public class CommissionLedgerService {
 
     private final VendorPayoutEntryRepository entryRepository;
     private final OrderRepository orderRepository;
-    private final BigDecimal defaultRate;
+    private final VendorShareCalculator calculator;
 
     public CommissionLedgerService(VendorPayoutEntryRepository entryRepository,
                                    OrderRepository orderRepository,
-                                   @Value("${app.payouts.commission-rate}") BigDecimal defaultRate) {
-        if (defaultRate.signum() < 0 || defaultRate.compareTo(BigDecimal.ONE) > 0) {
-            throw new IllegalStateException(
-                    "app.payouts.commission-rate must be a fraction in [0,1], got " + defaultRate);
-        }
+                                   VendorShareCalculator calculator) {
         this.entryRepository = entryRepository;
         this.orderRepository = orderRepository;
-        this.defaultRate = defaultRate;
+        this.calculator = calculator;
     }
 
     /**
@@ -304,58 +300,25 @@ public class CommissionLedgerService {
 
     // ── the computation ──────────────────────────────────────────────────
 
+    /**
+     * The arithmetic lives in VendorShareCalculator, shared with the
+     * Paystack split so the share sent at initialize and the entry written
+     * at PAID are the same numbers by construction. This method only maps
+     * shares onto entries.
+     */
     private List<VendorPayoutEntry> computeEntries(Order order) {
-        // Vendor is reached via product -> vendor (OrderItem does not snapshot
-        // it; the ledger entry becomes the snapshot). product_id is nullable
-        // in order_items — an item whose product was deleted between placement
-        // and payment cannot be attributed and MUST NOT vanish silently.
-        Map<Long, User> vendorsById = new LinkedHashMap<>();
-        Map<Long, BigDecimal> subtotals = new LinkedHashMap<>();
-        for (OrderItem item : order.getOrderItems()) {
-            Product product = item.getProduct();
-            User vendor = product == null ? null : product.getVendor();
-            if (vendor == null) {
-                log.error("PAYOUT ATTRIBUTION FAILED: order {} item '{}' ({} x {}) has no "
-                                + "resolvable vendor - MANUAL ATTRIBUTION REQUIRED",
-                        order.getId(), item.getProductNameAtPurchase(),
-                        item.getQuantity(), item.getPriceAtPurchase());
-                continue;
-            }
-            vendorsById.putIfAbsent(vendor.getId(), vendor);
-            subtotals.merge(vendor.getId(),
-                    item.getPriceAtPurchase().multiply(BigDecimal.valueOf(item.getQuantity())),
-                    BigDecimal::add);
-        }
-
-        // Fees come from the snapshot table, never recomputed from the
-        // vendor's current fee. Zero-fee vendors have no row ("free delivery
-        // is silence" — V16), hence getOrDefault below.
-        Map<Long, BigDecimal> feesByVendor = new LinkedHashMap<>();
-        for (OrderDeliveryFee fee : order.getDeliveryFees()) {
-            if (fee.getVendor() != null) {
-                feesByVendor.put(fee.getVendor().getId(), fee.getFeeAtPurchase());
-            }
-        }
-
         List<VendorPayoutEntry> entries = new ArrayList<>();
-        for (Map.Entry<Long, User> v : vendorsById.entrySet()) {
-            User vendor = v.getValue();
-            BigDecimal subtotal = subtotals.get(v.getKey());
-            BigDecimal fee = feesByVendor.getOrDefault(v.getKey(), BigDecimal.ZERO);
-            BigDecimal rate = vendor.getCommissionRate() != null
-                    ? vendor.getCommissionRate() : defaultRate;
-            BigDecimal commission = subtotal.multiply(rate).setScale(2, RoundingMode.DOWN);
-
+        for (VendorShareCalculator.VendorShare share : calculator.sharesFor(order)) {
             VendorPayoutEntry entry = new VendorPayoutEntry();
             entry.setOrder(order);
-            entry.setVendor(vendor);
+            entry.setVendor(share.vendor());
             entry.setKind(PayoutEntryKind.PRIMARY);
             entry.setStatus(PayoutEntryStatus.PENDING);
-            entry.setItemSubtotal(subtotal);
-            entry.setDeliveryFee(fee);
-            entry.setCommissionRate(rate);
-            entry.setCommissionAmount(commission);
-            entry.setNetPayable(subtotal.subtract(commission).add(fee));
+            entry.setItemSubtotal(share.itemSubtotal());
+            entry.setDeliveryFee(share.deliveryFee());
+            entry.setCommissionRate(share.rate());
+            entry.setCommissionAmount(share.commission());
+            entry.setNetPayable(share.netPayable());
             entries.add(entry);
         }
         return entries;

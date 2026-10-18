@@ -173,6 +173,7 @@ class VoidTestOrderTest {
         vendor.setBankName("Nedbank");
         vendor.setAccountNumber("1122336789");
         vendor.setBranchCode("198765");
+        vendor.setBankCode("198765");
         vendor.setAccountType(BankAccountType.CHEQUE);
         userRepository.save(vendor);
         Paid paid = paidOrder(vendor);

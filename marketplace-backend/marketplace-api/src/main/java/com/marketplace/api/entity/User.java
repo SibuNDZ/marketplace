@@ -126,6 +126,30 @@ public class User {
     private BankAccountType accountType;
 
     /**
+     * The bank's code as the payment provider keys it (V38). Part of the
+     * banking-completeness rule: the provider's validate and subaccount
+     * calls need it, so a vendor without one cannot be verified.
+     */
+    @Column(name = "bank_code", length = 16)
+    private String bankCode;
+
+    /**
+     * When an admin last approved this vendor's verification (V38). NULL
+     * means not approved: never, or cleared because the banking details
+     * changed since. The selling gate reads this; nothing else sets it.
+     */
+    @Column(name = "vendor_approved_at")
+    private LocalDateTime vendorApprovedAt;
+
+    /**
+     * The Paystack subaccount this vendor's share settles to (V38). NULL
+     * until the Paystack slice creates one on approval; unused by the gate
+     * until then.
+     */
+    @Column(name = "paystack_subaccount_code", length = 40)
+    private String paystackSubaccountCode;
+
+    /**
      * The payout-terms VERSION this vendor accepted (V29), not a boolean:
      * bumping app.payouts.terms-version invalidates prior acceptances, which
      * is how a wording or number change forces re-acceptance.
@@ -394,6 +418,30 @@ public class User {
         this.accountType = accountType;
     }
 
+    public String getBankCode() {
+        return bankCode;
+    }
+
+    public void setBankCode(String bankCode) {
+        this.bankCode = bankCode;
+    }
+
+    public LocalDateTime getVendorApprovedAt() {
+        return vendorApprovedAt;
+    }
+
+    public void setVendorApprovedAt(LocalDateTime vendorApprovedAt) {
+        this.vendorApprovedAt = vendorApprovedAt;
+    }
+
+    public String getPaystackSubaccountCode() {
+        return paystackSubaccountCode;
+    }
+
+    public void setPaystackSubaccountCode(String paystackSubaccountCode) {
+        this.paystackSubaccountCode = paystackSubaccountCode;
+    }
+
     public Integer getPayoutTermsVersion() {
         return payoutTermsVersion;
     }
@@ -463,6 +511,7 @@ public class User {
                 && bankName != null && !bankName.isBlank()
                 && accountNumber != null && !accountNumber.isBlank()
                 && branchCode != null && !branchCode.isBlank()
+                && bankCode != null && !bankCode.isBlank()
                 && accountType != null;
     }
 

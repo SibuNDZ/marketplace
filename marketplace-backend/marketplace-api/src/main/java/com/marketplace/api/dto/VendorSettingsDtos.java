@@ -43,6 +43,13 @@ public class VendorSettingsDtos {
             String accountNumber,
             @NotBlank @Pattern(regexp = "\\d{6}", message = "Branch code must be 6 digits")
             String branchCode,
+            /**
+             * The bank's code as the payment provider lists it (V38). For
+             * South African banks that is the universal branch code, so it
+             * is digits too; the width is the provider's, not ours.
+             */
+            @NotBlank @Pattern(regexp = "\\d{3,16}", message = "Bank code must be 3-16 digits")
+            String bankCode,
             @NotNull BankAccountType accountType
     ) {}
 

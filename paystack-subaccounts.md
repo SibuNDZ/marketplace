@@ -203,7 +203,7 @@ Migration **V38** (V37 is `order_payment_reference` on the Paystack branch).
 | account_last4 | varchar(4) | |
 | account_type | varchar(20) | |
 | provider | varchar(16) | `PAYSTACK` |
-| provider_result | varchar(16) | `OK`, `MISMATCH`, `UNAVAILABLE` |
+| provider_result | varchar(16) | `OK`, `MISMATCH`, `UNAVAILABLE`, `NOT_RUN` (slice 1 writes `NOT_RUN`: the validate call is not built yet) |
 | account_holder_match | boolean null | from the response |
 | account_open | boolean null | |
 | account_open_3m | boolean null | |

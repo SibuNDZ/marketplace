@@ -20,7 +20,7 @@ export function PayoutSetupCard() {
   const [editing, setEditing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({
-    accountHolderName: '', bankName: '', accountNumber: '', branchCode: '',
+    accountHolderName: '', bankName: '', accountNumber: '', branchCode: '', bankCode: '',
     accountType: 'CHEQUE' as 'CHEQUE' | 'SAVINGS',
   })
 
@@ -82,8 +82,9 @@ export function PayoutSetupCard() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 13, fontWeight: 600 }}>Bank account</span>
           <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
-            {status.banking.complete
+            {status.banking.accountNumberLast4
               ? `${status.banking.bankName} ${status.banking.accountNumberLast4}`
+                + (status.banking.complete ? '' : ' (bank code missing: re-enter your details)')
               : 'Not captured yet'}
           </span>
           {!editing && (
@@ -108,6 +109,9 @@ export function PayoutSetupCard() {
               style={{ ...input, flex: '1 1 140px' }} value={form.accountNumber} onChange={set('accountNumber')} />
             <input required pattern="\d{6}" inputMode="numeric" placeholder="Branch code" aria-label="Branch code"
               style={{ ...input, width: 110 }} value={form.branchCode} onChange={set('branchCode')} />
+            <input required pattern="\d{3,16}" inputMode="numeric" placeholder="Bank code" aria-label="Bank code"
+              title="Your bank's universal branch code, as your payment provider lists it"
+              style={{ ...input, width: 110 }} value={form.bankCode} onChange={set('bankCode')} />
             <select aria-label="Account type" style={input} value={form.accountType} onChange={set('accountType')}>
               <option value="CHEQUE">Cheque / current</option>
               <option value="SAVINGS">Savings</option>

@@ -71,7 +71,7 @@ class PayoutTermsGateTest {
     /** Completes the vendor's onboarding: banking + current terms. */
     private void onboard(User vendor) {
         settingsService.updateBanking(vendor.getId(),
-                "Holder " + vendor.getUsername(), "Nedbank", "1122336789", "198765",
+                "Holder " + vendor.getUsername(), "Nedbank", "1122336789", "198765", "198765",
                 BankAccountType.CHEQUE);
         settingsService.acceptTerms(vendor.getId(), 1);
     }
@@ -114,7 +114,7 @@ class PayoutTermsGateTest {
 
         User bankOnly = fixtures.vendor(uniq("bank-only"));
         settingsService.updateBanking(bankOnly.getId(),
-                "Holder", "Nedbank", "9988776655", "112233", BankAccountType.SAVINGS);
+                "Holder", "Nedbank", "9988776655", "112233", "112233", BankAccountType.SAVINGS);
         Product pb = fixtures.productForVendor(uniq("Bank Only Item"), uniq("SKU-GB"),
                 new BigDecimal("50.00"), 5, bankOnly);
         User buyerB = fixtures.customerWithCartOf(uniq("gate-buyer-b"), pb);
@@ -215,7 +215,7 @@ class PayoutTermsGateTest {
     void ownStatusIsMasked() {
         User vendor = fixtures.vendor(uniq("mask-own-vendor"));
         PayoutSettingsStatus status = settingsService.updateBanking(vendor.getId(),
-                "Holder", "Nedbank", "1122336789", "198765", BankAccountType.CHEQUE);
+                "Holder", "Nedbank", "1122336789", "198765", "198765", BankAccountType.CHEQUE);
 
         assertThat(status.banking().accountNumberLast4()).isEqualTo("···6789");
         assertThat(status.banking().complete()).isTrue();

@@ -59,12 +59,14 @@ public class VendorPayoutSettingsService {
     @Transactional
     public PayoutSettingsStatus updateBanking(Long vendorId, String accountHolderName,
                                               String bankName, String accountNumber,
-                                              String branchCode, BankAccountType accountType) {
+                                              String branchCode, String bankCode,
+                                              BankAccountType accountType) {
         User vendor = userRepository.findById(vendorId).orElseThrow();
         vendor.setAccountHolderName(accountHolderName.strip());
         vendor.setBankName(bankName.strip());
         vendor.setAccountNumber(accountNumber.strip());
         vendor.setBranchCode(branchCode.strip());
+        vendor.setBankCode(bankCode.strip());
         vendor.setAccountType(accountType);
         // Deliberately no banking VALUES in this line — id and outcome only.
         log.info("Vendor {} updated banking details (complete={})",

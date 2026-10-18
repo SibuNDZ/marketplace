@@ -668,6 +668,47 @@ export interface PayoutSettingsStatus {
   verificationState: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED'
 }
 
+/** GET /api/v1/admin/vendors/pending — one of a vendor's recent live listings. */
+export interface PendingVendorListing {
+  id: number
+  name: string
+  price: string
+  imageUrl: string | null
+}
+
+/**
+ * A vendor awaiting verification review. Banking and identity arrive
+ * masked: the server has no field for a full account or document number.
+ */
+export interface PendingVendor {
+  vendorId: number
+  businessName: string | null
+  email: string
+  submittedAt: string
+  accountHolderName: string
+  bankCode: string | null
+  bankName: string | null
+  accountLast4: string | null
+  accountType: string | null
+  documentType: 'ID_NUMBER' | 'PASSPORT' | 'CIPC' | null
+  documentLast4: string | null
+  providerResult: 'OK' | 'MISMATCH' | 'UNAVAILABLE' | 'NOT_RUN'
+  verificationMessage: string | null
+  listings: PendingVendorListing[]
+}
+
+/** POST /api/v1/admin/vendors/{id}/approve | reject */
+export interface VerificationDecision {
+  vendorId: number
+  verificationId: number
+  outcome: 'PENDING' | 'APPROVED' | 'REJECTED'
+  providerResult: string
+  verifiedBy: number | null
+  verifiedAt: string | null
+  note: string | null
+  vendorApprovedAt: string | null
+}
+
 /** GET /api/v1/fees — public numbers for the How It Works Fees section. */
 export interface PublicFees {
   commissionLive: boolean

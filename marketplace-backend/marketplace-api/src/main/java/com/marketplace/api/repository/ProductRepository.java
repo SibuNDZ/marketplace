@@ -291,6 +291,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     /** Live product by id. Returns empty for soft-deleted products (public 404). */
     Optional<Product> findByIdAndDeletedAtIsNull(Long id);
 
+    /**
+     * A vendor's five newest LIVE listings, for the admin verification
+     * screen's "first listings" glance. Live only: a removed listing is
+     * not evidence of anything.
+     */
+    List<Product> findTop5ByVendorIdAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(Long vendorId);
+
     /** Existence check for live products. Used by ReviewService browsing paths. */
     boolean existsByIdAndDeletedAtIsNull(Long id);
 

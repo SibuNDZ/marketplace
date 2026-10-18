@@ -39,6 +39,7 @@ const AdminOrderDetailPage = lazy(() => import('./pages/AdminOrderDetailPage').t
 // surface: it is reachable only by an admin and must not sit in the shopper bundle.
 const AdminPayoutsPage = lazy(() => import('./pages/AdminPayoutsPage').then(m => ({ default: m.AdminPayoutsPage })))
 const AdminListingsPage = lazy(() => import('./pages/AdminListingsPage').then(m => ({ default: m.AdminListingsPage })))
+const AdminVendorsPage = lazy(() => import('./pages/AdminVendorsPage').then(m => ({ default: m.AdminVendorsPage })))
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -187,6 +188,7 @@ export default function App() {
           <Route path="/admin/feedback" element={<RequireAuth><AdminFeedbackPage /></RequireAuth>} />
           <Route path="/admin/payouts" element={<RequireAuth><AdminPayoutsPage /></RequireAuth>} />
           <Route path="/admin/listings" element={<RequireAuth><AdminListingsPage /></RequireAuth>} />
+          <Route path="/admin/vendors" element={<RequireAuth><AdminVendorsPage /></RequireAuth>} />
           <Route path="/admin/orders/:id" element={<RequireAuth><AdminOrderDetailPage /></RequireAuth>} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsPage />} />

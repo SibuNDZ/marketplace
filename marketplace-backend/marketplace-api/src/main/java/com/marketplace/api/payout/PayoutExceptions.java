@@ -58,6 +58,26 @@ public class PayoutExceptions {
         }
     }
 
+    /** An admin decision on a vendor who has never submitted banking: nothing to decide. */
+    public static class VerificationNotFoundException extends RuntimeException {
+        public VerificationNotFoundException(Long vendorId) {
+            super("Vendor " + vendorId + " has no verification on file");
+        }
+    }
+
+    /**
+     * Approve refused because the provider's result forbids it (MISMATCH,
+     * UNAVAILABLE). There is no "approve anyway": the admin retries the
+     * validation or rejects (paystack-subaccounts.md §4.3).
+     */
+    public static class VerificationNotApprovableException extends RuntimeException {
+        public VerificationNotApprovableException(Long vendorId,
+                                                  com.marketplace.api.entity.VerificationProviderResult result) {
+            super("Vendor " + vendorId + " cannot be approved: provider result is " + result
+                    + ". Re-run the validation or reject.");
+        }
+    }
+
     /** Terms acceptance raced a version bump; the client must re-show the new text. */
     public static class StaleTermsVersionException extends RuntimeException {
         public StaleTermsVersionException(int sent, int current) {

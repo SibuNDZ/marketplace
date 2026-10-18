@@ -157,6 +157,19 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.CONFLICT, "Verification cannot be approved", ex.getMessage());
     }
 
+    @ExceptionHandler(PayoutExceptions.VerificationRecheckRefusedException.class)
+    public ProblemDetail verificationRecheckRefused(PayoutExceptions.VerificationRecheckRefusedException ex) {
+        return problem(HttpStatus.CONFLICT, "Re-run not possible", ex.getMessage());
+    }
+
+    // 503, not 502: nothing is wrong with the request or our keys, the
+    // upstream list is simply not obtainable right now, and the detail is
+    // the sentence the vendor card shows.
+    @ExceptionHandler(com.marketplace.api.payout.BankListService.BankListUnavailableException.class)
+    public ProblemDetail bankListUnavailable(com.marketplace.api.payout.BankListService.BankListUnavailableException ex) {
+        return problem(HttpStatus.SERVICE_UNAVAILABLE, "Bank list unavailable", ex.getMessage());
+    }
+
     // The selling gate, shopper-side: 409 with the blocked items enumerated,
     // the InsufficientStock shape — checkout renders which lines to remove.
     @ExceptionHandler(PayoutExceptions.VendorNotSellableException.class)

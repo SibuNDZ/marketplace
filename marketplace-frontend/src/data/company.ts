@@ -8,8 +8,8 @@
 export const COMPANY = {
   tradingName: 'eRestyu',
   legalName: 'ERESTYU (Pty) Ltd',
-  /** CIPC registration number, e.g. 2026/123456/07. */
-  registrationNumber: undefined as string | undefined,
+  /** CIPC registration number, as on the Nedbank account-opening letter (2026-10-18). */
+  registrationNumber: '2026/600709/07' as string | undefined,
   /** Registered address, one line. */
   address: undefined as string | undefined,
   email: 'hello@erestyu.com',

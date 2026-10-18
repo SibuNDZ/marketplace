@@ -38,7 +38,22 @@ public class VendorOrderDtos {
             boolean canShip,
             ShippingDtos.ShippingAddressResponse shipTo,
             /** Waybill reference captured at ship time; null until provided. */
-            String trackingNumber
+            String trackingNumber,
+            /** How this vendor's share of the sale settles; null when no ledger entry exists (test or pre-ledger orders). */
+            VendorSettlement settlement
+    ) {}
+
+    /**
+     * From the vendor's PRIMARY ledger entry. SPLIT means Paystack paid the
+     * share at the charge (reference is Paystack's); EFT means the payout
+     * run pays it, and reference is the bank reference once marked paid.
+     * No timing words anywhere: the settlement schedule is the provider's.
+     */
+    public record VendorSettlement(
+            String mode,          // EFT | SPLIT
+            String status,        // PENDING | APPROVED | PAID | VOID | ADJUSTED
+            String reference,
+            LocalDateTime paidAt
     ) {}
 
     public record VendorLineItem(

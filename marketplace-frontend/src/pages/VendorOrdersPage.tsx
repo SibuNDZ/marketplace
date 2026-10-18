@@ -161,6 +161,16 @@ export function VendorOrdersPage() {
                     Could not mark as shipped. Refresh and try again.
                   </p>
                 )}
+
+                {/* Split-settled sales only: Paystack paid the share at the
+                    charge. No timing words: the settlement schedule is the
+                    provider's. EFT sales keep the existing payout terms. */}
+                {o.settlement?.mode === 'SPLIT' && (
+                  <p style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 8 }}>
+                    Paid to your account by Paystack as part of this sale.
+                    {o.settlement.reference && <> Reference <span className="num">{o.settlement.reference}</span>.</>}
+                  </p>
+                )}
               </section>
             ))}
           </div>

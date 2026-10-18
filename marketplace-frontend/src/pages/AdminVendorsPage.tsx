@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, ApiError, PendingVendor } from '../lib/api'
+import { api, ApiError, ApprovedVendor, PendingVendor, SubaccountStatus } from '../lib/api'
 import { imageUrlAt } from '../lib/productImage'
 import { SiteHeader as Topbar } from '../components/layout/SiteHeader'
 import { useAuth } from '../context/AuthContext'
@@ -35,6 +35,22 @@ const RESULT_LABEL: Record<string, string> = {
 }
 
 const approvable = (v: PendingVendor) => v.providerResult === 'OK' || v.providerResult === 'NOT_RUN'
+const recheckable = (v: PendingVendor) => v.providerResult === 'MISMATCH' || v.providerResult === 'UNAVAILABLE'
+
+const FLAGS: [keyof PendingVendor, string][] = [
+  ['accountHolderMatch', 'holder matches'],
+  ['accountOpen', 'open'],
+  ['accountOpen3m', 'open 3+ months'],
+  ['acceptsCredits', 'accepts credits'],
+]
+
+/** "holder matches ✓ · open ✓ · open 3+ months ✗", only for flags the provider returned. */
+function flagLine(v: PendingVendor): string {
+  return FLAGS
+    .filter(([k]) => v[k] !== null && v[k] !== undefined)
+    .map(([k, label]) => `${label} ${v[k] ? '✓' : '✗'}`)
+    .join(' · ')
+}
 
 export function AdminVendorsPage() {
   const { user } = useAuth()
@@ -48,12 +64,30 @@ export function AdminVendorsPage() {
     queryFn: () => api('/api/v1/admin/vendors/pending'),
     enabled: user?.role === 'ADMIN',
   })
+  const approved = useQuery<ApprovedVendor[]>({
+    queryKey: ['admin-vendors-approved'],
+    queryFn: () => api('/api/v1/admin/vendors/approved'),
+    enabled: user?.role === 'ADMIN',
+  })
+  // Subaccount status is read from Paystack only when the admin asks for
+  // it, so this page never depends on Paystack being up.
+  const [subStatus, setSubStatus] = useState<Record<number, SubaccountStatus | 'loading' | 'failed'>>({})
+  const checkSubaccount = async (vendorId: number) => {
+    setSubStatus(s => ({ ...s, [vendorId]: 'loading' }))
+    try {
+      const status = await api<SubaccountStatus>(`/api/v1/admin/vendors/${vendorId}/subaccount`)
+      setSubStatus(s => ({ ...s, [vendorId]: status }))
+    } catch {
+      setSubStatus(s => ({ ...s, [vendorId]: 'failed' }))
+    }
+  }
 
   const done = () => {
     setError(undefined)
     setRejecting(null)
     setNote('')
     qc.invalidateQueries({ queryKey: ['admin-vendors-pending'] })
+    qc.invalidateQueries({ queryKey: ['admin-vendors-approved'] })
   }
   const fail = (e: unknown) =>
     setError(e instanceof ApiError ? e.detail || e.title : 'That did not go through. Refresh and try again.')
@@ -66,6 +100,14 @@ export function AdminVendorsPage() {
   const reject = useMutation({
     mutationFn: ({ vendorId, note }: { vendorId: number; note: string }) =>
       api(`/api/v1/admin/vendors/${vendorId}/reject`, { method: 'POST', body: { note } }),
+    onSuccess: done,
+    onError: fail,
+  })
+  // Re-runs the provider check without the document number (the server
+  // does not have it). A 409 means the provider refused and the vendor must
+  // resubmit; the server's detail says so and is shown as is.
+  const recheck = useMutation({
+    mutationFn: (vendorId: number) => api(`/api/v1/admin/vendors/${vendorId}/recheck`, { method: 'POST', body: {} }),
     onSuccess: done,
     onError: fail,
   })
@@ -149,6 +191,7 @@ export function AdminVendorsPage() {
                             {RESULT_LABEL[v.providerResult] ?? v.providerResult}
                             {v.verificationMessage ? ` · ${v.verificationMessage}` : ''}
                           </div>
+                          {flagLine(v) && <div style={small}>{flagLine(v)}</div>}
                         </td>
                         <td style={cell}>
                           {v.documentType
@@ -198,6 +241,14 @@ export function AdminVendorsPage() {
                                 style={{ ...btn, color: approvable(v) ? 'var(--aloe)' : 'var(--ink-soft)' }}>
                                 {approve.isPending && approve.variables === v.vendorId ? 'Approving…' : 'Approve'}
                               </button>
+                              {recheckable(v) && (
+                                <button onClick={() => recheck.mutate(v.vendorId)}
+                                  disabled={recheck.isPending && recheck.variables === v.vendorId}
+                                  aria-label={`Re-run check for ${storeName(v)}`}
+                                  style={{ ...btn, color: 'var(--trust-blue)' }}>
+                                  {recheck.isPending && recheck.variables === v.vendorId ? 'Checking…' : 'Re-run check'}
+                                </button>
+                              )}
                               <button onClick={() => { setRejecting(v.vendorId); setNote('') }}
                                 aria-label={`Reject ${storeName(v)}`}
                                 style={{ ...btn, color: 'var(--clay)' }}>
@@ -211,6 +262,55 @@ export function AdminVendorsPage() {
                   </tbody>
                 </table>
               </div>
+            )}
+
+            <h2 style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 19, marginTop: 32, marginBottom: 8 }}>Approved sellers</h2>
+            <p style={{ ...small, maxWidth: 720, marginBottom: 12 }}>
+              Subaccount status is fetched from the payment provider only when you ask for it. A new
+              or updated subaccount holds its first payout until you verify it in the Paystack dashboard.
+            </p>
+            {(approved.data ?? []).length === 0 ? (
+              <p className="muted-copy">No approved sellers yet.</p>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+                <thead>
+                  <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--line)' }}>
+                    {['Store', 'Approved', 'Subaccount', ''].map((h, i) => (
+                      <th key={i} style={{ padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(approved.data ?? []).map(v => {
+                    const s = subStatus[v.vendorId]
+                    return (
+                      <tr key={v.vendorId} style={{ borderBottom: '1px solid var(--line)' }}>
+                        <td style={{ ...cell, fontWeight: 600 }}>
+                          <Link to={`/shop/${v.vendorId}`} style={{ color: 'var(--ink)' }}>{v.businessName ?? v.email}</Link>
+                          <div style={{ ...small, fontWeight: 400 }}>{v.email}</div>
+                        </td>
+                        <td style={{ ...cell, whiteSpace: 'nowrap' }}>{new Date(v.approvedAt).toLocaleDateString()}</td>
+                        <td style={cell}>
+                          {v.subaccountCode ? <span className="num">{v.subaccountCode}</span> : <span style={small}>No subaccount</span>}
+                          {s && s !== 'loading' && s !== 'failed' && (
+                            <div style={{ ...small, color: s.isVerified ? 'var(--aloe)' : s.splitEnabled ? 'var(--clay)' : 'var(--ink-soft)' }}>
+                              {s.message}
+                            </div>
+                          )}
+                          {s === 'failed' && <div style={{ ...small, color: 'var(--clay)' }}>Could not reach the payment provider. Try again.</div>}
+                        </td>
+                        <td style={{ ...cell, textAlign: 'right' }}>
+                          <button onClick={() => checkSubaccount(v.vendorId)} disabled={s === 'loading'}
+                            aria-label={`Check subaccount for ${v.businessName ?? v.email}`}
+                            style={{ ...btn, color: 'var(--trust-blue)' }}>
+                            {s === 'loading' ? 'Checking…' : 'Check status'}
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             )}
           </>
         )}

@@ -139,6 +139,9 @@ class PaystackCheckoutServiceTest {
                 .endsWith("/checkout/cancelled?order=" + placed.orderId());
 
         assertThat(LAST_AUTHORIZATION.get()).isEqualTo("Bearer sk_test_stub_key");
+        // Split switch off (test yml): no split object, nothing persisted.
+        assertThat(sent.has("split")).isFalse();
+        assertThat(order.getSplitRequest()).isNull();
     }
 
     @Test

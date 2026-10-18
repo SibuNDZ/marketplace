@@ -27,6 +27,7 @@ public class PaymentsConfigValidator implements InitializingBean {
     private final String yocoSecret;
     private final String yocoWebhook;
     private final String paystackSecret;
+    private final boolean paystackSplitEnabled;
     private final String payfastMerchantId;
     private final String payfastMerchantKey;
     private final String payfastProcessUrl;
@@ -39,6 +40,7 @@ public class PaymentsConfigValidator implements InitializingBean {
             @Value("${app.yoco.secret-key:}") String yocoSecret,
             @Value("${app.yoco.webhook-secret:}") String yocoWebhook,
             @Value("${app.paystack.secret-key:}") String paystackSecret,
+            @Value("${app.paystack.split-enabled:false}") boolean paystackSplitEnabled,
             @Value("${app.payfast.merchant-id:}") String payfastMerchantId,
             @Value("${app.payfast.merchant-key:}") String payfastMerchantKey,
             @Value("${app.payfast.process-url:}") String payfastProcessUrl,
@@ -49,6 +51,7 @@ public class PaymentsConfigValidator implements InitializingBean {
         this.yocoSecret = yocoSecret;
         this.yocoWebhook = yocoWebhook;
         this.paystackSecret = paystackSecret;
+        this.paystackSplitEnabled = paystackSplitEnabled;
         this.payfastMerchantId = payfastMerchantId;
         this.payfastMerchantKey = payfastMerchantKey;
         this.payfastProcessUrl = payfastProcessUrl;
@@ -57,6 +60,15 @@ public class PaymentsConfigValidator implements InitializingBean {
 
     @Override
     public void afterPropertiesSet() {
+        // The split rollout calls Paystack from the vendor and admin paths
+        // whatever the checkout provider is, so the key must exist whenever
+        // the switch is on: a healthy boot that 502s every approve is the
+        // failure mode this class exists to prevent.
+        if (paystackSplitEnabled && isBlank(paystackSecret)) {
+            throw new IllegalStateException(
+                    "PAYSTACK_SPLIT_ENABLED=true but PAYSTACK_SECRET_KEY (app.paystack.secret-key) is blank. "
+                    + "Set the key, or leave the split switched off.");
+        }
         String p = provider == null ? "" : provider.trim().toLowerCase();
         switch (p) {
             case "stripe" -> validateStripe();

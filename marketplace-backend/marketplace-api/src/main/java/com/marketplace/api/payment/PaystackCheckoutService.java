@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.marketplace.api.dto.ShippingDtos.ShippingAddressRequest;
 import com.marketplace.api.entity.Order;
+import com.marketplace.api.payout.VendorShareCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -58,6 +59,8 @@ public class PaystackCheckoutService {
 
     private final CheckoutPreparation checkoutPreparation;
     private final ObjectMapper objectMapper;
+    private final VendorShareCalculator shares;
+    private final boolean splitEnabled;
     private final HttpClient http = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
             .build();
@@ -69,12 +72,16 @@ public class PaystackCheckoutService {
 
     public PaystackCheckoutService(CheckoutPreparation checkoutPreparation,
                                    ObjectMapper objectMapper,
+                                   VendorShareCalculator shares,
                                    @Value("${app.paystack.initialize-url}") String initializeUrl,
                                    @Value("${app.paystack.secret-key:}") String secretKey,
                                    @Value("${app.paystack.success-url}") String successUrl,
-                                   @Value("${app.paystack.cancel-url}") String cancelUrl) {
+                                   @Value("${app.paystack.cancel-url}") String cancelUrl,
+                                   @Value("${app.paystack.split-enabled:false}") boolean splitEnabled) {
         this.checkoutPreparation = checkoutPreparation;
         this.objectMapper = objectMapper;
+        this.shares = shares;
+        this.splitEnabled = splitEnabled;
         this.initializeUrl = URI.create(initializeUrl);
         this.secretKey = secretKey.trim();
         this.successUrl = successUrl;
@@ -102,6 +109,23 @@ public class PaystackCheckoutService {
         metadata.put(ORDER_ID_KEY, String.valueOf(order.getId()));
         metadata.put("orderNumber", order.getOrderNumber());
         metadata.put("cancel_action", cancelUrl + "?order=" + order.getId());
+
+        // The flat split (paystack-subaccounts.md §6.1), from the same
+        // per-vendor arithmetic the ledger writes at PAID. Vendors without a
+        // subaccount are left out, so their share stays with the main
+        // account and settles by EFT as today. Persisted as sent so the
+        // webhook can reconcile. With the switch off the body is exactly
+        // what it was before the split existed.
+        if (splitEnabled) {
+            ObjectNode split = PaystackSplitBuilder.build(objectMapper, order.getId(),
+                    Money.toCents(order.getTotalAmount()), shares.sharesFor(order));
+            if (split != null) {
+                body.set("split", split);
+                order.setSplitRequest(split.toString());
+            } else {
+                order.setSplitRequest(null);
+            }
+        }
 
         String json;
         try {

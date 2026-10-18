@@ -198,6 +198,16 @@ app:
     # Test and live keys come from Settings -> API Keys & Webhooks.
     secret-key: ${PAYSTACK_SECRET_KEY:}
     initialize-url: ${PAYSTACK_INITIALIZE_URL:https://api.paystack.co/transaction/initialize}
+    # Base for the subaccount-rollout calls (PaystackClient: bank list,
+    # validate, subaccounts). initialize-url above keeps working unchanged.
+    api-base-url: ${PAYSTACK_API_BASE_URL:https://api.paystack.co}
+    # Rollout switch for paystack-subaccounts.md: validate on banking save,
+    # subaccount on approve, flat split on initialize, webhook reads the
+    # split. OFF everywhere until the owner's recorded test-mode run (ticket
+    # slice 2 §H) is written into the spec. Turning it on with a blank
+    # secret key fails boot. PAYOUT_SELLING_GATE and PAYOUT_TERMS_VERSION
+    # are separate switches and stay where they are.
+    split-enabled: ${PAYSTACK_SPLIT_ENABLED:false}
     # One callback URL (Paystack appends trxref and reference to it); the
     # cancelled page is reached via metadata.cancel_action instead.
     success-url: ${APP_FRONTEND_URL:http://localhost:5173}/checkout/success

@@ -90,6 +90,14 @@ public class Order {
     private String paymentReference;
 
     /**
+     * The Paystack split object exactly as sent on initialize (V39), as
+     * JSON text: subaccount codes and cents only. Null when the order was
+     * not split. The webhook reconciles data.split against it.
+     */
+    @Column(name = "split_request", columnDefinition = "text")
+    private String splitRequest;
+
+    /**
      * Placed while checkout was guarded (V34, CheckoutPolicy): payments in test
      * mode, checkout limited to admins. Such an order has no effect as a sale
      * anywhere: no vendor email, no payout entry, no vendor dashboard entry,
@@ -258,6 +266,14 @@ public class Order {
 
     public void setPaymentReference(String paymentReference) {
         this.paymentReference = paymentReference;
+    }
+
+    public String getSplitRequest() {
+        return splitRequest;
+    }
+
+    public void setSplitRequest(String splitRequest) {
+        this.splitRequest = splitRequest;
     }
 
     public LocalDateTime getCreatedAt() {

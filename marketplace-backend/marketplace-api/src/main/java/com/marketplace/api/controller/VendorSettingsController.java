@@ -5,6 +5,8 @@ import com.marketplace.api.dto.VendorSettingsDtos.BankingDetailsRequest;
 import com.marketplace.api.dto.VendorSettingsDtos.VendorSettingsRequest;
 import com.marketplace.api.dto.VendorSettingsDtos.VendorSettingsResponse;
 import com.marketplace.api.entity.User;
+import com.marketplace.api.payout.BankListService;
+import com.marketplace.api.payout.BankListService.BankOption;
 import com.marketplace.api.payout.VendorPayoutSettingsService;
 import com.marketplace.api.payout.VendorPayoutSettingsService.PayoutSettingsStatus;
 import com.marketplace.api.repository.UserRepository;
@@ -28,11 +30,14 @@ public class VendorSettingsController {
 
     private final UserRepository userRepository;
     private final VendorPayoutSettingsService payoutSettings;
+    private final BankListService bankList;
 
     public VendorSettingsController(UserRepository userRepository,
-                                    VendorPayoutSettingsService payoutSettings) {
+                                    VendorPayoutSettingsService payoutSettings,
+                                    BankListService bankList) {
         this.userRepository = userRepository;
         this.payoutSettings = payoutSettings;
+        this.bankList = bankList;
     }
 
     @GetMapping
@@ -57,6 +62,16 @@ public class VendorSettingsController {
     @GetMapping("/payouts")
     public PayoutSettingsStatus payoutStatus(@AuthenticationPrincipal UserPrincipal me) {
         return payoutSettings.status(me.getId());
+    }
+
+    /**
+     * The bank picker's options: the provider's verification-enabled SA
+     * banks, cached 24h. 503 with a readable problem when the provider is
+     * down and nothing is cached; never a built-in list.
+     */
+    @GetMapping("/payouts/banks")
+    public java.util.List<BankOption> banks() {
+        return bankList.banks();
     }
 
     @PutMapping("/payouts/banking")

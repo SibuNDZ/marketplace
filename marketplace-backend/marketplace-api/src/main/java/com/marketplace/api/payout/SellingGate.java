@@ -19,8 +19,10 @@ import java.util.List;
  * Approval is cleared whenever the banking details change
  * (VendorPayoutSettingsService), so the predicate is always about the
  * account on file now, not one that was approved once. The Paystack
- * subaccount code is NOT part of the predicate yet; it joins when the
- * split settlement lands (paystack-subaccounts.md §4.4).
+ * subaccount code joins the predicate only while the split switch
+ * (app.paystack.split-enabled) is on: with it off no subaccount is ever
+ * created, so requiring one would block every vendor
+ * (paystack-subaccounts.md §4.4).
  *
  * Enforced at placeOrder, server-side, deliberately NOT at add-to-cart: a
  * vendor can become ungated while their products already sit in carts (terms
@@ -40,11 +42,14 @@ import java.util.List;
 public class SellingGate {
 
     private final boolean enabled;
+    private final boolean splitEnabled;
     private final PayoutTerms terms;
 
     public SellingGate(@Value("${app.payouts.selling-gate-enabled}") boolean enabled,
+                       @Value("${app.paystack.split-enabled:false}") boolean splitEnabled,
                        PayoutTerms terms) {
         this.enabled = enabled;
+        this.splitEnabled = splitEnabled;
         this.terms = terms;
     }
 
@@ -59,7 +64,8 @@ public class SellingGate {
         }
         return vendor.hasAcceptedPayoutTerms(terms.version())
                 && vendor.hasCompleteBankingDetails()
-                && vendor.getVendorApprovedAt() != null;
+                && vendor.getVendorApprovedAt() != null
+                && (!splitEnabled || vendor.getPaystackSubaccountCode() != null);
     }
 
     /**

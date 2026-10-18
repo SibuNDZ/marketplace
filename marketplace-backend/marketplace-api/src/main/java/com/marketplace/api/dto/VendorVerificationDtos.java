@@ -39,6 +39,11 @@ public class VendorVerificationDtos {
             String documentLast4,     // e.g. "···4321"; null when no document was supplied
             String providerResult,    // OK | MISMATCH | UNAVAILABLE | NOT_RUN
             String verificationMessage,
+            // The provider's flags (spec §3); null until a check has run.
+            Boolean accountHolderMatch,
+            Boolean accountOpen,
+            Boolean accountOpen3m,
+            Boolean acceptsCredits,
             List<ListingSummary> listings
     ) {}
 
@@ -57,6 +62,26 @@ public class VendorVerificationDtos {
             Long verifiedBy,
             LocalDateTime verifiedAt,
             String note,
-            LocalDateTime vendorApprovedAt
+            LocalDateTime vendorApprovedAt,
+            /** Set on approve while the split switch is on; null otherwise. */
+            String subaccountCode
+    ) {}
+
+    /** A vendor with an approval on file, for the subaccount status view. */
+    public record ApprovedVendor(
+            Long vendorId,
+            String businessName,
+            String email,
+            LocalDateTime approvedAt,
+            String subaccountCode
+    ) {}
+
+    /** GET /{id}/subaccount, read on demand. */
+    public record SubaccountStatus(
+            boolean splitEnabled,
+            String code,
+            Boolean isVerified,
+            String settlementSchedule,
+            String message
     ) {}
 }

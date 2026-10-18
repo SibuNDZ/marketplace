@@ -24,6 +24,7 @@ const cavioure = {
   accountHolderName: 'T Dlamini', bankCode: '198765', bankName: 'Nedbank', accountLast4: '···6789',
   accountType: 'CHEQUE', documentType: 'ID_NUMBER', documentLast4: '···4321',
   providerResult: 'NOT_RUN', verificationMessage: null,
+  accountHolderMatch: null, accountOpen: null, accountOpen3m: null, acceptsCredits: null,
   listings: [
     { id: 22, name: 'Jimmy Choo Pumps', price: '30165.71', imageUrl: 'https://img.test/pumps.jpg' },
     { id: 23, name: 'Silk Scarf', price: '450.00', imageUrl: null },
@@ -33,20 +34,42 @@ const cavioure = {
   accountNumber: FULL_ACCOUNT_NUMBER,
 }
 
+const approvedStore = {
+  vendorId: 41, businessName: 'Approved Store', email: 'approved@test.local',
+  approvedAt: '2026-10-17T09:00:00', subaccountCode: 'ACCT_41',
+}
+
 const mismatched = {
   ...cavioure, vendorId: 30, businessName: 'Mismatch Store', email: 'mismatch@test.local',
   accountHolderName: 'M Mabaso', bankCode: '470010', bankName: 'Capitec', accountLast4: '···0001',
   documentType: 'PASSPORT', documentLast4: '···0002',
   providerResult: 'MISMATCH', verificationMessage: 'Account name does not match', listings: [],
+  accountHolderMatch: false, accountOpen: true, accountOpen3m: null, acceptsCredits: null,
 }
 
 describe('AdminVendorsPage', () => {
   beforeEach(() => {
     role = 'ADMIN'
     api.mockReset()
-    api.mockImplementation((path: string) => path === '/api/v1/admin/vendors/pending'
-      ? Promise.resolve([cavioure, mismatched])
-      : Promise.resolve({ outcome: 'APPROVED' }))
+    api.mockImplementation((path: string) => {
+      if (path === '/api/v1/admin/vendors/pending') return Promise.resolve([cavioure, mismatched])
+      if (path === '/api/v1/admin/vendors/approved') return Promise.resolve([approvedStore])
+      if (path === '/api/v1/admin/vendors/41/subaccount') {
+        return Promise.resolve({ splitEnabled: true, code: 'ACCT_41', isVerified: false, settlementSchedule: 'AUTO',
+          message: 'Awaiting your verification in the Paystack dashboard (Subaccounts)' })
+      }
+      return Promise.resolve({ outcome: 'APPROVED' })
+    })
+  })
+
+  it('reads subaccount status only when asked', async () => {
+    const user = userEvent.setup()
+    renderWithApp(<AdminVendorsPage />)
+    expect(await screen.findByText('ACCT_41')).toBeTruthy()
+    expect(api).not.toHaveBeenCalledWith('/api/v1/admin/vendors/41/subaccount')
+    await user.click(screen.getByRole('button', { name: 'Check subaccount for Approved Store' }))
+    expect(await screen.findByText(/Awaiting your verification in the Paystack dashboard/)).toBeTruthy()
+    expect(api).toHaveBeenCalledWith('/api/v1/admin/vendors/41/subaccount')
   })
 
   it('shows masked banking and identity, links the listings, and never renders a full account number', async () => {
@@ -91,11 +114,17 @@ describe('AdminVendorsPage', () => {
       { method: 'POST', body: { note: 'Holder name does not match the store' } }))
   })
 
-  it('does not offer Approve when the provider result forbids it', async () => {
+  it('does not offer Approve when the provider result forbids it, shows the flags, and offers a re-run', async () => {
+    const user = userEvent.setup()
     renderWithApp(<AdminVendorsPage />)
     const button = await screen.findByRole('button', { name: 'Approve Mismatch Store' })
     expect((button as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByText(/Bank check: name mismatch · Account name does not match/)).toBeTruthy()
+    expect(screen.getByText('holder matches ✗ · open ✓')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Re-run check for Cavioure Designers' })).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Re-run check for Mismatch Store' }))
+    await waitFor(() => expect(api).toHaveBeenCalledWith('/api/v1/admin/vendors/30/recheck', { method: 'POST', body: {} }))
   })
 
   it('shows nothing actionable to a non-admin', () => {

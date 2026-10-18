@@ -1,18 +1,24 @@
 package com.marketplace.api.payout;
 
+import com.marketplace.api.dto.VendorVerificationDtos.ApprovedVendor;
 import com.marketplace.api.dto.VendorVerificationDtos.DecisionResponse;
 import com.marketplace.api.dto.VendorVerificationDtos.ListingSummary;
 import com.marketplace.api.dto.VendorVerificationDtos.PendingVendor;
+import com.marketplace.api.dto.VendorVerificationDtos.SubaccountStatus;
 import com.marketplace.api.entity.Product;
 import com.marketplace.api.entity.ProductImage;
 import com.marketplace.api.entity.User;
 import com.marketplace.api.entity.VendorVerification;
 import com.marketplace.api.entity.VerificationOutcome;
 import com.marketplace.api.entity.VerificationProviderResult;
+import com.marketplace.api.payment.PaystackClient;
+import com.marketplace.api.payment.PaystackExceptions.PaystackRejectedException;
 import com.marketplace.api.payout.PayoutExceptions.VerificationNotApprovableException;
 import com.marketplace.api.payout.PayoutExceptions.VerificationNotFoundException;
+import com.marketplace.api.payout.PayoutExceptions.VerificationRecheckRefusedException;
 import com.marketplace.api.repository.ProductImageRepository;
 import com.marketplace.api.repository.ProductRepository;
+import com.marketplace.api.repository.UserRepository;
 import com.marketplace.api.repository.VendorVerificationRepository;
 import com.marketplace.api.storage.ObjectStorageService;
 import org.slf4j.Logger;
@@ -53,15 +59,92 @@ public class VendorVerificationAdminService {
     private final ProductRepository productRepository;
     private final ProductImageRepository imageRepository;
     private final ObjectStorageService storage;
+    private final AccountValidationService validation;
+    private final SubaccountService subaccounts;
+    private final UserRepository userRepository;
 
     public VendorVerificationAdminService(VendorVerificationRepository verifications,
                                           ProductRepository productRepository,
                                           ProductImageRepository imageRepository,
-                                          ObjectStorageService storage) {
+                                          ObjectStorageService storage,
+                                          AccountValidationService validation,
+                                          SubaccountService subaccounts,
+                                          UserRepository userRepository) {
         this.verifications = verifications;
         this.productRepository = productRepository;
         this.imageRepository = imageRepository;
         this.storage = storage;
+        this.validation = validation;
+        this.subaccounts = subaccounts;
+        this.userRepository = userRepository;
+    }
+
+    /** Vendors with an approval on file, newest first, for the subaccount status view. */
+    @Transactional(readOnly = true)
+    public List<ApprovedVendor> approved() {
+        return userRepository.findByVendorApprovedAtIsNotNullOrderByVendorApprovedAtDesc().stream()
+                .map(u -> new ApprovedVendor(u.getId(), u.getBusinessName(), u.getEmail(),
+                        u.getVendorApprovedAt(), u.getPaystackSubaccountCode()))
+                .toList();
+    }
+
+    /**
+     * On demand only (a button, never page load): the admin page must not
+     * depend on Paystack being up. With the switch off it says so instead
+     * of calling anything.
+     */
+    @Transactional(readOnly = true)
+    public SubaccountStatus subaccountStatus(Long vendorId) {
+        User vendor = userRepository.findById(vendorId).orElseThrow(() -> new VerificationNotFoundException(vendorId));
+        if (!subaccounts.isSplitEnabled()) {
+            return new SubaccountStatus(false, vendor.getPaystackSubaccountCode(), null, null,
+                    "Split not enabled in this environment");
+        }
+        if (vendor.getPaystackSubaccountCode() == null) {
+            return new SubaccountStatus(true, null, null, null, "No subaccount yet (approve the vendor to create one)");
+        }
+        PaystackClient.Subaccount s = subaccounts.fetch(vendor.getPaystackSubaccountCode());
+        return new SubaccountStatus(true, s.code(), s.isVerified(), s.settlementSchedule(),
+                s.isVerified() ? "Verified in the Paystack dashboard"
+                        : "Awaiting your verification in the Paystack dashboard (Subaccounts)");
+    }
+
+    /**
+     * Re-runs the provider check for a PENDING vendor WITHOUT the document
+     * number, which we do not have (FIND OUT C1 records what Paystack
+     * returns for that). A re-run is a new attempt: a new row copying what
+     * the vendor submitted, with the new result; the old row is history
+     * and keeps its result. If Paystack refuses the document-less request,
+     * nothing is written and the admin is told the vendor must resubmit.
+     */
+    @Transactional
+    public PendingVendor recheck(Long vendorId, Long adminId) {
+        VendorVerification previous = latest(vendorId);
+        if (previous.getOutcome() != VerificationOutcome.PENDING) {
+            throw new VerificationRecheckRefusedException(
+                    "Vendor " + vendorId + " is already " + previous.getOutcome() + "; nothing to re-run.");
+        }
+        VendorVerification attempt = new VendorVerification();
+        attempt.setVendor(previous.getVendor());
+        attempt.setAccountHolderName(previous.getAccountHolderName());
+        attempt.setBankCode(previous.getBankCode());
+        attempt.setAccountType(previous.getAccountType());
+        attempt.setAccountLast4(previous.getAccountLast4());
+        attempt.setDocumentType(previous.getDocumentType());
+        attempt.setDocumentLast4(previous.getDocumentLast4());
+        attempt.setOutcome(VerificationOutcome.PENDING);
+        attempt.setNote("Re-run by admin " + adminId + " without the document number");
+        try {
+            validation.apply(attempt, previous.getVendor(), null);
+        } catch (PaystackRejectedException refused) {
+            throw new VerificationRecheckRefusedException(
+                    "The provider refused the re-run (" + refused.getMessage()
+                    + "); the vendor must resubmit their bank details with the document number.");
+        }
+        VendorVerification saved = verifications.save(attempt);
+        log.info("Admin {} re-ran validation for vendor {}: {} (attempt {})",
+                adminId, vendorId, saved.getProviderResult(), saved.getId());
+        return toPending(saved);
     }
 
     /** Every vendor whose latest row is PENDING, oldest submission first. */
@@ -85,8 +168,17 @@ public class VendorVerificationAdminService {
         LocalDateTime now = LocalDateTime.now();
         decide(row, VerificationOutcome.APPROVED, adminId, now, note);
         row.getVendor().setVendorApprovedAt(now);
-        log.info("Admin {} approved vendor {} (verification {}, provider result {})",
-                adminId, vendorId, row.getId(), row.getProviderResult());
+        // Same transaction as the decision: if Paystack rejects or is down,
+        // the exception rolls back the outcome columns and the approval
+        // timestamp with it. No vendor is approved here and unknown there.
+        try {
+            subaccounts.ensureForApproved(row.getVendor());
+        } catch (PaystackRejectedException rejected) {
+            throw new VerificationNotApprovableException(vendorId, rejected.getMessage());
+        }
+        log.info("Admin {} approved vendor {} (verification {}, provider result {}, subaccount {})",
+                adminId, vendorId, row.getId(), row.getProviderResult(),
+                row.getVendor().getPaystackSubaccountCode() == null ? "none" : "set");
         return toDecision(row);
     }
 
@@ -145,6 +237,10 @@ public class VendorVerificationAdminService {
                 mask(v.getDocumentLast4()),
                 v.getProviderResult().name(),
                 v.getVerificationMessage(),
+                v.getAccountHolderMatch(),
+                v.getAccountOpen(),
+                v.getAccountOpen3m(),
+                v.getAcceptsCredits(),
                 listings);
     }
 
@@ -162,6 +258,7 @@ public class VendorVerificationAdminService {
                 row.getVerifiedBy(),
                 row.getVerifiedAt(),
                 row.getNote(),
-                row.getVendor().getVendorApprovedAt());
+                row.getVendor().getVendorApprovedAt(),
+                row.getVendor().getPaystackSubaccountCode());
     }
 }

@@ -579,6 +579,8 @@ export interface VendorOrderResponse {
   shipTo?: ShippingAddress | null
   // Waybill reference captured at ship time; null until provided.
   trackingNumber?: string | null
+  // How this vendor's share settles, from their ledger entry; null when none exists.
+  settlement?: { mode: 'EFT' | 'SPLIT'; status: string; reference: string | null; paidAt: string | null } | null
 }
 
 /** Vendor self-service settings (GET/PUT /api/v1/vendor/settings). */
@@ -694,7 +696,29 @@ export interface PendingVendor {
   documentLast4: string | null
   providerResult: 'OK' | 'MISMATCH' | 'UNAVAILABLE' | 'NOT_RUN'
   verificationMessage: string | null
+  accountHolderMatch: boolean | null
+  accountOpen: boolean | null
+  accountOpen3m: boolean | null
+  acceptsCredits: boolean | null
   listings: PendingVendorListing[]
+}
+
+/** GET /api/v1/admin/vendors/approved */
+export interface ApprovedVendor {
+  vendorId: number
+  businessName: string | null
+  email: string
+  approvedAt: string
+  subaccountCode: string | null
+}
+
+/** GET /api/v1/admin/vendors/{id}/subaccount, read on demand */
+export interface SubaccountStatus {
+  splitEnabled: boolean
+  code: string | null
+  isVerified: boolean | null
+  settlementSchedule: string | null
+  message: string
 }
 
 /** POST /api/v1/admin/vendors/{id}/approve | reject */
@@ -707,6 +731,13 @@ export interface VerificationDecision {
   verifiedAt: string | null
   note: string | null
   vendorApprovedAt: string | null
+  subaccountCode: string | null
+}
+
+/** GET /api/v1/vendor/settings/payouts/banks — the bank picker's options. */
+export interface BankOption {
+  name: string
+  code: string
 }
 
 /** GET /api/v1/fees — public numbers for the How It Works Fees section. */
@@ -716,6 +747,8 @@ export interface PublicFees {
   payoutWindowDays: number
   /** Checkout is gated on vendor approval. Copy describing the gate renders only when true. */
   sellingGateEnabled: boolean
+  /** The Paystack subaccount rollout is on: bank validation, subaccounts, split settlement. */
+  splitEnabled: boolean
 }
 
 /**

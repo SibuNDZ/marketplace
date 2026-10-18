@@ -76,6 +76,19 @@ public class PayoutExceptions {
             super("Vendor " + vendorId + " cannot be approved: provider result is " + result
                     + ". Re-run the validation or reject.");
         }
+
+        /** Paystack refused the subaccount; the approval was rolled back. */
+        public VerificationNotApprovableException(Long vendorId, String providerMessage) {
+            super("Vendor " + vendorId + " cannot be approved: the payment provider refused the subaccount ("
+                    + providerMessage + "). Nothing was changed.");
+        }
+    }
+
+    /** An admin re-run of the provider check that cannot proceed: already decided, or Paystack refused it. */
+    public static class VerificationRecheckRefusedException extends RuntimeException {
+        public VerificationRecheckRefusedException(String message) {
+            super(message);
+        }
     }
 
     /** Terms acceptance raced a version bump; the client must re-show the new text. */

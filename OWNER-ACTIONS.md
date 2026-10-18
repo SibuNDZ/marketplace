@@ -95,6 +95,34 @@ Log lines that mean a human must act (alert on these strings):
 safe: the webhook settles the order on `requested_amount`, not the grossed-up
 `amount`.
 
+### Paystack subaccounts (split settlement)
+
+Spec: `paystack-subaccounts.md`. Built behind one switch; OFF in every
+deployed environment until the recorded test-mode run (ticket
+`docs/tickets/paystack-split-slice-2.md` §H) is written into the spec.
+
+| Variable | Required | Notes |
+|---|---|---|
+| `PAYSTACK_SECRET_KEY` | when the switch is on | Same key as above. Boot fails if the switch is on and this is blank, whatever `PAYMENTS_PROVIDER` is. Also used for the subaccount, bank-list and validate calls. |
+| `PAYSTACK_API_BASE_URL` | no | Default `https://api.paystack.co`. Only change it to point at a stub. |
+| `PAYSTACK_SPLIT_ENABLED` | no | Default `false`. `true` turns on: bank-account validation when a seller saves banking with an identity document, a subaccount on approve, the flat split on every Paystack checkout, and split settlement in the webhook. Sellers without a subaccount keep settling by EFT, so turning it on needs no cutover day. |
+
+**Per vendor, after you approve them on `/admin/vendors`:** Paystack holds the
+first payout to a new or updated subaccount until you verify it by hand.
+Dashboard -> Subaccounts -> the vendor's subaccount -> Verify. The admin page's
+"Check status" button (Approved sellers) reads `is_verified` from Paystack on
+demand and says "Awaiting your verification in the Paystack dashboard" until
+you have. A seller who changes their bank details gets their subaccount
+updated and goes back to awaiting verification.
+
+Log lines that mean a human must act (in addition to the table above):
+
+| String | Meaning |
+|---|---|
+| `SPLIT MISSING ON CHARGE.SUCCESS` | We sent a split on initialize but the webhook reported none. Every entry for that order is left PENDING (EFT); check the transaction in the dashboard before the payout run pays it twice. |
+| `SPLIT SHARE MISMATCH` | Paystack reported a subaccount share more than a cent from the ledger's net. The entry is marked settled (the money moved); reconcile the difference against the dashboard. |
+| `[FIND OUT A1]` | Which bank field name the subaccount API accepted (`bank_code` or `settlement_bank`). Record it in the spec once seen. |
+
 ### If `PAYMENTS_PROVIDER=payfast`
 
 | Variable | Required | Test vs live |

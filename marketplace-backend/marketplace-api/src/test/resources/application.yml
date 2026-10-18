@@ -83,6 +83,10 @@ app:
     # outbound call happens: the checkout test points initialize-url at a stub.
     secret-key: sk_test_paystack_placeholder_for_tests
     initialize-url: http://localhost:9/transaction/initialize
+    # Nothing in mvn test reaches a real host: tests that need the client
+    # point api-base-url at a local stub via @DynamicPropertySource.
+    api-base-url: http://localhost:9
+    split-enabled: false
     success-url: http://localhost:4200/checkout/success
     cancel-url: http://localhost:4200/checkout/cancelled
   payfast:

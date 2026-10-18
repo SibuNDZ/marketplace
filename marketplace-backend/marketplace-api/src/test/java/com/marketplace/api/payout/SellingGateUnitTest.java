@@ -38,7 +38,7 @@ class SellingGateUnitTest {
     @Test
     @DisplayName("gate off: unbanked, unaccepted and unapproved vendors are all sellable")
     void gateOffSellsEverything() {
-        SellingGate off = new SellingGate(false, TERMS);
+        SellingGate off = new SellingGate(false, false, TERMS);
         assertThat(off.sellable(vendor(false, false, false))).isTrue();
         assertThat(off.sellable(vendor(true, true, false))).isTrue();
         assertThat(off.sellable(vendor(true, false, true))).isTrue();
@@ -49,7 +49,7 @@ class SellingGateUnitTest {
     @Test
     @DisplayName("gate on: terms, complete banking AND approval are each required")
     void gateOnNeedsAllThree() {
-        SellingGate on = new SellingGate(true, TERMS);
+        SellingGate on = new SellingGate(true, false, TERMS);
         assertThat(on.sellable(vendor(true, true, true))).isTrue();
         assertThat(on.sellable(vendor(false, true, true))).as("no terms").isFalse();
         assertThat(on.sellable(vendor(true, false, true))).as("no banking").isFalse();
@@ -59,9 +59,20 @@ class SellingGateUnitTest {
     @Test
     @DisplayName("gate on: banking without a bank code is not complete")
     void bankCodeIsPartOfComplete() {
-        SellingGate on = new SellingGate(true, TERMS);
+        SellingGate on = new SellingGate(true, false, TERMS);
         User u = vendor(true, true, true);
         u.setBankCode(null);
         assertThat(on.sellable(u)).isFalse();
+    }
+
+    @Test
+    @DisplayName("the subaccount code is required only while the split switch is on")
+    void subaccountCodeFollowsTheSplitSwitch() {
+        User approvedNoCode = vendor(true, true, true);
+        assertThat(new SellingGate(true, false, TERMS).sellable(approvedNoCode)).as("split off").isTrue();
+        assertThat(new SellingGate(true, true, TERMS).sellable(approvedNoCode)).as("split on, no code").isFalse();
+        approvedNoCode.setPaystackSubaccountCode("ACCT_x");
+        assertThat(new SellingGate(true, true, TERMS).sellable(approvedNoCode)).as("split on, code").isTrue();
+        assertThat(new SellingGate(false, true, TERMS).sellable(vendor(false, false, false))).as("gate off").isTrue();
     }
 }

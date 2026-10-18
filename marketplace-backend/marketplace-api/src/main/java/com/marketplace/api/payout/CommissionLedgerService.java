@@ -5,6 +5,7 @@ import com.marketplace.api.entity.OrderDeliveryFee;
 import com.marketplace.api.entity.OrderItem;
 import com.marketplace.api.entity.PayoutEntryKind;
 import com.marketplace.api.entity.PayoutEntryStatus;
+import com.marketplace.api.entity.SettlementMode;
 import com.marketplace.api.entity.Product;
 import com.marketplace.api.entity.User;
 import com.marketplace.api.entity.VendorPayoutEntry;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -58,18 +60,14 @@ public class CommissionLedgerService {
 
     private final VendorPayoutEntryRepository entryRepository;
     private final OrderRepository orderRepository;
-    private final BigDecimal defaultRate;
+    private final VendorShareCalculator calculator;
 
     public CommissionLedgerService(VendorPayoutEntryRepository entryRepository,
                                    OrderRepository orderRepository,
-                                   @Value("${app.payouts.commission-rate}") BigDecimal defaultRate) {
-        if (defaultRate.signum() < 0 || defaultRate.compareTo(BigDecimal.ONE) > 0) {
-            throw new IllegalStateException(
-                    "app.payouts.commission-rate must be a fraction in [0,1], got " + defaultRate);
-        }
+                                   VendorShareCalculator calculator) {
         this.entryRepository = entryRepository;
         this.orderRepository = orderRepository;
-        this.defaultRate = defaultRate;
+        this.calculator = calculator;
     }
 
     /**
@@ -90,6 +88,53 @@ public class CommissionLedgerService {
             log.info("Payout entry: order {} vendor {} subtotal {} fee {} rate {} commission {} net {}",
                     order.getId(), e.getVendor().getId(), e.getItemSubtotal(), e.getDeliveryFee(),
                     e.getCommissionRate(), e.getCommissionAmount(), e.getNetPayable());
+        }
+    }
+
+    /**
+     * Marks the PRIMARY entries that Paystack settled at the charge
+     * (paystack-subaccounts.md §6.2): PAID, settlement_mode SPLIT, the
+     * Paystack reference, paid now, "Settled by Paystack split". Called in
+     * the same transaction as {@link #recordOnPaid}. Entries whose vendor is
+     * not in the split are untouched and settle by EFT. A reported share
+     * more than one cent from the entry's net is still marked (the money
+     * did move) and logged at ERROR for a human to reconcile.
+     *
+     * "PAID" here means Paystack owes the vendor and settles on its own
+     * schedule, not that money has reached the vendor's bank.
+     */
+    @Transactional
+    public void settleBySplit(Order order, List<com.marketplace.api.payment.PaymentEventService.SplitShare> split,
+                              String paystackReference) {
+        Map<String, Long> reported = new LinkedHashMap<>();
+        for (var s : split) {
+            if (s.subaccountCode() != null) {
+                reported.merge(s.subaccountCode(), s.shareCents(), Long::sum);
+            }
+        }
+        LocalDateTime now = LocalDateTime.now();
+        for (VendorPayoutEntry e : entryRepository.findByOrderId(order.getId())) {
+            if (e.getKind() != PayoutEntryKind.PRIMARY || e.getStatus() != PayoutEntryStatus.PENDING) {
+                continue;
+            }
+            String code = e.getVendor().getPaystackSubaccountCode();
+            if (code == null || !reported.containsKey(code)) {
+                continue;
+            }
+            long expected = e.getNetPayable().movePointRight(2).longValueExact();
+            long got = reported.get(code);
+            if (Math.abs(expected - got) > 1) {
+                log.error("SPLIT SHARE MISMATCH order {} vendor {} expected {} got {} (cents) - "
+                        + "entry marked SPLIT, reconcile against the Paystack dashboard",
+                        order.getId(), e.getVendor().getId(), expected, got);
+            }
+            e.setStatus(PayoutEntryStatus.PAID);
+            e.setSettlementMode(SettlementMode.SPLIT);
+            e.setPaymentReference(paystackReference);
+            e.setPaidAt(now);
+            e.setNote("Settled by Paystack split");
+            log.info("Payout entry {} (order {} vendor {}) settled by Paystack split, reference {}",
+                    e.getId(), order.getId(), e.getVendor().getId(), paystackReference);
         }
     }
 
@@ -304,58 +349,25 @@ public class CommissionLedgerService {
 
     // ── the computation ──────────────────────────────────────────────────
 
+    /**
+     * The arithmetic lives in VendorShareCalculator, shared with the
+     * Paystack split so the share sent at initialize and the entry written
+     * at PAID are the same numbers by construction. This method only maps
+     * shares onto entries.
+     */
     private List<VendorPayoutEntry> computeEntries(Order order) {
-        // Vendor is reached via product -> vendor (OrderItem does not snapshot
-        // it; the ledger entry becomes the snapshot). product_id is nullable
-        // in order_items — an item whose product was deleted between placement
-        // and payment cannot be attributed and MUST NOT vanish silently.
-        Map<Long, User> vendorsById = new LinkedHashMap<>();
-        Map<Long, BigDecimal> subtotals = new LinkedHashMap<>();
-        for (OrderItem item : order.getOrderItems()) {
-            Product product = item.getProduct();
-            User vendor = product == null ? null : product.getVendor();
-            if (vendor == null) {
-                log.error("PAYOUT ATTRIBUTION FAILED: order {} item '{}' ({} x {}) has no "
-                                + "resolvable vendor - MANUAL ATTRIBUTION REQUIRED",
-                        order.getId(), item.getProductNameAtPurchase(),
-                        item.getQuantity(), item.getPriceAtPurchase());
-                continue;
-            }
-            vendorsById.putIfAbsent(vendor.getId(), vendor);
-            subtotals.merge(vendor.getId(),
-                    item.getPriceAtPurchase().multiply(BigDecimal.valueOf(item.getQuantity())),
-                    BigDecimal::add);
-        }
-
-        // Fees come from the snapshot table, never recomputed from the
-        // vendor's current fee. Zero-fee vendors have no row ("free delivery
-        // is silence" — V16), hence getOrDefault below.
-        Map<Long, BigDecimal> feesByVendor = new LinkedHashMap<>();
-        for (OrderDeliveryFee fee : order.getDeliveryFees()) {
-            if (fee.getVendor() != null) {
-                feesByVendor.put(fee.getVendor().getId(), fee.getFeeAtPurchase());
-            }
-        }
-
         List<VendorPayoutEntry> entries = new ArrayList<>();
-        for (Map.Entry<Long, User> v : vendorsById.entrySet()) {
-            User vendor = v.getValue();
-            BigDecimal subtotal = subtotals.get(v.getKey());
-            BigDecimal fee = feesByVendor.getOrDefault(v.getKey(), BigDecimal.ZERO);
-            BigDecimal rate = vendor.getCommissionRate() != null
-                    ? vendor.getCommissionRate() : defaultRate;
-            BigDecimal commission = subtotal.multiply(rate).setScale(2, RoundingMode.DOWN);
-
+        for (VendorShareCalculator.VendorShare share : calculator.sharesFor(order)) {
             VendorPayoutEntry entry = new VendorPayoutEntry();
             entry.setOrder(order);
-            entry.setVendor(vendor);
+            entry.setVendor(share.vendor());
             entry.setKind(PayoutEntryKind.PRIMARY);
             entry.setStatus(PayoutEntryStatus.PENDING);
-            entry.setItemSubtotal(subtotal);
-            entry.setDeliveryFee(fee);
-            entry.setCommissionRate(rate);
-            entry.setCommissionAmount(commission);
-            entry.setNetPayable(subtotal.subtract(commission).add(fee));
+            entry.setItemSubtotal(share.itemSubtotal());
+            entry.setDeliveryFee(share.deliveryFee());
+            entry.setCommissionRate(share.rate());
+            entry.setCommissionAmount(share.commission());
+            entry.setNetPayable(share.netPayable());
             entries.add(entry);
         }
         return entries;

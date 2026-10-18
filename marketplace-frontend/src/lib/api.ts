@@ -714,6 +714,8 @@ export interface PublicFees {
   commissionLive: boolean
   commissionPercent: string
   payoutWindowDays: number
+  /** Checkout is gated on vendor approval. Copy describing the gate renders only when true. */
+  sellingGateEnabled: boolean
 }
 
 /**

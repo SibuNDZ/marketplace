@@ -23,8 +23,6 @@ export function PayoutSetupCard() {
   const [form, setForm] = useState({
     accountHolderName: '', bankName: '', accountNumber: '', branchCode: '', bankCode: '',
     accountType: 'CHEQUE' as 'CHEQUE' | 'SAVINGS',
-    documentType: 'ID_NUMBER' as 'ID_NUMBER' | 'PASSPORT' | 'CIPC',
-    documentNumber: '',
   })
 
   const { data: status } = useQuery<PayoutSettingsStatus>({
@@ -39,18 +37,14 @@ export function PayoutSetupCard() {
   const fail = (e: unknown) =>
     setError(e instanceof ApiError ? e.detail || e.title : 'Something went wrong')
 
-  // The document number leaves this form exactly once, inside the PUT; the
-  // server keeps its last four and nothing else, which is why the sentence
-  // under the field can say so.
+  // No identity document field yet, although the PUT accepts an optional
+  // `identity` (IdentityDocumentRequest). Nothing verifies anything until the
+  // provider validate call exists, so a number collected now would be data
+  // held for no purpose, and the sentence that would sit under the field
+  // ("Used once to verify your bank account") would be untrue. The field
+  // arrives in the slice that gives it a job.
   const saveBanking = useMutation({
-    mutationFn: () => {
-      const { documentType, documentNumber, ...banking } = form
-      const number = documentNumber.trim()
-      return api('/api/v1/vendor/settings/payouts/banking', {
-        method: 'PUT',
-        body: number ? { ...banking, identity: { type: documentType, number } } : banking,
-      })
-    },
+    mutationFn: () => api('/api/v1/vendor/settings/payouts/banking', { method: 'PUT', body: form }),
     onSuccess: () => { setEditing(false); done() },
     onError: fail,
   })
@@ -129,18 +123,6 @@ export function PayoutSetupCard() {
               <option value="CHEQUE">Cheque / current</option>
               <option value="SAVINGS">Savings</option>
             </select>
-            <div style={{ flexBasis: '100%', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-              <select aria-label="Identity document type" style={input} value={form.documentType} onChange={set('documentType')}>
-                <option value="ID_NUMBER">SA ID number</option>
-                <option value="PASSPORT">Passport number</option>
-                <option value="CIPC">CIPC registration number</option>
-              </select>
-              <input maxLength={40} pattern="[A-Za-z0-9/\- ]{4,40}" placeholder="Document number" aria-label="Identity document number"
-                autoComplete="off" style={{ ...input, flex: '1 1 180px' }} value={form.documentNumber} onChange={set('documentNumber')} />
-              <span style={{ flexBasis: '100%', fontSize: 12, color: 'var(--ink-soft)' }}>
-                Used once to verify your bank account. We keep only the last four characters.
-              </span>
-            </div>
             <button type="submit" disabled={saveBanking.isPending} style={{
               padding: '7px 16px', background: 'var(--aloe)', color: '#fff', border: 'none',
               borderRadius: 4, fontWeight: 600, fontSize: 13, cursor: 'pointer',

@@ -37,6 +37,23 @@ export const HOW_YOU_ARE_PAID_SPLIT =
   + 'bank account you nominated by our payment provider as part of that transaction’s settlement. '
   + 'The settlement timing is set by the payment provider. eRestyu does not hold your share.'
 
+/**
+ * Set-off as it works today: the ledger voids an unpaid entry or records a
+ * clawback against a paid one, and the payout run nets it. This is the
+ * version rendered.
+ */
+export const SET_OFF_LIVE =
+  'eRestyu may withhold or recover it from amounts owed to you.'
+
+/**
+ * The §8 version. NOT rendered: reducing the share of later sales is the
+ * split slice, and the dashboard display of the outstanding amount is not
+ * built. Switch together with HOW_YOU_ARE_PAID_SPLIT.
+ */
+export const SET_OFF_SPLIT =
+  'eRestyu may recover it by reducing your share of your later sales until it is recovered, '
+  + 'and will show you the outstanding amount and the order it relates to.'
+
 export const SELLER_TERMS_VERSION_LABEL = 'version 3'
 
 export function SellerTermsPage() {
@@ -80,16 +97,18 @@ export function SellerTermsPage() {
         )}
       </LegalSection>
 
-      <LegalSection heading="Verification">
-        <p>
-          Before you can sell, {COMPANY.tradingName} reviews the bank account you nominate,
-          the name of its holder and your first listings. If you supply an identity document
-          number (South African ID number, passport number or CIPC registration number), we
-          keep a record of the document type and its last four characters; we do not keep the
-          number itself. Changing your bank details suspends selling until the new details
-          are reviewed.
-        </p>
-      </LegalSection>
+      {/* Rendered only while checkout is actually gated: with the flag off
+          nobody is prevented from selling and nothing is suspended, so the
+          section would describe a rule the system does not apply. */}
+      {fees?.sellingGateEnabled && (
+        <LegalSection heading="Verification">
+          <p>
+            Before you can sell, {COMPANY.tradingName} reviews the bank account you nominate,
+            the name of its holder and your first listings. Changing your bank details
+            suspends selling until the new details are reviewed.
+          </p>
+        </LegalSection>
+      )}
 
       <LegalSection heading="Your responsibilities">
         <p>
@@ -109,9 +128,7 @@ export function SellerTermsPage() {
           cooling-off right under the ECT Act and the six-month defect right under the
           Consumer Protection Act. When {COMPANY.tradingName} refunds a buyer for a sale of
           yours, you owe {COMPANY.tradingName} the amount of your share of that sale.
-          {' '}{COMPANY.tradingName} may recover it by reducing your share of your later sales
-          until it is recovered, and will show you the outstanding amount and the order it
-          relates to.
+          {' '}{SET_OFF_LIVE}
         </p>
       </LegalSection>
 
@@ -126,8 +143,8 @@ export function SellerTermsPage() {
         <p>
           You may stop selling at any time by removing your listings; orders already paid
           must still be fulfilled. {COMPANY.tradingName} may close a store for breach of
-          these terms. These terms change by version; selling continues only after you
-          accept the current version.
+          these terms. These terms change by version
+          {fees?.sellingGateEnabled ? '; selling continues only after you accept the current version.' : '.'}
         </p>
       </LegalSection>
 

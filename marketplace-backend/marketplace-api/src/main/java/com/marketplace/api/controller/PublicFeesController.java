@@ -1,6 +1,7 @@
 package com.marketplace.api.controller;
 
 import com.marketplace.api.payout.PayoutTerms;
+import com.marketplace.api.payout.SellingGate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,16 +26,27 @@ public class PublicFeesController {
     public record FeesResponse(
             boolean commissionLive,
             String commissionPercent,
-            int payoutWindowDays
+            int payoutWindowDays,
+            /**
+             * Whether checkout is actually gated on vendor onboarding and
+             * approval. Public copy that describes the gate (the seller
+             * terms' verification section) renders only when this is true,
+             * so the page tells the truth in both flag states and flipping
+             * the flag changes the copy without a deploy.
+             */
+            boolean sellingGateEnabled
     ) {}
 
     private final PayoutTerms terms;
+    private final SellingGate gate;
     private final boolean commissionConfirmed;
 
     public PublicFeesController(
             PayoutTerms terms,
+            SellingGate gate,
             @Value("${app.payouts.commission-confirmed}") boolean commissionConfirmed) {
         this.terms = terms;
+        this.gate = gate;
         this.commissionConfirmed = commissionConfirmed;
     }
 
@@ -43,6 +55,7 @@ public class PublicFeesController {
         return new FeesResponse(
                 commissionConfirmed,
                 terms.commissionPercentDisplay(),
-                terms.payoutWindowDays());
+                terms.payoutWindowDays(),
+                gate.isEnabled());
     }
 }

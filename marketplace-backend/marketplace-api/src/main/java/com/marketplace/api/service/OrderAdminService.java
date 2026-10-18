@@ -91,11 +91,14 @@ public class OrderAdminService {
         order.setStatus(target);
         recorder.record(order, current, target, adminUserId, note);
 
-        // REFUNDED is DELIVERED-only in the transition map and this generic
-        // path is its sole route, so the ledger reversal lives here. This is
-        // the first side effect REFUNDED has grown — per the class comment,
-        // if it gains more (gateway refund call, restocking), it graduates
-        // into its own method the way cancelOrder did.
+        // REFUNDED is reachable from PAID, SHIPPED and DELIVERED (v3 of the
+        // transition map) and this generic path is its sole route, so the
+        // ledger reversal lives here and fires for every source alike. It
+        // is the only side effect REFUNDED has: stock is deliberately NOT
+        // restored (paystack-subaccounts.md §7 item 1), because the goods
+        // may be in transit or with the buyer; restocking stays a vendor
+        // action. Per the class comment, if REFUNDED gains more (a gateway
+        // refund call), it graduates into its own method as cancelOrder did.
         if (target == OrderStatus.REFUNDED) {
             ledger.reverseOnRefund(order);
         }

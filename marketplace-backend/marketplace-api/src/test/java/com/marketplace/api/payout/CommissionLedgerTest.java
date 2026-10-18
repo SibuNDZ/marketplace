@@ -9,6 +9,7 @@ import com.marketplace.api.entity.Product;
 import com.marketplace.api.entity.User;
 import com.marketplace.api.entity.VendorPayoutEntry;
 import com.marketplace.api.payment.PaymentEventService;
+import com.marketplace.api.repository.ProductRepository;
 import com.marketplace.api.repository.UserRepository;
 import com.marketplace.api.repository.VendorPayoutEntryRepository;
 import com.marketplace.api.service.OrderAdminService;
@@ -71,6 +72,7 @@ class CommissionLedgerTest {
     @Autowired CommissionLedgerService     ledger;
     @Autowired VendorPayoutEntryRepository entryRepository;
     @Autowired UserRepository              userRepository;
+    @Autowired ProductRepository           productRepository;
     @Autowired TestFixtures                fixtures;
 
     private static String uniq(String base) {
@@ -234,6 +236,43 @@ class CommissionLedgerTest {
         assertThat(entries).hasSize(1); // the row SURVIVES — append-only history
         assertThat(entries.get(0).getStatus()).isEqualTo(PayoutEntryStatus.VOID);
         assertThat(entries.get(0).getNote()).contains("refunded");
+    }
+
+    @Test
+    @DisplayName("PAID -> REFUNDED voids the PENDING entry, and stock is not restored")
+    void refundFromPaidVoids() {
+        User vendor = fixtures.vendor(uniq("paid-refund-vendor"));
+        Product p = fixtures.productForVendor(uniq("Paid Refund Item"), uniq("SKU-LPR"),
+                new BigDecimal("100.00"), 5, vendor);
+        User admin = fixtures.admin(uniq("paid-refund-admin"));
+        Long orderId = paidOrder(p); // PENDING -> PAID, never shipped
+        assertThat(only(orderId).getStatus()).isEqualTo(PayoutEntryStatus.PENDING);
+        int stockAfterSale = productRepository.findById(p.getId()).orElseThrow().getStockQuantity();
+
+        orderAdminService.transition(orderId, OrderStatus.REFUNDED, admin.getId(), "Never shipped");
+
+        assertThat(only(orderId).getStatus()).isEqualTo(PayoutEntryStatus.VOID);
+        // Stock is NOT restored on refund (paystack-subaccounts.md §7 item 1):
+        // the goods may be in transit or with the buyer, so restocking stays
+        // a vendor action. The reserved unit stays reserved.
+        assertThat(productRepository.findById(p.getId()).orElseThrow().getStockQuantity())
+                .isEqualTo(stockAfterSale);
+    }
+
+    @Test
+    @DisplayName("SHIPPED -> REFUNDED voids the PENDING entry")
+    void refundFromShippedVoids() {
+        User vendor = fixtures.vendor(uniq("shipped-refund-vendor"));
+        Product p = fixtures.productForVendor(uniq("Shipped Refund Item"), uniq("SKU-LSR"),
+                new BigDecimal("100.00"), 5, vendor);
+        User admin = fixtures.admin(uniq("shipped-refund-admin"));
+        Long orderId = paidOrder(p);
+        orderAdminService.transition(orderId, OrderStatus.SHIPPED, admin.getId(), "Shipped");
+        assertThat(only(orderId).getStatus()).isEqualTo(PayoutEntryStatus.PENDING);
+
+        orderAdminService.transition(orderId, OrderStatus.REFUNDED, admin.getId(), "Lost in transit");
+
+        assertThat(only(orderId).getStatus()).isEqualTo(PayoutEntryStatus.VOID);
     }
 
     @Test

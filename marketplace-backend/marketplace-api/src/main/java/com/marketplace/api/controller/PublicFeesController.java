@@ -34,20 +34,31 @@ public class PublicFeesController {
              * so the page tells the truth in both flag states and flipping
              * the flag changes the copy without a deploy.
              */
-            boolean sellingGateEnabled
+            boolean sellingGateEnabled,
+            /**
+             * Whether the Paystack subaccount rollout is switched on: bank
+             * validation on save, subaccounts on approve, split settlement.
+             * The identity inputs on the vendor card render only when true,
+             * because only then is "used once to verify your bank account
+             * with our payment provider" a true sentence.
+             */
+            boolean splitEnabled
     ) {}
 
     private final PayoutTerms terms;
     private final SellingGate gate;
     private final boolean commissionConfirmed;
+    private final boolean splitEnabled;
 
     public PublicFeesController(
             PayoutTerms terms,
             SellingGate gate,
-            @Value("${app.payouts.commission-confirmed}") boolean commissionConfirmed) {
+            @Value("${app.payouts.commission-confirmed}") boolean commissionConfirmed,
+            @Value("${app.paystack.split-enabled:false}") boolean splitEnabled) {
         this.terms = terms;
         this.gate = gate;
         this.commissionConfirmed = commissionConfirmed;
+        this.splitEnabled = splitEnabled;
     }
 
     @GetMapping
@@ -56,6 +67,7 @@ public class PublicFeesController {
                 commissionConfirmed,
                 terms.commissionPercentDisplay(),
                 terms.payoutWindowDays(),
-                gate.isEnabled());
+                gate.isEnabled(),
+                splitEnabled);
     }
 }

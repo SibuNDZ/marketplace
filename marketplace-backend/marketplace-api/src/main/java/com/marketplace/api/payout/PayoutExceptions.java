@@ -78,6 +78,13 @@ public class PayoutExceptions {
         }
     }
 
+    /** An admin re-run of the provider check that cannot proceed: already decided, or Paystack refused it. */
+    public static class VerificationRecheckRefusedException extends RuntimeException {
+        public VerificationRecheckRefusedException(String message) {
+            super(message);
+        }
+    }
+
     /** Terms acceptance raced a version bump; the client must re-show the new text. */
     public static class StaleTermsVersionException extends RuntimeException {
         public StaleTermsVersionException(int sent, int current) {

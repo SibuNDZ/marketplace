@@ -157,6 +157,11 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.CONFLICT, "Verification cannot be approved", ex.getMessage());
     }
 
+    @ExceptionHandler(PayoutExceptions.VerificationRecheckRefusedException.class)
+    public ProblemDetail verificationRecheckRefused(PayoutExceptions.VerificationRecheckRefusedException ex) {
+        return problem(HttpStatus.CONFLICT, "Re-run not possible", ex.getMessage());
+    }
+
     // 503, not 502: nothing is wrong with the request or our keys, the
     // upstream list is simply not obtainable right now, and the detail is
     // the sentence the vendor card shows.

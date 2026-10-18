@@ -6,6 +6,7 @@ import com.marketplace.api.entity.User;
 import com.marketplace.api.entity.VendorVerification;
 import com.marketplace.api.entity.VerificationOutcome;
 import com.marketplace.api.entity.VerificationProviderResult;
+import com.marketplace.api.payment.PaystackExceptions.PaystackRejectedException;
 import com.marketplace.api.payout.PayoutExceptions.StaleTermsVersionException;
 import com.marketplace.api.repository.UserRepository;
 import com.marketplace.api.repository.VendorVerificationRepository;
@@ -58,15 +59,18 @@ public class VendorPayoutSettingsService {
 
     private final UserRepository userRepository;
     private final VendorVerificationRepository verifications;
+    private final AccountValidationService validation;
     private final PayoutTerms terms;
     private final SellingGate gate;
 
     public VendorPayoutSettingsService(UserRepository userRepository,
                                        VendorVerificationRepository verifications,
+                                       AccountValidationService validation,
                                        PayoutTerms terms,
                                        SellingGate gate) {
         this.userRepository = userRepository;
         this.verifications = verifications;
+        this.validation = validation;
         this.terms = terms;
         this.gate = gate;
     }
@@ -87,11 +91,12 @@ public class VendorPayoutSettingsService {
 
     /**
      * With an optional identity document. The document number is used for
-     * exactly one thing here: its last four characters go on the new
-     * verification row. The number itself is not stored, not logged and,
-     * in this slice, not sent anywhere (the provider validate call is not
-     * built yet). A document that differs from the one on the latest row
-     * counts as a change: the account must be re-verified against it.
+     * two things and nothing else: its last four characters go on the new
+     * verification row, and, with the split switch on, the number goes to
+     * the provider's validate call once (AccountValidationService). It is
+     * not stored and not logged. A document that differs from the one on
+     * the latest row counts as a change: the account must be re-verified
+     * against it.
      */
     @Transactional
     public PayoutSettingsStatus updateBanking(Long vendorId, String accountHolderName,
@@ -128,12 +133,22 @@ public class VendorPayoutSettingsService {
             row.setBankCode(bank);
             row.setAccountType(accountType);
             row.setAccountLast4(number.substring(number.length() - 4));
-            if (identity != null) {
-                row.setDocumentType(identity.type());
-                row.setDocumentLast4(identity.last4()); // the number ends here
-            }
             row.setProviderResult(VerificationProviderResult.NOT_RUN);
             row.setOutcome(VerificationOutcome.PENDING);
+            if (identity != null) {
+                row.setDocumentType(identity.type());
+                row.setDocumentLast4(identity.last4());
+                try {
+                    // The one place the number is read; it is on the wire and gone.
+                    validation.apply(row, vendor, identity.number());
+                } catch (PaystackRejectedException refused) {
+                    // Paystack understood and refused (a bad bank code, say).
+                    // The vendor is never blocked by that: the banking saves,
+                    // the row records why, and the admin re-runs or rejects.
+                    row.setProviderResult(VerificationProviderResult.UNAVAILABLE);
+                    row.setVerificationMessage("Provider refused the check: " + refused.getMessage());
+                }
+            }
             verifications.save(row);
         }
         // Deliberately no banking VALUES in this line — id and outcome only.

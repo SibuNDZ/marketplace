@@ -694,6 +694,10 @@ export interface PendingVendor {
   documentLast4: string | null
   providerResult: 'OK' | 'MISMATCH' | 'UNAVAILABLE' | 'NOT_RUN'
   verificationMessage: string | null
+  accountHolderMatch: boolean | null
+  accountOpen: boolean | null
+  accountOpen3m: boolean | null
+  acceptsCredits: boolean | null
   listings: PendingVendorListing[]
 }
 
@@ -722,6 +726,8 @@ export interface PublicFees {
   payoutWindowDays: number
   /** Checkout is gated on vendor approval. Copy describing the gate renders only when true. */
   sellingGateEnabled: boolean
+  /** The Paystack subaccount rollout is on: bank validation, subaccounts, split settlement. */
+  splitEnabled: boolean
 }
 
 /**

@@ -24,6 +24,7 @@ const cavioure = {
   accountHolderName: 'T Dlamini', bankCode: '198765', bankName: 'Nedbank', accountLast4: '···6789',
   accountType: 'CHEQUE', documentType: 'ID_NUMBER', documentLast4: '···4321',
   providerResult: 'NOT_RUN', verificationMessage: null,
+  accountHolderMatch: null, accountOpen: null, accountOpen3m: null, acceptsCredits: null,
   listings: [
     { id: 22, name: 'Jimmy Choo Pumps', price: '30165.71', imageUrl: 'https://img.test/pumps.jpg' },
     { id: 23, name: 'Silk Scarf', price: '450.00', imageUrl: null },
@@ -38,6 +39,7 @@ const mismatched = {
   accountHolderName: 'M Mabaso', bankCode: '470010', bankName: 'Capitec', accountLast4: '···0001',
   documentType: 'PASSPORT', documentLast4: '···0002',
   providerResult: 'MISMATCH', verificationMessage: 'Account name does not match', listings: [],
+  accountHolderMatch: false, accountOpen: true, accountOpen3m: null, acceptsCredits: null,
 }
 
 describe('AdminVendorsPage', () => {
@@ -91,11 +93,17 @@ describe('AdminVendorsPage', () => {
       { method: 'POST', body: { note: 'Holder name does not match the store' } }))
   })
 
-  it('does not offer Approve when the provider result forbids it', async () => {
+  it('does not offer Approve when the provider result forbids it, shows the flags, and offers a re-run', async () => {
+    const user = userEvent.setup()
     renderWithApp(<AdminVendorsPage />)
     const button = await screen.findByRole('button', { name: 'Approve Mismatch Store' })
     expect((button as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByText(/Bank check: name mismatch · Account name does not match/)).toBeTruthy()
+    expect(screen.getByText('holder matches ✗ · open ✓')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Re-run check for Cavioure Designers' })).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Re-run check for Mismatch Store' }))
+    await waitFor(() => expect(api).toHaveBeenCalledWith('/api/v1/admin/vendors/30/recheck', { method: 'POST', body: {} }))
   })
 
   it('shows nothing actionable to a non-admin', () => {

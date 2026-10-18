@@ -35,6 +35,22 @@ const RESULT_LABEL: Record<string, string> = {
 }
 
 const approvable = (v: PendingVendor) => v.providerResult === 'OK' || v.providerResult === 'NOT_RUN'
+const recheckable = (v: PendingVendor) => v.providerResult === 'MISMATCH' || v.providerResult === 'UNAVAILABLE'
+
+const FLAGS: [keyof PendingVendor, string][] = [
+  ['accountHolderMatch', 'holder matches'],
+  ['accountOpen', 'open'],
+  ['accountOpen3m', 'open 3+ months'],
+  ['acceptsCredits', 'accepts credits'],
+]
+
+/** "holder matches ✓ · open ✓ · open 3+ months ✗", only for flags the provider returned. */
+function flagLine(v: PendingVendor): string {
+  return FLAGS
+    .filter(([k]) => v[k] !== null && v[k] !== undefined)
+    .map(([k, label]) => `${label} ${v[k] ? '✓' : '✗'}`)
+    .join(' · ')
+}
 
 export function AdminVendorsPage() {
   const { user } = useAuth()
@@ -66,6 +82,14 @@ export function AdminVendorsPage() {
   const reject = useMutation({
     mutationFn: ({ vendorId, note }: { vendorId: number; note: string }) =>
       api(`/api/v1/admin/vendors/${vendorId}/reject`, { method: 'POST', body: { note } }),
+    onSuccess: done,
+    onError: fail,
+  })
+  // Re-runs the provider check without the document number (the server
+  // does not have it). A 409 means the provider refused and the vendor must
+  // resubmit; the server's detail says so and is shown as is.
+  const recheck = useMutation({
+    mutationFn: (vendorId: number) => api(`/api/v1/admin/vendors/${vendorId}/recheck`, { method: 'POST', body: {} }),
     onSuccess: done,
     onError: fail,
   })
@@ -149,6 +173,7 @@ export function AdminVendorsPage() {
                             {RESULT_LABEL[v.providerResult] ?? v.providerResult}
                             {v.verificationMessage ? ` · ${v.verificationMessage}` : ''}
                           </div>
+                          {flagLine(v) && <div style={small}>{flagLine(v)}</div>}
                         </td>
                         <td style={cell}>
                           {v.documentType
@@ -198,6 +223,14 @@ export function AdminVendorsPage() {
                                 style={{ ...btn, color: approvable(v) ? 'var(--aloe)' : 'var(--ink-soft)' }}>
                                 {approve.isPending && approve.variables === v.vendorId ? 'Approving…' : 'Approve'}
                               </button>
+                              {recheckable(v) && (
+                                <button onClick={() => recheck.mutate(v.vendorId)}
+                                  disabled={recheck.isPending && recheck.variables === v.vendorId}
+                                  aria-label={`Re-run check for ${storeName(v)}`}
+                                  style={{ ...btn, color: 'var(--trust-blue)' }}>
+                                  {recheck.isPending && recheck.variables === v.vendorId ? 'Checking…' : 'Re-run check'}
+                                </button>
+                              )}
                               <button onClick={() => { setRejecting(v.vendorId); setNote('') }}
                                 aria-label={`Reject ${storeName(v)}`}
                                 style={{ ...btn, color: 'var(--clay)' }}>

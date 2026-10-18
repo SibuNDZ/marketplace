@@ -9,8 +9,10 @@ import com.marketplace.api.entity.User;
 import com.marketplace.api.entity.VendorVerification;
 import com.marketplace.api.entity.VerificationOutcome;
 import com.marketplace.api.entity.VerificationProviderResult;
+import com.marketplace.api.payment.PaystackExceptions.PaystackRejectedException;
 import com.marketplace.api.payout.PayoutExceptions.VerificationNotApprovableException;
 import com.marketplace.api.payout.PayoutExceptions.VerificationNotFoundException;
+import com.marketplace.api.payout.PayoutExceptions.VerificationRecheckRefusedException;
 import com.marketplace.api.repository.ProductImageRepository;
 import com.marketplace.api.repository.ProductRepository;
 import com.marketplace.api.repository.VendorVerificationRepository;
@@ -53,15 +55,56 @@ public class VendorVerificationAdminService {
     private final ProductRepository productRepository;
     private final ProductImageRepository imageRepository;
     private final ObjectStorageService storage;
+    private final AccountValidationService validation;
 
     public VendorVerificationAdminService(VendorVerificationRepository verifications,
                                           ProductRepository productRepository,
                                           ProductImageRepository imageRepository,
-                                          ObjectStorageService storage) {
+                                          ObjectStorageService storage,
+                                          AccountValidationService validation) {
         this.verifications = verifications;
         this.productRepository = productRepository;
         this.imageRepository = imageRepository;
         this.storage = storage;
+        this.validation = validation;
+    }
+
+    /**
+     * Re-runs the provider check for a PENDING vendor WITHOUT the document
+     * number, which we do not have (FIND OUT C1 records what Paystack
+     * returns for that). A re-run is a new attempt: a new row copying what
+     * the vendor submitted, with the new result; the old row is history
+     * and keeps its result. If Paystack refuses the document-less request,
+     * nothing is written and the admin is told the vendor must resubmit.
+     */
+    @Transactional
+    public PendingVendor recheck(Long vendorId, Long adminId) {
+        VendorVerification previous = latest(vendorId);
+        if (previous.getOutcome() != VerificationOutcome.PENDING) {
+            throw new VerificationRecheckRefusedException(
+                    "Vendor " + vendorId + " is already " + previous.getOutcome() + "; nothing to re-run.");
+        }
+        VendorVerification attempt = new VendorVerification();
+        attempt.setVendor(previous.getVendor());
+        attempt.setAccountHolderName(previous.getAccountHolderName());
+        attempt.setBankCode(previous.getBankCode());
+        attempt.setAccountType(previous.getAccountType());
+        attempt.setAccountLast4(previous.getAccountLast4());
+        attempt.setDocumentType(previous.getDocumentType());
+        attempt.setDocumentLast4(previous.getDocumentLast4());
+        attempt.setOutcome(VerificationOutcome.PENDING);
+        attempt.setNote("Re-run by admin " + adminId + " without the document number");
+        try {
+            validation.apply(attempt, previous.getVendor(), null);
+        } catch (PaystackRejectedException refused) {
+            throw new VerificationRecheckRefusedException(
+                    "The provider refused the re-run (" + refused.getMessage()
+                    + "); the vendor must resubmit their bank details with the document number.");
+        }
+        VendorVerification saved = verifications.save(attempt);
+        log.info("Admin {} re-ran validation for vendor {}: {} (attempt {})",
+                adminId, vendorId, saved.getProviderResult(), saved.getId());
+        return toPending(saved);
     }
 
     /** Every vendor whose latest row is PENDING, oldest submission first. */
@@ -145,6 +188,10 @@ public class VendorVerificationAdminService {
                 mask(v.getDocumentLast4()),
                 v.getProviderResult().name(),
                 v.getVerificationMessage(),
+                v.getAccountHolderMatch(),
+                v.getAccountOpen(),
+                v.getAccountOpen3m(),
+                v.getAcceptsCredits(),
                 listings);
     }
 

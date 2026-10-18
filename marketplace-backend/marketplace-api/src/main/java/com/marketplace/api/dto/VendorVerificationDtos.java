@@ -39,6 +39,11 @@ public class VendorVerificationDtos {
             String documentLast4,     // e.g. "···4321"; null when no document was supplied
             String providerResult,    // OK | MISMATCH | UNAVAILABLE | NOT_RUN
             String verificationMessage,
+            // The provider's flags (spec §3); null until a check has run.
+            Boolean accountHolderMatch,
+            Boolean accountOpen,
+            Boolean accountOpen3m,
+            Boolean acceptsCredits,
             List<ListingSummary> listings
     ) {}
 

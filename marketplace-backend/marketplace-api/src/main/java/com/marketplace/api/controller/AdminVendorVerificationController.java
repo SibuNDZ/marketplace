@@ -49,6 +49,13 @@ public class AdminVendorVerificationController {
         return service.approve(vendorId, admin.getId(), request == null ? null : request.note());
     }
 
+    /** Re-run the provider check without the document number. 409 when it cannot proceed. */
+    @PostMapping("/{vendorId}/recheck")
+    public PendingVendor recheck(@PathVariable Long vendorId,
+                                 @AuthenticationPrincipal UserPrincipal admin) {
+        return service.recheck(vendorId, admin.getId());
+    }
+
     /** Note required. Leaves vendor_approved_at alone. */
     @PostMapping("/{vendorId}/reject")
     public DecisionResponse reject(@PathVariable Long vendorId,

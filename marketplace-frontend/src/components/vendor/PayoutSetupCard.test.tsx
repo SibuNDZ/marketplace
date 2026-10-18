@@ -22,12 +22,17 @@ const banks = [
 ]
 
 let banksFail = false
+let splitEnabled = false
 
 describe('PayoutSetupCard bank picker', () => {
   beforeEach(() => {
     banksFail = false
+    splitEnabled = false
     api.mockReset()
     api.mockImplementation((path: string, opts?: { method?: string }) => {
+      if (path === '/api/v1/fees') {
+        return Promise.resolve({ commissionLive: true, commissionPercent: '10', payoutWindowDays: 7, sellingGateEnabled: false, splitEnabled })
+      }
       if (path === '/api/v1/vendor/settings/payouts' && !opts?.method) return Promise.resolve(status)
       if (path === '/api/v1/vendor/settings/payouts/banks') {
         return banksFail ? Promise.reject(new Error('503')) : Promise.resolve(banks)
@@ -58,6 +63,42 @@ describe('PayoutSetupCard bank picker', () => {
       body: {
         accountHolderName: 'Thandi Dlamini', bankName: 'Nedbank', accountNumber: '1122336789',
         branchCode: '198765', bankCode: '198765', accountType: 'CHEQUE',
+      },
+    }))
+  })
+
+  it('shows no identity inputs while the split is off', async () => {
+    const user = userEvent.setup()
+    renderWithApp(<PayoutSetupCard />)
+    await user.click(await screen.findByRole('button', { name: 'Add details' }))
+    await screen.findByLabelText('Bank')
+    expect(screen.queryByLabelText('Identity document number')).toBeNull()
+    expect(document.body.textContent).not.toContain('Used once to verify your bank account')
+  })
+
+  it('with the split on, offers the identity inputs with the exact sentence and sends the number once', async () => {
+    splitEnabled = true
+    const user = userEvent.setup()
+    renderWithApp(<PayoutSetupCard />)
+    await user.click(await screen.findByRole('button', { name: 'Add details' }))
+    const select = await screen.findByLabelText('Bank') as HTMLSelectElement
+    await waitFor(() => expect(select.disabled).toBe(false))
+    expect(await screen.findByText('Used once to verify your bank account with our payment provider. We keep only the last four characters.')).toBeTruthy()
+
+    await user.type(screen.getByLabelText('Account holder name'), 'Thandi Dlamini')
+    await user.selectOptions(select, '198765')
+    await user.type(screen.getByLabelText('Account number'), '1122336789')
+    await user.type(screen.getByLabelText('Branch code'), '198765')
+    await user.selectOptions(screen.getByLabelText('Identity document type'), 'PASSPORT')
+    await user.type(screen.getByLabelText('Identity document number'), 'A1234567')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(api).toHaveBeenCalledWith('/api/v1/vendor/settings/payouts/banking', {
+      method: 'PUT',
+      body: {
+        accountHolderName: 'Thandi Dlamini', bankName: 'Nedbank', accountNumber: '1122336789',
+        branchCode: '198765', bankCode: '198765', accountType: 'CHEQUE',
+        identity: { type: 'PASSPORT', number: 'A1234567' },
       },
     }))
   })

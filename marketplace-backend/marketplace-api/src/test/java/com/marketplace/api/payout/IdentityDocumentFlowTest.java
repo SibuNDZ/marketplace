@@ -92,6 +92,9 @@ class IdentityDocumentFlowTest {
                 .findFirstByVendorIdOrderByCreatedAtDescIdDesc(vendor.getId()).orElseThrow();
         assertThat(row.getDocumentType()).isEqualTo(DocumentType.ID_NUMBER);
         assertThat(row.getDocumentLast4()).isEqualTo("9087");
+        // Split switch off (test yml): no provider call, the row stays NOT_RUN.
+        assertThat(row.getProviderResult())
+                .isEqualTo(com.marketplace.api.entity.VerificationProviderResult.NOT_RUN);
 
         assertThat(response).doesNotContain(NUMBER).doesNotContain("1122336789");
         assertThat(output.getAll()).doesNotContain(NUMBER).doesNotContain("1122336789");

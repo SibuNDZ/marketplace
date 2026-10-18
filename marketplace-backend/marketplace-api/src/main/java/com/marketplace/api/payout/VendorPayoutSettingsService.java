@@ -81,6 +81,24 @@ public class VendorPayoutSettingsService {
                                               String bankName, String accountNumber,
                                               String branchCode, String bankCode,
                                               BankAccountType accountType) {
+        return updateBanking(vendorId, accountHolderName, bankName, accountNumber,
+                branchCode, bankCode, accountType, null);
+    }
+
+    /**
+     * With an optional identity document. The document number is used for
+     * exactly one thing here: its last four characters go on the new
+     * verification row. The number itself is not stored, not logged and,
+     * in this slice, not sent anywhere (the provider validate call is not
+     * built yet). A document that differs from the one on the latest row
+     * counts as a change: the account must be re-verified against it.
+     */
+    @Transactional
+    public PayoutSettingsStatus updateBanking(Long vendorId, String accountHolderName,
+                                              String bankName, String accountNumber,
+                                              String branchCode, String bankCode,
+                                              BankAccountType accountType,
+                                              IdentityDocumentRequest identity) {
         User vendor = userRepository.findById(vendorId).orElseThrow();
         String holder = accountHolderName.strip();
         String number = accountNumber.strip();
@@ -92,7 +110,8 @@ public class VendorPayoutSettingsService {
                 || !Objects.equals(number, vendor.getAccountNumber())
                 || !Objects.equals(bank, vendor.getBankCode())
                 || !Objects.equals(branch, vendor.getBranchCode())
-                || accountType != vendor.getAccountType();
+                || accountType != vendor.getAccountType()
+                || (identity != null && !identityOnLatestRow(vendorId, identity));
 
         vendor.setAccountHolderName(holder);
         vendor.setBankName(bankName.strip());
@@ -109,6 +128,10 @@ public class VendorPayoutSettingsService {
             row.setBankCode(bank);
             row.setAccountType(accountType);
             row.setAccountLast4(number.substring(number.length() - 4));
+            if (identity != null) {
+                row.setDocumentType(identity.type());
+                row.setDocumentLast4(identity.last4()); // the number ends here
+            }
             row.setProviderResult(VerificationProviderResult.NOT_RUN);
             row.setOutcome(VerificationOutcome.PENDING);
             verifications.save(row);
@@ -135,6 +158,14 @@ public class VendorPayoutSettingsService {
         vendor.setPayoutTermsAcceptedAt(LocalDateTime.now());
         log.info("Vendor {} accepted payout terms v{}", vendorId, terms.version());
         return toStatus(vendor);
+    }
+
+    /** True when the latest row already records this document's type and last four. */
+    private boolean identityOnLatestRow(Long vendorId, IdentityDocumentRequest identity) {
+        return verifications.findFirstByVendorIdOrderByCreatedAtDescIdDesc(vendorId)
+                .map(v -> v.getDocumentType() == identity.type()
+                        && Objects.equals(v.getDocumentLast4(), identity.last4()))
+                .orElse(false);
     }
 
     private PayoutSettingsStatus toStatus(User vendor) {

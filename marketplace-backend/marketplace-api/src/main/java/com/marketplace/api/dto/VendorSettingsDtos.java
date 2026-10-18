@@ -1,6 +1,8 @@
 package com.marketplace.api.dto;
 
 import com.marketplace.api.entity.BankAccountType;
+import com.marketplace.api.payout.IdentityDocumentRequest;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
@@ -50,8 +52,24 @@ public class VendorSettingsDtos {
              */
             @NotBlank @Pattern(regexp = "\\d{3,16}", message = "Bank code must be 3-16 digits")
             String bankCode,
-            @NotNull BankAccountType accountType
-    ) {}
+            @NotNull BankAccountType accountType,
+            /**
+             * Optional in this slice. The number inside is write-only and is
+             * reduced to its last four before anything is stored
+             * (IdentityDocumentRequest).
+             */
+            @Valid IdentityDocumentRequest identity
+    ) {
+        /**
+         * Never the account number: a logged or echoed request must not
+         * carry it. The identity's own toString() is already last-4 only.
+         */
+        @Override
+        public String toString() {
+            return "BankingDetailsRequest[bankName=" + bankName + ", bankCode=" + bankCode
+                    + ", accountType=" + accountType + ", identity=" + identity + "]";
+        }
+    }
 
     /**
      * The version echoes what the vendor was SHOWN — the server refuses a

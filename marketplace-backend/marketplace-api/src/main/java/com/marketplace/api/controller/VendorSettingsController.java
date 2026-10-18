@@ -65,7 +65,7 @@ public class VendorSettingsController {
         return payoutSettings.updateBanking(me.getId(),
                 request.accountHolderName(), request.bankName(),
                 request.accountNumber(), request.branchCode(), request.bankCode(),
-                request.accountType());
+                request.accountType(), request.identity());
     }
 
     @PostMapping("/payouts/accept-terms")

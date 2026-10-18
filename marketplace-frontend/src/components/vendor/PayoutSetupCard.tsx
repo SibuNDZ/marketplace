@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError, PayoutSettingsStatus } from '../../lib/api'
 
@@ -159,6 +160,7 @@ export function PayoutSetupCard() {
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
           <span style={{ fontSize: 13, fontWeight: 600 }}>Payout terms</span>
+          <Link to="/seller-terms" style={{ fontSize: 12, color: 'var(--trust-blue)' }}>Read the seller terms</Link>
           {status.termsCurrent ? (
             <span style={{ fontSize: 12, color: 'var(--aloe)' }}>
               Accepted{status.acceptedAt ? ` on ${new Date(status.acceptedAt).toLocaleDateString()}` : ''}

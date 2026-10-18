@@ -18,6 +18,7 @@ import { AccountSettingsPage } from './pages/AccountSettingsPage'
 import { FeedbackPage } from './pages/FeedbackPage'
 import { PrivacyPolicyPage } from './pages/legal/PrivacyPolicyPage'
 import { TermsPage } from './pages/legal/TermsPage'
+import { SellerTermsPage } from './pages/legal/SellerTermsPage'
 import { AboutPage, CareersPage, ContactPage, ReturnsPage, ShippingInfoPage, HelpPage, HowItWorksPage } from './pages/InfoPages'
 import { SellPage } from './pages/SellPage'
 
@@ -192,6 +193,7 @@ export default function App() {
           <Route path="/admin/orders/:id" element={<RequireAuth><AdminOrderDetailPage /></RequireAuth>} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsPage />} />
+          <Route path="/seller-terms" element={<SellerTermsPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/careers" element={<CareersPage />} />
           <Route path="/contact" element={<ContactPage />} />

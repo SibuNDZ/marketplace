@@ -19,8 +19,29 @@ class PaymentsConfigValidatorTest {
                                  String paystackSecret,
                                  String pfId, String pfKey, String process, String validateUrl) {
         new PaymentsConfigValidator(provider, stripeSecret, stripeWebhook,
-                yocoSecret, yocoWebhook, paystackSecret, pfId, pfKey, process, validateUrl)
+                yocoSecret, yocoWebhook, paystackSecret, false, pfId, pfKey, process, validateUrl)
                 .afterPropertiesSet();
+    }
+
+    private static void splitEnabled(String provider, String stripeSecret, String stripeWebhook,
+                                     String paystackSecret) {
+        new PaymentsConfigValidator(provider, stripeSecret, stripeWebhook,
+                "", "", paystackSecret, true, "", "", "", "")
+                .afterPropertiesSet();
+    }
+
+    @Test
+    void splitEnabled_withBlankPaystackKey_failsBoot_whateverTheProvider() {
+        assertThatThrownBy(() -> splitEnabled("stripe", "sk_test_x", "whsec_x", " "))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("PAYSTACK_SPLIT_ENABLED=true")
+                .hasMessageContaining("PAYSTACK_SECRET_KEY");
+    }
+
+    @Test
+    void splitEnabled_withPaystackKey_boots_onAnotherProvider() {
+        assertThatCode(() -> splitEnabled("stripe", "sk_test_x", "whsec_x", "sk_test_p"))
+                .doesNotThrowAnyException();
     }
 
     private static void yoco(String provider, String secret, String webhook) {

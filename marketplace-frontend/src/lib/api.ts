@@ -709,6 +709,12 @@ export interface VerificationDecision {
   vendorApprovedAt: string | null
 }
 
+/** GET /api/v1/vendor/settings/payouts/banks — the bank picker's options. */
+export interface BankOption {
+  name: string
+  code: string
+}
+
 /** GET /api/v1/fees — public numbers for the How It Works Fees section. */
 export interface PublicFees {
   commissionLive: boolean

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api, ApiError, PayoutSettingsStatus } from '../../lib/api'
+import { api, ApiError, BankOption, PayoutSettingsStatus } from '../../lib/api'
 
 /**
  * Payout onboarding on the vendor dashboard: banking details + terms
@@ -28,6 +28,17 @@ export function PayoutSetupCard() {
   const { data: status } = useQuery<PayoutSettingsStatus>({
     queryKey: ['vendor-payout-settings'],
     queryFn: () => api('/api/v1/vendor/settings/payouts'),
+  })
+
+  // The bank picker: name for display, code for the provider, both from
+  // the provider's own list. Fetched only while the form is open, and there
+  // is no built-in fallback: with the list unavailable the vendor cannot
+  // pick a bank, and a guessed code would be a wrong payout.
+  const banks = useQuery<BankOption[]>({
+    queryKey: ['vendor-payout-banks'],
+    queryFn: () => api('/api/v1/vendor/settings/payouts/banks'),
+    enabled: editing,
+    staleTime: 60 * 60 * 1000,
   })
 
   const done = () => {
@@ -63,6 +74,11 @@ export function PayoutSetupCard() {
   }
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }))
+  const pickBank = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const code = e.target.value
+    const bank = banks.data?.find(b => b.code === code)
+    setForm(f => ({ ...f, bankCode: code, bankName: bank?.name ?? '' }))
+  }
 
   return (
     <section aria-label="Payout setup" style={{
@@ -110,20 +126,20 @@ export function PayoutSetupCard() {
           >
             <input required maxLength={120} placeholder="Account holder name" aria-label="Account holder name"
               style={{ ...input, flex: '1 1 180px' }} value={form.accountHolderName} onChange={set('accountHolderName')} />
-            <input required maxLength={80} placeholder="Bank" aria-label="Bank name"
-              style={{ ...input, flex: '1 1 120px' }} value={form.bankName} onChange={set('bankName')} />
+            <select required aria-label="Bank" style={{ ...input, flex: '1 1 160px' }}
+              value={form.bankCode} onChange={pickBank} disabled={!banks.data}>
+              <option value="">{banks.isError ? 'Bank list unavailable' : banks.data ? 'Choose your bank' : 'Loading banks…'}</option>
+              {banks.data?.map(b => <option key={b.code} value={b.code}>{b.name}</option>)}
+            </select>
             <input required pattern="\d{6,20}" inputMode="numeric" placeholder="Account number" aria-label="Account number"
               style={{ ...input, flex: '1 1 140px' }} value={form.accountNumber} onChange={set('accountNumber')} />
             <input required pattern="\d{6}" inputMode="numeric" placeholder="Branch code" aria-label="Branch code"
               style={{ ...input, width: 110 }} value={form.branchCode} onChange={set('branchCode')} />
-            <input required pattern="\d{3,16}" inputMode="numeric" placeholder="Bank code" aria-label="Bank code"
-              title="Your bank's universal branch code, as your payment provider lists it"
-              style={{ ...input, width: 110 }} value={form.bankCode} onChange={set('bankCode')} />
             <select aria-label="Account type" style={input} value={form.accountType} onChange={set('accountType')}>
               <option value="CHEQUE">Cheque / current</option>
               <option value="SAVINGS">Savings</option>
             </select>
-            <button type="submit" disabled={saveBanking.isPending} style={{
+            <button type="submit" disabled={saveBanking.isPending || !form.bankCode} style={{
               padding: '7px 16px', background: 'var(--aloe)', color: '#fff', border: 'none',
               borderRadius: 4, fontWeight: 600, fontSize: 13, cursor: 'pointer',
             }}>
@@ -134,6 +150,11 @@ export function PayoutSetupCard() {
             }}>
               Cancel
             </button>
+            {banks.isError && (
+              <p role="alert" style={{ flexBasis: '100%', fontSize: 12, color: 'var(--clay)' }}>
+                Bank list unavailable, try again shortly.
+              </p>
+            )}
           </form>
         )}
       </div>
